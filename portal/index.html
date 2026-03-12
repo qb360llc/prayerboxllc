@@ -245,7 +245,7 @@
 
       <section class="panel">
         <h2>Firmware Releases</h2>
-        <p>Create and view firmware release metadata for device-manifest consumers. Creating releases requires an admin profile.</p>
+        <p>Create and view firmware release metadata for device-manifest consumers. Creating releases requires an admin profile and a real SHA-256 checksum for the OTA binary.</p>
         <div class="grid two">
           <div>
             <label for="release-channel">Channel</label>
@@ -261,7 +261,7 @@
           </div>
           <div>
             <label for="release-checksum">SHA-256 Checksum</label>
-            <input id="release-checksum" placeholder="optional">
+            <input id="release-checksum" placeholder="64-character lowercase hex">
           </div>
           <div>
             <label for="release-prefix">Min Device Prefix</label>
@@ -406,6 +406,14 @@
         }
 
         return supabase;
+      }
+
+      function normalizeSha256(value) {
+        return value.trim().toLowerCase();
+      }
+
+      function isValidSha256(value) {
+        return /^[a-f0-9]{64}$/.test(value);
       }
 
       async function refreshSessionState() {
@@ -651,9 +659,10 @@ Created: ${release.created_at || "Unknown"}
       }
 
       async function createRelease() {
+        const checksumSha256 = normalizeSha256(els.releaseChecksum.value);
         const body = {
           channel: els.releaseChannel.value.trim() || "stable",
-          checksumSha256: els.releaseChecksum.value.trim() || null,
+          checksumSha256,
           firmwareUrl: els.releaseUrl.value.trim(),
           isActive: true,
           minDevicePrefix: els.releasePrefix.value.trim() || null,
@@ -661,8 +670,12 @@ Created: ${release.created_at || "Unknown"}
           version: els.releaseVersion.value.trim(),
         };
 
-        if (!body.version || !body.firmwareUrl) {
-          throw new Error("Version and firmware URL are required.");
+        if (!body.version || !body.firmwareUrl || !checksumSha256) {
+          throw new Error("Version, firmware URL, and SHA-256 checksum are required.");
+        }
+
+        if (!isValidSha256(checksumSha256)) {
+          throw new Error("SHA-256 checksum must be 64 lowercase hex characters.");
         }
 
         const response = await authedFetch("/functions/v1/firmware-releases", {

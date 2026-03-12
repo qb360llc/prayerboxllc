@@ -86,10 +86,23 @@ Longer-term:
 
 ## 6. Checksum enforcement
 
-The schema already stores `checksum_sha256`, but the firmware does not verify it yet.
+The OTA path now verifies `checksum_sha256` before finalizing an update.
 
-Before broad rollout, add:
+Production rule:
 
-1. SHA-256 verification after download
-2. rejection of mismatched binaries
-3. update status reporting back into `device_firmware_status`
+1. every new active firmware release must include a valid 64-character lowercase SHA-256
+2. the device will skip automatic OTA if the checksum is missing or malformed
+3. the device will reject the update if the downloaded binary hash does not match
+
+Generate the checksum on Windows with:
+
+```powershell
+Get-FileHash .\test\.pio\build\esp32dev\firmware.bin -Algorithm SHA256
+```
+
+Then paste the lowercase `Hash` value into the portal `SHA-256 Checksum` field.
+
+Still recommended next:
+
+1. report OTA success/failure back into `device_firmware_status`
+2. surface that status in the portal

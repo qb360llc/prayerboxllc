@@ -36,6 +36,14 @@ type ReleaseInput = {
   version?: string;
 };
 
+function normalizeSha256(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function isValidSha256(value: string) {
+  return /^[a-f0-9]{64}$/.test(value);
+}
+
 async function getAuthedUser(request: Request) {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -116,9 +124,18 @@ Deno.serve(async (request) => {
     const version = body.version?.trim();
     const firmwareUrl = body.firmwareUrl?.trim();
     const channel = body.channel?.trim() || "stable";
+    const checksumSha256 = normalizeSha256(body.checksumSha256?.trim() || "");
 
-    if (!version || !firmwareUrl) {
-      return json(request, 400, { error: "version and firmwareUrl are required." });
+    if (!version || !firmwareUrl || !checksumSha256) {
+      return json(request, 400, {
+        error: "version, firmwareUrl, and checksumSha256 are required.",
+      });
+    }
+
+    if (!isValidSha256(checksumSha256)) {
+      return json(request, 400, {
+        error: "checksumSha256 must be a 64-character lowercase SHA-256 hex string.",
+      });
     }
 
     if (body.isActive) {
@@ -137,7 +154,7 @@ Deno.serve(async (request) => {
       .from("firmware_releases")
       .insert({
         channel,
-        checksum_sha256: body.checksumSha256?.trim() || null,
+        checksum_sha256: checksumSha256,
         firmware_url: firmwareUrl,
         is_active: body.isActive ?? true,
         min_device_prefix: body.minDevicePrefix?.trim() || null,

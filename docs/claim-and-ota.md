@@ -152,14 +152,22 @@ Recommended rollout:
 1. flash the current firmware once over USB with the OTA partition table in `test/partitions_ota.csv`
 2. build firmware binary with PlatformIO
 3. upload `.bin` to Supabase Storage or another HTTPS file host
-4. create a firmware release from the portal
-5. set `AUTO_APPLY_OTA 1` when you are ready to test installs
-6. ESP32 checks `device-manifest`
-7. ESP32 downloads and installs the binary over HTTPS when a newer version is available
+4. generate the SHA-256 for that `.bin`
+5. create a firmware release from the portal with both the URL and checksum
+6. set `AUTO_APPLY_OTA 1` when you are ready to test installs
+7. ESP32 checks `device-manifest`
+8. ESP32 downloads and installs the binary over HTTPS when a newer version is available
+
+Generate the checksum on Windows with:
+
+```powershell
+Get-FileHash .\test\.pio\build\esp32dev\firmware.bin -Algorithm SHA256
+```
+
+Paste the lowercase `Hash` value into the portal `SHA-256 Checksum` field.
 
 ## 5. What is still missing
 
-The current OTA path still has two dev-stage limitations:
+The current OTA path still has one major dev-stage limitation left:
 
-1. firmware downloads use insecure TLS unless you set `DEVICE_MANIFEST_ROOT_CA` / `OTA_ROOT_CA`
-2. checksum verification is not enforced yet even though the schema stores a SHA-256 field
+1. firmware downloads still use insecure TLS unless you set `DEVICE_MANIFEST_ROOT_CA` / `OTA_ROOT_CA`

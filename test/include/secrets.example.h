@@ -22,6 +22,7 @@
 #define DEVICE_API_KEY "YOUR_DEVICE_API_KEY"
 #define DEVICE_MANIFEST_ROOT_CA ""
 #define OTA_ROOT_CA ""
+// Leave at 0 until the manifest includes a real 64-character SHA-256 checksum.
 #define AUTO_APPLY_OTA 0
 
 // Use a simple onboard LED for the MVP.

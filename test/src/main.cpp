@@ -4,6 +4,7 @@
 #include <Update.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
+#include <mbedtls/sha256.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 
@@ -86,6 +87,44 @@ String summarizeDeviceApiKey() {
   summary += keyLength;
   summary += ")";
   return summary;
+}
+
+String normalizeSha256(const String& input) {
+  String normalized = input;
+  normalized.trim();
+  normalized.toLowerCase();
+  return normalized;
+}
+
+bool isValidSha256Hex(const String& input) {
+  if (input.length() != 64) {
+    return false;
+  }
+
+  for (size_t i = 0; i < input.length(); ++i) {
+    const char ch = input[i];
+    const bool isHex =
+      (ch >= '0' && ch <= '9') ||
+      (ch >= 'a' && ch <= 'f');
+    if (!isHex) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+String sha256DigestToHex(const unsigned char* digest, size_t digestLength) {
+  static constexpr char kHex[] = "0123456789abcdef";
+  String output;
+  output.reserve(digestLength * 2);
+
+  for (size_t i = 0; i < digestLength; ++i) {
+    output += kHex[(digest[i] >> 4) & 0x0F];
+    output += kHex[digest[i] & 0x0F];
+  }
+
+  return output;
 }
 
 bool ledOnSignal() {
@@ -187,9 +226,15 @@ void logManifestResponse(const JsonDocument& doc) {
   }
 }
 
-bool performOtaUpdate(const char* firmwareUrl) {
+bool performOtaUpdate(const char* firmwareUrl, const char* expectedChecksum) {
   if (!firmwareUrl || strlen(firmwareUrl) == 0) {
     Serial.println("Skipping OTA: manifest did not provide a firmware URL.");
+    return false;
+  }
+
+  const String expectedSha256 = normalizeSha256(expectedChecksum ? expectedChecksum : "");
+  if (!isValidSha256Hex(expectedSha256)) {
+    Serial.println("Skipping OTA: manifest did not provide a valid SHA-256 checksum.");
     return false;
   }
 
@@ -231,13 +276,90 @@ bool performOtaUpdate(const char* firmwareUrl) {
   }
 
   WiFiClient& stream = http.getStream();
-  const size_t written = Update.writeStream(stream);
+  mbedtls_sha256_context sha256Ctx;
+  mbedtls_sha256_init(&sha256Ctx);
+  if (mbedtls_sha256_starts_ret(&sha256Ctx, 0) != 0) {
+    Serial.println("Failed to initialize SHA-256 context.");
+    http.end();
+    return false;
+  }
+
+  static constexpr size_t kOtaBufferSize = 1024;
+  uint8_t buffer[kOtaBufferSize];
+  size_t written = 0;
+  int remaining = contentLength;
+
+  while (http.connected() && remaining > 0) {
+    const size_t available = stream.available();
+    if (available == 0) {
+      delay(1);
+      continue;
+    }
+
+    const size_t toRead = min(
+      static_cast<size_t>(remaining),
+      min(available, kOtaBufferSize)
+    );
+    const size_t bytesRead = stream.readBytes(buffer, toRead);
+    if (bytesRead == 0) {
+      delay(1);
+      continue;
+    }
+
+    if (Update.write(buffer, bytesRead) != bytesRead) {
+      Serial.print("OTA write failed: ");
+      Serial.println(Update.errorString());
+      mbedtls_sha256_free(&sha256Ctx);
+      Update.abort();
+      http.end();
+      return false;
+    }
+
+    if (mbedtls_sha256_update_ret(&sha256Ctx, buffer, bytesRead) != 0) {
+      Serial.println("Failed to update OTA SHA-256 digest.");
+      mbedtls_sha256_free(&sha256Ctx);
+      Update.abort();
+      http.end();
+      return false;
+    }
+
+    written += bytesRead;
+    remaining -= bytesRead;
+  }
+
   if (written != static_cast<size_t>(contentLength)) {
     Serial.print("OTA wrote ");
     Serial.print(written);
     Serial.print(" of ");
     Serial.print(contentLength);
     Serial.println(" bytes.");
+    mbedtls_sha256_free(&sha256Ctx);
+    Update.abort();
+    http.end();
+    return false;
+  }
+
+  unsigned char digest[32];
+  if (mbedtls_sha256_finish_ret(&sha256Ctx, digest) != 0) {
+    Serial.println("Failed to finalize OTA SHA-256 digest.");
+    mbedtls_sha256_free(&sha256Ctx);
+    Update.abort();
+    http.end();
+    return false;
+  }
+  mbedtls_sha256_free(&sha256Ctx);
+
+  const String actualSha256 = sha256DigestToHex(digest, sizeof(digest));
+  Serial.print("Expected OTA SHA-256: ");
+  Serial.println(expectedSha256);
+  Serial.print("Actual OTA SHA-256: ");
+  Serial.println(actualSha256);
+
+  if (actualSha256 != expectedSha256) {
+    Serial.println("OTA checksum mismatch. Rejecting update.");
+    Update.abort();
+    http.end();
+    return false;
   }
 
   if (!Update.end()) {
@@ -326,6 +448,7 @@ void checkDeviceManifest() {
 
   String manifestLatestVersion;
   String manifestFirmwareUrl;
+  String manifestChecksumSha256;
   {
     JsonVariantConst firmwareData = responseDoc["firmware"];
     if (!firmwareData.isNull()) {
@@ -334,6 +457,9 @@ void checkDeviceManifest() {
       }
       if (firmwareData["firmware_url"].is<const char*>()) {
         manifestFirmwareUrl = firmwareData["firmware_url"].as<const char*>();
+      }
+      if (firmwareData["checksum_sha256"].is<const char*>()) {
+        manifestChecksumSha256 = firmwareData["checksum_sha256"].as<const char*>();
       }
     }
   }
@@ -350,6 +476,8 @@ void checkDeviceManifest() {
   Serial.println(manifestLatestVersion.length() > 0 ? manifestLatestVersion : "(null)");
   Serial.print("Manifest firmwareUrl: ");
   Serial.println(manifestFirmwareUrl.length() > 0 ? manifestFirmwareUrl : "(null)");
+  Serial.print("Manifest checksumSha256: ");
+  Serial.println(manifestChecksumSha256.length() > 0 ? manifestChecksumSha256 : "(null)");
   Serial.print("Update available decision: ");
   Serial.println(updateAvailable ? "true" : "false");
   Serial.print("OTA already attempted: ");
@@ -358,7 +486,7 @@ void checkDeviceManifest() {
   if (updateAvailable && AUTO_APPLY_OTA && !otaAttempted) {
     Serial.println("Entering OTA install branch.");
     otaAttempted = true;
-    if (!performOtaUpdate(manifestFirmwareUrl.c_str())) {
+    if (!performOtaUpdate(manifestFirmwareUrl.c_str(), manifestChecksumSha256.c_str())) {
       Serial.println("OTA attempt failed.");
     }
   } else {
@@ -585,7 +713,6 @@ void setup() {
   Serial.begin(115200);
   delay(250);
   Serial.println("APP START");
-  Serial.println("BUILD MARKER 2026-03-11 A");
 
 
   pinMode(LED_PIN, OUTPUT);
