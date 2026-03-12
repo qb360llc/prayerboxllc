@@ -137,6 +137,12 @@
         border-bottom: 1px solid var(--line);
       }
 
+      .device-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+      }
+
       .release-list {
         display: grid;
         gap: 12px;
@@ -462,6 +468,8 @@
 
         devices.forEach((device) => {
           const row = document.createElement("div");
+          const nextActive = !device.isActive;
+          const actionLabel = device.isActive ? "Turn Off" : "Turn On";
           row.innerHTML = `
             <strong>${device.displayName || device.deviceId}</strong>
             <code>
@@ -475,8 +483,18 @@ Last seen: ${device.lastSeenAt || "Unknown"}
 Last firmware report: ${device.lastFirmwareReportAt || "Unknown"}
 Last update status: ${device.lastUpdateStatus || "None"}
             </code>
+            <div class="device-actions">
+              <button class="toggle-device" data-device-id="${device.deviceId}" data-next-active="${nextActive ? "true" : "false"}">${actionLabel}</button>
+            </div>
           `;
           els.devicesList.appendChild(row);
+        });
+
+        els.devicesList.querySelectorAll(".toggle-device").forEach((button) => {
+          button.addEventListener("click", () => wrap(
+            () => toggleDevice(button.dataset.deviceId, button.dataset.nextActive === "true"),
+            button,
+          ));
         });
       }
 
@@ -578,6 +596,30 @@ Created: ${release.created_at || "Unknown"}
 
         renderReleases(payload.releases || []);
         setStatus(`Loaded ${payload.releases.length} firmware release(s).`);
+      }
+
+      async function toggleDevice(deviceId, active) {
+        if (!deviceId) {
+          throw new Error("Device UID is required.");
+        }
+
+        const response = await authedFetch("/functions/v1/set-device-active", {
+          body: JSON.stringify({ active, deviceId }),
+          headers: {
+            "Content-Type": "application/json",
+          },
+          method: "POST",
+        });
+
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error || payload.message || "Failed to update device state.");
+        }
+
+        setStatus(
+          `${active ? "Turned on" : "Turned off"} ${payload.device.deviceId}. Group mode is now ${payload.groupState.lightingMode}.`,
+        );
+        await loadMyDevices();
       }
 
       async function signIn(mode) {
