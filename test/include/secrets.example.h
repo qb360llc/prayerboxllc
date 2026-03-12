@@ -19,6 +19,7 @@
 #define MQTT_ROOT_CA ""
 
 #define DEVICE_MANIFEST_URL "https://YOUR_PROJECT_REF.supabase.co/functions/v1/device-manifest"
+#define DEVICE_BOOTSTRAP_URL "https://YOUR_PROJECT_REF.supabase.co/functions/v1/device-bootstrap"
 #define DEVICE_API_KEY "YOUR_DEVICE_API_KEY"
 #define DEVICE_MANIFEST_ROOT_CA ""
 #define OTA_ROOT_CA ""

@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <ESP.h>
 #include <HTTPClient.h>
+#include <Preferences.h>
 #include <Update.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
@@ -39,6 +40,7 @@ constexpr unsigned long kReconnectIntervalMs = 5000;
 constexpr unsigned long kFlashIntervalMs = 400;
 constexpr unsigned long kDebounceMs = 40;
 constexpr unsigned long kManifestRetryIntervalMs = 60000;
+constexpr unsigned long kBootstrapRetryIntervalMs = 30000;
 #ifdef APP_VERSION
 constexpr const char* kAppVersion = APP_VERSION;
 #else
@@ -49,6 +51,8 @@ WiFiClientSecure secureClient;
 PubSubClient mqttClient(secureClient);
 WiFiClientSecure manifestClient;
 WiFiClientSecure otaClient;
+WiFiClientSecure bootstrapClient;
+Preferences preferences;
 
 LightingMode currentMode = LightingMode::Off;
 bool localActive = false;
@@ -58,31 +62,40 @@ bool flashOutputState = false;
 bool activationNeedsPublish = true;
 bool manifestChecked = false;
 bool otaAttempted = false;
+bool bootstrapComplete = false;
+bool hasStoredDeviceApiKey = false;
 
 unsigned long lastHeartbeatMs = 0;
 unsigned long lastReconnectAttemptMs = 0;
 unsigned long lastFlashToggleMs = 0;
 unsigned long lastDebounceMs = 0;
 unsigned long lastManifestAttemptMs = 0;
+unsigned long lastBootstrapAttemptMs = 0;
 
 char commandTopic[96];
 char activationTopic[96];
 char heartbeatTopic[96];
 char statusTopic[96];
 char runtimeDeviceId[32];
+char runtimeDeviceApiKey[80];
 
 const char* deviceId() {
   return runtimeDeviceId;
 }
 
+const char* activeDeviceApiKey() {
+  return hasStoredDeviceApiKey ? runtimeDeviceApiKey : DEVICE_API_KEY;
+}
+
 String summarizeDeviceApiKey() {
-  const size_t keyLength = strlen(DEVICE_API_KEY);
+  const char* apiKey = activeDeviceApiKey();
+  const size_t keyLength = strlen(apiKey);
   if (keyLength == 0) {
     return "empty";
   }
 
   const size_t visibleChars = keyLength < 8 ? keyLength : 8;
-  String summary = String(DEVICE_API_KEY).substring(0, visibleChars);
+  String summary = String(apiKey).substring(0, visibleChars);
   summary += "... (len=";
   summary += keyLength;
   summary += ")";
@@ -125,6 +138,38 @@ String sha256DigestToHex(const unsigned char* digest, size_t digestLength) {
   }
 
   return output;
+}
+
+bool saveDeviceApiKey(const String& apiKey) {
+  if (apiKey.length() == 0 || apiKey.length() >= sizeof(runtimeDeviceApiKey)) {
+    return false;
+  }
+
+  preferences.begin("prayerbox", false);
+  const size_t written = preferences.putString("device_key", apiKey);
+  preferences.end();
+  if (written == 0) {
+    return false;
+  }
+
+  snprintf(runtimeDeviceApiKey, sizeof(runtimeDeviceApiKey), "%s", apiKey.c_str());
+  hasStoredDeviceApiKey = true;
+  return true;
+}
+
+void loadDeviceApiKey() {
+  runtimeDeviceApiKey[0] = '\0';
+  preferences.begin("prayerbox", true);
+  const String storedKey = preferences.getString("device_key", "");
+  preferences.end();
+
+  if (storedKey.length() == 0 || storedKey.length() >= sizeof(runtimeDeviceApiKey)) {
+    hasStoredDeviceApiKey = false;
+    return;
+  }
+
+  snprintf(runtimeDeviceApiKey, sizeof(runtimeDeviceApiKey), "%s", storedKey.c_str());
+  hasStoredDeviceApiKey = true;
 }
 
 bool ledOnSignal() {
@@ -224,6 +269,89 @@ void logManifestResponse(const JsonDocument& doc) {
   } else {
     Serial.println("No active firmware release in manifest.");
   }
+}
+
+void checkDeviceBootstrap() {
+#ifndef DEVICE_BOOTSTRAP_URL
+  return;
+#else
+  const unsigned long now = millis();
+  if (
+    bootstrapComplete ||
+    hasStoredDeviceApiKey ||
+    strlen(DEVICE_BOOTSTRAP_URL) == 0 ||
+    WiFi.status() != WL_CONNECTED ||
+    now - lastBootstrapAttemptMs < kBootstrapRetryIntervalMs
+  ) {
+    return;
+  }
+
+  lastBootstrapAttemptMs = now;
+
+  HTTPClient http;
+  if (strlen(DEVICE_MANIFEST_ROOT_CA) > 0) {
+    bootstrapClient.setCACert(DEVICE_MANIFEST_ROOT_CA);
+  } else {
+    bootstrapClient.setInsecure();
+  }
+
+  Serial.println("Checking device bootstrap...");
+  if (!http.begin(bootstrapClient, DEVICE_BOOTSTRAP_URL)) {
+    Serial.println("Failed to start bootstrap request.");
+    return;
+  }
+
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("x-prayerbox-bootstrap-key", DEVICE_API_KEY);
+
+  JsonDocument requestDoc;
+  requestDoc["deviceId"] = deviceId();
+
+  String requestBody;
+  serializeJson(requestDoc, requestBody);
+
+  const int statusCode = http.POST(requestBody);
+  if (statusCode <= 0) {
+    Serial.print("Bootstrap request failed: ");
+    Serial.println(http.errorToString(statusCode));
+    http.end();
+    return;
+  }
+
+  const String responseBody = http.getString();
+  http.end();
+
+  Serial.print("Bootstrap status: ");
+  Serial.println(statusCode);
+  if (statusCode != HTTP_CODE_OK) {
+    Serial.println(responseBody);
+    return;
+  }
+
+  JsonDocument responseDoc;
+  const auto err = deserializeJson(responseDoc, responseBody);
+  if (err) {
+    Serial.print("Bootstrap JSON parse failed: ");
+    Serial.println(err.c_str());
+    return;
+  }
+
+  const char* bootstrapKey = responseDoc["bootstrap"]["deviceApiKey"] | "";
+  if (strlen(bootstrapKey) == 0) {
+    Serial.println("Bootstrap response missing device API key.");
+    return;
+  }
+
+  if (!saveDeviceApiKey(String(bootstrapKey))) {
+    Serial.println("Failed to persist device API key.");
+    return;
+  }
+
+  bootstrapComplete = true;
+  manifestChecked = false;
+  lastManifestAttemptMs = 0;
+  Serial.println("Stored per-device API key in NVS.");
+#endif
 }
 
 bool performOtaUpdate(const char* firmwareUrl, const char* expectedChecksum) {
@@ -411,7 +539,7 @@ void checkDeviceManifest() {
   }
 
   http.addHeader("Content-Type", "application/json");
-  http.addHeader("x-prayerbox-device-key", DEVICE_API_KEY);
+  http.addHeader("x-prayerbox-device-key", activeDeviceApiKey());
 
   JsonDocument requestDoc;
   requestDoc["deviceId"] = deviceId();
@@ -724,9 +852,12 @@ void setup() {
   setOutput(false);
 
   buildDeviceIdentity();
+  loadDeviceApiKey();
   buildTopics();
   Serial.print("Device ID: ");
   Serial.println(deviceId());
+  Serial.print("Device API key source: ");
+  Serial.println(hasStoredDeviceApiKey ? "stored" : "bootstrap");
   lastButtonReading = digitalRead(BUTTON_PIN);
   stableButtonReading = lastButtonReading;
 
@@ -736,6 +867,7 @@ void setup() {
 
 void loop() {
   ensureWiFi();
+  checkDeviceBootstrap();
   checkDeviceManifest();
   ensureMqtt();
   mqttClient.loop();

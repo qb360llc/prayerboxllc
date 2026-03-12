@@ -73,6 +73,7 @@ The backend pieces are:
 - `supabase/ota-upgrade.sql`
 - `supabase/functions/device-manifest/index.ts`
 - `supabase/functions/provision-device/index.ts`
+- `supabase/functions/device-bootstrap/index.ts`
 
 The firmware now performs a read-only manifest check at boot and logs:
 - the resolved device metadata
@@ -106,9 +107,10 @@ cmd /c npx supabase functions deploy device-manifest --no-verify-jwt
 For production, phase out the shared key:
 
 1. deploy `provision-device`
-2. issue a per-device API key for each board
-3. replace `DEVICE_API_KEY` in each device config with that unique key
-4. keep `PRAYERBOX_DEVICE_API_KEY` only as a short-lived fallback during migration
+2. deploy `device-bootstrap`
+3. issue a per-device API key for each board
+4. let bootstrap-flashed boards store that unique key in NVS automatically
+5. keep `PRAYERBOX_DEVICE_API_KEY` only as a short-lived fallback/bootstrap secret during migration
 
 Example request:
 

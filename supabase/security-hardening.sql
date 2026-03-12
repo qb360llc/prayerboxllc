@@ -9,6 +9,16 @@ create table if not exists device_api_keys (
   last_used_at timestamptz
 );
 
+create table if not exists device_bootstrap_credentials (
+  device_id uuid primary key references devices(id) on delete cascade,
+  device_api_key text not null,
+  claim_code text,
+  expires_at timestamptz,
+  created_at timestamptz not null default now(),
+  rotated_at timestamptz not null default now(),
+  last_fetched_at timestamptz
+);
+
 create or replace function current_user_is_admin()
 returns boolean
 language sql
@@ -65,6 +75,7 @@ alter table device_ownership_history enable row level security;
 alter table firmware_releases enable row level security;
 alter table device_firmware_status enable row level security;
 alter table device_api_keys enable row level security;
+alter table device_bootstrap_credentials enable row level security;
 
 drop policy if exists "profiles_select_self_or_admin" on profiles;
 create policy "profiles_select_self_or_admin"
@@ -157,6 +168,13 @@ create policy "device_firmware_status_select_owner_or_admin"
 drop policy if exists "device_api_keys_select_admin" on device_api_keys;
 create policy "device_api_keys_select_admin"
   on device_api_keys
+  for select
+  to authenticated
+  using (current_user_is_admin());
+
+drop policy if exists "device_bootstrap_credentials_select_admin" on device_bootstrap_credentials;
+create policy "device_bootstrap_credentials_select_admin"
+  on device_bootstrap_credentials
   for select
   to authenticated
   using (current_user_is_admin());

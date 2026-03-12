@@ -219,6 +219,37 @@ Deno.serve(async (request) => {
       }
     }
 
+    if (deviceApiKey || claimCode) {
+      const { data: existingBootstrap, error: existingBootstrapError } = await supabase
+        .from("device_bootstrap_credentials")
+        .select("device_api_key")
+        .eq("device_id", device.id)
+        .maybeSingle();
+
+      if (existingBootstrapError && existingBootstrapError.code !== "PGRST116") {
+        throw existingBootstrapError;
+      }
+
+      const bootstrapDeviceApiKey = deviceApiKey || existingBootstrap?.device_api_key;
+      if (!bootstrapDeviceApiKey) {
+        throw new Error("Device bootstrap key is missing. Rotate the device key before bootstrap.");
+      }
+
+      const { error: bootstrapError } = await supabase
+        .from("device_bootstrap_credentials")
+        .upsert({
+          claim_code: claimCode,
+          device_api_key: bootstrapDeviceApiKey,
+          device_id: device.id,
+          expires_at: claimExpiresAt,
+          rotated_at: new Date().toISOString(),
+        });
+
+      if (bootstrapError) {
+        throw bootstrapError;
+      }
+    }
+
     return json(request, 200, {
       ok: true,
       provisioning: {
