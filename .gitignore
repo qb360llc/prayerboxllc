@@ -1,0 +1,5 @@
+.pio/
+test/.pio/
+test/.vscode/
+test/include/secrets.h
+node_modules/

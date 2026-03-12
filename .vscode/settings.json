@@ -1,0 +1,8 @@
+{
+  "C_Cpp.default.configurationProvider": "platformio.platformio-ide",
+  "C_Cpp.default.compileCommands": "${workspaceFolder}/test/.pio/build/esp32dev/compile_commands.json",
+  "files.associations": {
+    "*.tcc": "cpp"
+  }
+}
+

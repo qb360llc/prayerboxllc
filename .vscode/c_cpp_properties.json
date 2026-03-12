@@ -1,0 +1,29 @@
+{
+  "configurations": [
+    {
+      "name": "ESP32 PlatformIO Fallback",
+      "includePath": [
+        "${workspaceFolder}/test/include",
+        "${workspaceFolder}/test/src",
+        "${workspaceFolder}/test/lib/**",
+        "${workspaceFolder}/test/.pio/libdeps/esp32dev/**",
+        "${env:USERPROFILE}/.platformio/packages/framework-arduinoespressif32/**",
+        "${env:USERPROFILE}/.platformio/packages/framework-arduinoespressif32/libraries/**",
+        "${env:USERPROFILE}/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/**",
+        "${env:USERPROFILE}/.platformio/packages/toolchain-xtensa-esp32/**"
+      ],
+      "defines": [
+        "PLATFORMIO=1",
+        "ARDUINO=10819",
+        "ARDUINO_ARCH_ESP32",
+        "ESP32=ESP32",
+        "F_CPU=240000000L"
+      ],
+      "cStandard": "c11",
+      "cppStandard": "c++17",
+      "intelliSenseMode": "windows-gcc-x64"
+    }
+  ],
+  "version": 4
+}
+

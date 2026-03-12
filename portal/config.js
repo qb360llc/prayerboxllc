@@ -1,0 +1,4 @@
+window.PRAYERBOX_PORTAL_CONFIG = {
+  projectUrl: "https://qtvskyncpuznnzuptgoc.supabase.co",
+  anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF0dnNreW5jcHV6bm56dXB0Z29jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxOTU3NTgsImV4cCI6MjA4ODc3MTc1OH0.9NzZHnwcWcUW5K1hnuESjfkKV7PIym3yv711g0S0mug",
+};
