@@ -4,6 +4,8 @@ create table if not exists app_groups (
   id uuid primary key default gen_random_uuid(),
   slug text not null unique,
   name text not null,
+  invite_code text not null unique,
+  created_by_user_id uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now()
 );
 
@@ -31,6 +33,18 @@ create table if not exists devices (
 
 create index if not exists devices_group_id_idx on devices(group_id);
 create index if not exists devices_owner_user_id_idx on devices(owner_user_id);
+
+create table if not exists group_memberships (
+  id uuid primary key default gen_random_uuid(),
+  group_id uuid not null references app_groups(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  role text not null default 'member',
+  created_at timestamptz not null default now(),
+  unique (group_id, user_id)
+);
+
+create index if not exists group_memberships_group_id_idx on group_memberships(group_id);
+create index if not exists group_memberships_user_id_idx on group_memberships(user_id);
 
 create table if not exists device_claim_codes (
   id uuid primary key default gen_random_uuid(),
@@ -87,12 +101,14 @@ returns table (
 )
 language plpgsql
 security definer
+set search_path = public
 as $$
 declare
   v_device_id uuid;
+  v_group_id uuid;
 begin
-  select d.id
-  into v_device_id
+  select d.id, d.group_id
+  into v_device_id, v_group_id
   from device_claim_codes c
   join devices d on d.id = c.device_id
   where c.claim_code = p_claim_code
@@ -114,6 +130,10 @@ begin
 
   insert into device_ownership_history (device_id, user_id)
   values (v_device_id, p_user_id);
+
+  insert into group_memberships (group_id, user_id, role)
+  values (v_group_id, p_user_id, 'member')
+  on conflict (group_id, user_id) do nothing;
 
   return query
   select d.device_uid, d.display_name, g.slug
@@ -188,6 +208,21 @@ as $$
   );
 $$;
 
+create or replace function current_user_is_group_member(p_group_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from group_memberships gm
+    where gm.group_id = p_group_id
+      and gm.user_id = auth.uid()
+  );
+$$;
+
 create or replace function handle_new_user_profile()
 returns trigger
 language plpgsql
@@ -220,6 +255,7 @@ $$;
 
 alter table profiles enable row level security;
 alter table app_groups enable row level security;
+alter table group_memberships enable row level security;
 alter table devices enable row level security;
 alter table device_events enable row level security;
 alter table device_claim_codes enable row level security;
@@ -243,12 +279,37 @@ create policy "profiles_update_self_or_admin"
   using (id = auth.uid() or current_user_is_admin())
   with check (id = auth.uid() or current_user_is_admin());
 
-drop policy if exists "app_groups_select_authenticated" on app_groups;
-create policy "app_groups_select_authenticated"
+drop policy if exists "app_groups_select_member_or_admin" on app_groups;
+create policy "app_groups_select_member_or_admin"
   on app_groups
   for select
   to authenticated
-  using (true);
+  using (
+    current_user_is_admin()
+    or created_by_user_id = auth.uid()
+    or current_user_is_group_member(id)
+  );
+
+drop policy if exists "group_memberships_select_member_or_admin" on group_memberships;
+create policy "group_memberships_select_member_or_admin"
+  on group_memberships
+  for select
+  to authenticated
+  using (
+    current_user_is_admin()
+    or user_id = auth.uid()
+    or current_user_is_group_member(group_id)
+  );
+
+drop policy if exists "group_memberships_insert_self_or_admin" on group_memberships;
+create policy "group_memberships_insert_self_or_admin"
+  on group_memberships
+  for insert
+  to authenticated
+  with check (
+    current_user_is_admin()
+    or user_id = auth.uid()
+  );
 
 drop policy if exists "devices_select_owner_or_admin" on devices;
 create policy "devices_select_owner_or_admin"

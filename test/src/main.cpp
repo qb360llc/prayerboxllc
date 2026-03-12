@@ -72,20 +72,30 @@ unsigned long lastDebounceMs = 0;
 unsigned long lastManifestAttemptMs = 0;
 unsigned long lastBootstrapAttemptMs = 0;
 
-char commandTopic[96];
-char activationTopic[96];
-char heartbeatTopic[96];
-char statusTopic[96];
-char runtimeDeviceId[32];
-char runtimeDeviceApiKey[80];
+  char commandTopic[96];
+  char activationTopic[96];
+  char heartbeatTopic[96];
+  char statusTopic[96];
+  char runtimeDeviceId[32];
+  char runtimeDeviceApiKey[80];
+  char runtimeGroupId[64];
+
+  void buildTopics();
+  void publishHeartbeat();
+  void publishOnlineStatus();
+  void flushPendingActivation();
 
 const char* deviceId() {
   return runtimeDeviceId;
 }
 
-const char* activeDeviceApiKey() {
-  return hasStoredDeviceApiKey ? runtimeDeviceApiKey : DEVICE_API_KEY;
-}
+  const char* activeDeviceApiKey() {
+    return hasStoredDeviceApiKey ? runtimeDeviceApiKey : DEVICE_API_KEY;
+  }
+
+  const char* activeGroupId() {
+    return runtimeGroupId[0] != '\0' ? runtimeGroupId : DEVICE_GROUP_ID;
+  }
 
 String summarizeDeviceApiKey() {
   const char* apiKey = activeDeviceApiKey();
@@ -157,7 +167,7 @@ bool saveDeviceApiKey(const String& apiKey) {
   return true;
 }
 
-void loadDeviceApiKey() {
+  void loadDeviceApiKey() {
   runtimeDeviceApiKey[0] = '\0';
   preferences.begin("prayerbox", true);
   const String storedKey = preferences.getString("device_key", "");
@@ -168,9 +178,38 @@ void loadDeviceApiKey() {
     return;
   }
 
-  snprintf(runtimeDeviceApiKey, sizeof(runtimeDeviceApiKey), "%s", storedKey.c_str());
-  hasStoredDeviceApiKey = true;
-}
+    snprintf(runtimeDeviceApiKey, sizeof(runtimeDeviceApiKey), "%s", storedKey.c_str());
+    hasStoredDeviceApiKey = true;
+  }
+
+  bool saveGroupId(const String& groupId) {
+    if (groupId.length() == 0 || groupId.length() >= sizeof(runtimeGroupId)) {
+      return false;
+    }
+
+    preferences.begin("prayerbox", false);
+    const size_t written = preferences.putString("group_id", groupId);
+    preferences.end();
+    if (written == 0) {
+      return false;
+    }
+
+    snprintf(runtimeGroupId, sizeof(runtimeGroupId), "%s", groupId.c_str());
+    return true;
+  }
+
+  void loadGroupId() {
+    snprintf(runtimeGroupId, sizeof(runtimeGroupId), "%s", DEVICE_GROUP_ID);
+    preferences.begin("prayerbox", true);
+    const String storedGroup = preferences.getString("group_id", DEVICE_GROUP_ID);
+    preferences.end();
+
+    if (storedGroup.length() == 0 || storedGroup.length() >= sizeof(runtimeGroupId)) {
+      return;
+    }
+
+    snprintf(runtimeGroupId, sizeof(runtimeGroupId), "%s", storedGroup.c_str());
+  }
 
 bool ledOnSignal() {
 #if LED_ACTIVE_HIGH
@@ -244,13 +283,44 @@ void publishJson(const char* topic, JsonDocument& doc, bool retained = false) {
   mqttClient.publish(topic, buffer, retained);
 }
 
-void logManifestResponse(const JsonDocument& doc) {
+  void logManifestResponse(const JsonDocument& doc) {
   JsonVariantConst device = doc["device"];
   if (!device.isNull()) {
     Serial.print("Manifest device: ");
     Serial.println(device["deviceId"] | "unknown");
     Serial.print("Manifest group: ");
     Serial.println(device["groupId"] | "unknown");
+  }
+
+  void refreshTopicsForGroupChange(const String& nextGroupId) {
+    if (
+      nextGroupId.length() == 0 ||
+      nextGroupId.length() >= sizeof(runtimeGroupId) ||
+      nextGroupId == activeGroupId()
+    ) {
+      return;
+    }
+
+    char previousCommandTopic[sizeof(commandTopic)];
+    snprintf(previousCommandTopic, sizeof(previousCommandTopic), "%s", commandTopic);
+
+    if (!saveGroupId(nextGroupId)) {
+      Serial.println("Failed to persist manifest group.");
+      return;
+    }
+
+    buildTopics();
+    Serial.print("Switched runtime group to ");
+    Serial.println(activeGroupId());
+
+    if (mqttClient.connected()) {
+      mqttClient.unsubscribe(previousCommandTopic);
+      mqttClient.subscribe(commandTopic);
+      activationNeedsPublish = true;
+      publishOnlineStatus();
+      publishHeartbeat();
+      flushPendingActivation();
+    }
   }
 
   JsonVariantConst firmware = doc["firmware"];
@@ -510,13 +580,12 @@ bool performOtaUpdate(const char* firmwareUrl, const char* expectedChecksum) {
   return true;
 }
 
-void checkDeviceManifest() {
-  const unsigned long now = millis();
-  if (
-    manifestChecked ||
-    WiFi.status() != WL_CONNECTED ||
-    now - lastManifestAttemptMs < kManifestRetryIntervalMs
-  ) {
+  void checkDeviceManifest() {
+    const unsigned long now = millis();
+    if (
+      WiFi.status() != WL_CONNECTED ||
+      now - lastManifestAttemptMs < kManifestRetryIntervalMs
+    ) {
     return;
   }
 
@@ -574,11 +643,18 @@ void checkDeviceManifest() {
     return;
   }
 
-  String manifestLatestVersion;
-  String manifestFirmwareUrl;
-  String manifestChecksumSha256;
-  {
-    JsonVariantConst firmwareData = responseDoc["firmware"];
+    String manifestGroupId;
+    String manifestLatestVersion;
+    String manifestFirmwareUrl;
+    String manifestChecksumSha256;
+    {
+      JsonVariantConst deviceData = responseDoc["device"];
+      if (!deviceData.isNull() && deviceData["groupId"].is<const char*>()) {
+        manifestGroupId = deviceData["groupId"].as<const char*>();
+      }
+    }
+    {
+      JsonVariantConst firmwareData = responseDoc["firmware"];
     if (!firmwareData.isNull()) {
       if (firmwareData["version"].is<const char*>()) {
         manifestLatestVersion = firmwareData["version"].as<const char*>();
@@ -592,8 +668,11 @@ void checkDeviceManifest() {
     }
   }
 
-  manifestChecked = true;
-  logManifestResponse(responseDoc);
+    manifestChecked = true;
+    if (manifestGroupId.length() > 0) {
+      refreshTopicsForGroupChange(manifestGroupId);
+    }
+    logManifestResponse(responseDoc);
 
   const bool updateAvailable =
     manifestLatestVersion.length() > 0 && manifestLatestVersion != kAppVersion;
@@ -622,12 +701,12 @@ void checkDeviceManifest() {
   }
 }
 
-bool publishActivation() {
-  JsonDocument doc;
-  doc["deviceId"] = deviceId();
-  doc["groupId"] = DEVICE_GROUP_ID;
-  doc["active"] = localActive;
-  doc["uptimeMs"] = millis();
+  bool publishActivation() {
+    JsonDocument doc;
+    doc["deviceId"] = deviceId();
+    doc["groupId"] = activeGroupId();
+    doc["active"] = localActive;
+    doc["uptimeMs"] = millis();
 
   char buffer[256];
   const size_t len = serializeJson(doc, buffer, sizeof(buffer));
@@ -645,22 +724,22 @@ bool publishActivation() {
   return published;
 }
 
-void publishHeartbeat() {
-  JsonDocument doc;
-  doc["deviceId"] = deviceId();
-  doc["groupId"] = DEVICE_GROUP_ID;
-  doc["active"] = localActive;
+  void publishHeartbeat() {
+    JsonDocument doc;
+    doc["deviceId"] = deviceId();
+    doc["groupId"] = activeGroupId();
+    doc["active"] = localActive;
   doc["online"] = true;
   doc["mode"] = lightingModeToString(currentMode);
   doc["uptimeMs"] = millis();
   publishJson(heartbeatTopic, doc, false);
 }
 
-void publishOnlineStatus() {
-  JsonDocument doc;
-  doc["deviceId"] = deviceId();
-  doc["groupId"] = DEVICE_GROUP_ID;
-  doc["online"] = true;
+  void publishOnlineStatus() {
+    JsonDocument doc;
+    doc["deviceId"] = deviceId();
+    doc["groupId"] = activeGroupId();
+    doc["online"] = true;
   doc["uptimeMs"] = millis();
   publishJson(statusTopic, doc, true);
 }
@@ -727,10 +806,10 @@ bool connectMqtt() {
     secureClient.setInsecure();
   }
 
-  JsonDocument offlineDoc;
-  offlineDoc["deviceId"] = deviceId();
-  offlineDoc["groupId"] = DEVICE_GROUP_ID;
-  offlineDoc["online"] = false;
+    JsonDocument offlineDoc;
+    offlineDoc["deviceId"] = deviceId();
+    offlineDoc["groupId"] = activeGroupId();
+    offlineDoc["online"] = false;
   offlineDoc["uptimeMs"] = millis();
 
   char offlineBuffer[160];
@@ -829,8 +908,8 @@ void buildDeviceIdentity() {
 }
 
 void buildTopics() {
-  snprintf(commandTopic, sizeof(commandTopic), "groups/%s/lighting_mode", DEVICE_GROUP_ID);
-  snprintf(activationTopic, sizeof(activationTopic), "devices/%s/activation", deviceId());
+    snprintf(commandTopic, sizeof(commandTopic), "groups/%s/lighting_mode", activeGroupId());
+    snprintf(activationTopic, sizeof(activationTopic), "devices/%s/activation", deviceId());
   snprintf(heartbeatTopic, sizeof(heartbeatTopic), "devices/%s/heartbeat", deviceId());
   snprintf(statusTopic, sizeof(statusTopic), "devices/%s/status", deviceId());
 }
@@ -851,13 +930,16 @@ void setup() {
 #endif
   setOutput(false);
 
-  buildDeviceIdentity();
-  loadDeviceApiKey();
-  buildTopics();
-  Serial.print("Device ID: ");
-  Serial.println(deviceId());
-  Serial.print("Device API key source: ");
-  Serial.println(hasStoredDeviceApiKey ? "stored" : "bootstrap");
+    buildDeviceIdentity();
+    loadDeviceApiKey();
+    loadGroupId();
+    buildTopics();
+    Serial.print("Device ID: ");
+    Serial.println(deviceId());
+    Serial.print("Device API key source: ");
+    Serial.println(hasStoredDeviceApiKey ? "stored" : "bootstrap");
+    Serial.print("Initial group: ");
+    Serial.println(activeGroupId());
   lastButtonReading = digitalRead(BUTTON_PIN);
   stableButtonReading = lastButtonReading;
 

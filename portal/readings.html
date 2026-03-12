@@ -26,6 +26,10 @@
       button.secondary { background:var(--accent-strong); }
       button:disabled { opacity:.6; cursor:wait; }
       .recording-panel { margin-bottom:18px; }
+      .grid { display:grid; gap:12px; }
+      @media (min-width:640px) { .grid.two { grid-template-columns:1fr 1fr; } }
+      label { display:block; font-size:.92rem; margin-bottom:6px; color:var(--muted); }
+      select { width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:12px; font:inherit; background:#fff; color:var(--ink); }
       .status { margin-top:14px; padding:12px 14px; border-radius:12px; background:rgba(13,107,87,.08); color:var(--ink); white-space:pre-wrap; }
       .status.error { background:rgba(161,40,40,.1); color:#a12828; }
       audio { width:100%; margin-top:14px; }
@@ -36,21 +40,34 @@
       <div class="topbar">
         <div>
           <h1>Daily Readings</h1>
-          <p>Open the official U.S. Conference of Catholic Bishops daily reading page.</p>
+          <p>Read the current USCCB reading and share a recording with your own community group.</p>
         </div>
         <a href="./index.html">Back To Portal</a>
       </div>
 
       <section class="panel">
-        <p>This page loads the current daily reading from the official USCCB RSS feed and renders it inside the portal.</p>
+        <p>This page loads the current daily reading from the official USCCB RSS feed and keeps the community audio unique to your selected PRayerbox group.</p>
         <div class="recording-panel">
-          <div id="session-note" class="note">Sign in on the main portal if you want to record today's reading.</div>
+          <div id="session-note" class="note">Sign in on the main portal to access your community recording feed.</div>
+          <div class="grid two">
+            <div>
+              <label for="group-select">Community Group</label>
+              <select id="group-select" disabled>
+                <option value="">Sign in to load your communities</option>
+              </select>
+            </div>
+            <div style="align-self:end;">
+              <div class="actions" style="margin-top:0;">
+                <button id="refresh-groups" class="secondary">Refresh Groups</button>
+              </div>
+            </div>
+          </div>
           <div class="actions">
             <button id="record-button">Record Reading</button>
             <button id="stop-button" class="secondary" disabled>Stop</button>
             <button id="refresh-audio" class="secondary">Refresh Latest Audio</button>
           </div>
-          <div id="recording-status" class="status">No shared recording loaded yet.</div>
+          <div id="recording-status" class="status">No community recording loaded yet.</div>
           <div id="recording-meta" class="note"></div>
           <audio id="shared-audio" controls preload="none"></audio>
         </div>
@@ -72,6 +89,8 @@
       const metaEl = document.querySelector("#reading-meta");
       const contentEl = document.querySelector("#reading-content");
       const officialLinkEl = document.querySelector("#official-link");
+      const groupSelectEl = document.querySelector("#group-select");
+      const refreshGroupsButton = document.querySelector("#refresh-groups");
       const recordButton = document.querySelector("#record-button");
       const stopButton = document.querySelector("#stop-button");
       const recordingStatusEl = document.querySelector("#recording-status");
@@ -81,6 +100,7 @@
       const sessionNoteEl = document.querySelector("#session-note");
 
       let currentReadingDate = new Date().toISOString().slice(0, 10);
+      let currentGroups = [];
       let mediaRecorder = null;
       let recordingStartedAt = null;
       let audioChunks = [];
@@ -115,23 +135,99 @@
         return data.session;
       }
 
+      async function authedFetch(path, options = {}) {
+        const session = await getSession();
+        if (!session) {
+          throw new Error("Sign in on the main portal first.");
+        }
+
+        return fetch(`${projectUrl}${path}`, {
+          ...options,
+          headers: {
+            apikey: anonKey,
+            Authorization: `Bearer ${session.access_token}`,
+            ...(options.headers || {}),
+          },
+        });
+      }
+
+      function selectedGroupSlug() {
+        return groupSelectEl.value.trim();
+      }
+
+      function updateRecordingButtons() {
+        const hasGroup = Boolean(selectedGroupSlug());
+        const hasRecorder = Boolean(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
+        const isRecording = Boolean(mediaRecorder && mediaRecorder.state === "recording");
+        recordButton.disabled = !hasGroup || !hasRecorder || isRecording;
+        stopButton.disabled = !isRecording;
+      }
+
+      function renderGroups(groups) {
+        currentGroups = groups || [];
+        groupSelectEl.innerHTML = "";
+
+        if (!currentGroups.length) {
+          groupSelectEl.innerHTML = `<option value="">No communities available</option>`;
+          groupSelectEl.disabled = true;
+          updateRecordingButtons();
+          return;
+        }
+
+        currentGroups.forEach((group) => {
+          const option = document.createElement("option");
+          option.value = group.slug;
+          option.textContent = `${group.name} (${group.slug})`;
+          groupSelectEl.appendChild(option);
+        });
+
+        groupSelectEl.disabled = false;
+        updateRecordingButtons();
+      }
+
       async function refreshRecordingUi() {
         const session = await getSession();
-        const canRecord = Boolean(session && navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
-        sessionNoteEl.textContent = session
-          ? `Signed in as ${session.user.email}. You can record today's reading from this page.`
-          : "Sign in on the main portal if you want to record today's reading.";
-        recordButton.disabled = !canRecord;
+        if (!session) {
+          sessionNoteEl.textContent = "Sign in on the main portal to access your community recording feed.";
+          renderGroups([]);
+          setRecordingStatus("Sign in to listen to or share a community recording.");
+          return;
+        }
+
+        sessionNoteEl.textContent = `Signed in as ${session.user.email}. Recordings are scoped to your selected community group.`;
+
+        try {
+          const response = await authedFetch("/functions/v1/my-groups", { method: "GET" });
+          const payload = await response.json();
+          if (!response.ok || !payload.ok) {
+            throw new Error(payload.error || "Failed to load your communities.");
+          }
+
+          renderGroups(payload.groups || []);
+          if (payload.groups?.length) {
+            await loadLatestRecording();
+          } else {
+            setRecordingStatus("Join or create a community in the main portal before using recordings.");
+          }
+        } catch (error) {
+          setRecordingStatus(error.message || "Failed to load your communities.", true);
+        }
       }
 
       async function loadLatestRecording() {
-        if (!projectUrl) {
-          setRecordingStatus("Portal config is missing. Ask the admin to update portal/config.js.", true);
+        const groupSlug = selectedGroupSlug();
+        if (!groupSlug) {
+          sharedAudioEl.removeAttribute("src");
+          sharedAudioEl.load();
+          recordingMetaEl.textContent = "";
+          setRecordingStatus("Choose a community to load that group's recording.");
           return;
         }
 
         try {
-          const response = await fetch(`${projectUrl}/functions/v1/daily-reading-recordings?readingDate=${currentReadingDate}`);
+          const response = await authedFetch(`/functions/v1/daily-reading-recordings?readingDate=${currentReadingDate}&groupSlug=${encodeURIComponent(groupSlug)}`, {
+            method: "GET",
+          });
           const payload = await response.json();
 
           if (!response.ok || !payload.ok) {
@@ -143,13 +239,13 @@
             sharedAudioEl.removeAttribute("src");
             sharedAudioEl.load();
             recordingMetaEl.textContent = "";
-            setRecordingStatus("No shared recording for today's reading yet.");
+            setRecordingStatus("No recording for this community yet today.");
             return;
           }
 
           sharedAudioEl.src = recording.audioUrl;
-          recordingMetaEl.textContent = `Latest recording uploaded: ${recording.createdAt || "Unknown"}`;
-          setRecordingStatus("Latest community recording is ready. Press play to listen.");
+          recordingMetaEl.textContent = `Latest recording uploaded: ${recording.createdAt || "Unknown"} for ${recording.groupSlug}`;
+          setRecordingStatus("Community recording is ready. Press play to listen.");
         } catch (error) {
           setRecordingStatus(error.message || "Failed to load daily reading audio.", true);
         }
@@ -157,8 +253,12 @@
 
       async function uploadRecording(blob, durationMs) {
         const session = await getSession();
+        const groupSlug = selectedGroupSlug();
         if (!session) {
           throw new Error("Sign in on the main portal before uploading a reading.");
+        }
+        if (!groupSlug) {
+          throw new Error("Choose a community group first.");
         }
 
         const extension = blob.type.includes("mp4") ? "m4a" : "webm";
@@ -168,6 +268,7 @@
 
         const form = new FormData();
         form.append("audio", file);
+        form.append("groupSlug", groupSlug);
         form.append("readingDate", currentReadingDate);
         form.append("durationMs", String(durationMs));
 
@@ -185,7 +286,7 @@
           throw new Error(payload.error || "Failed to upload recording.");
         }
 
-        setRecordingStatus("Recording uploaded. Everyone can now play the latest reading.");
+        setRecordingStatus(`Recording uploaded for ${groupSlug}. Everyone in that community can now listen.`);
         await loadLatestRecording();
       }
 
@@ -193,6 +294,10 @@
         const session = await getSession();
         if (!session) {
           throw new Error("Sign in on the main portal before recording.");
+        }
+
+        if (!selectedGroupSlug()) {
+          throw new Error("Choose a community group first.");
         }
 
         if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
@@ -213,9 +318,6 @@
 
         mediaRecorder.onstop = async () => {
           stream.getTracks().forEach((track) => track.stop());
-          stopButton.disabled = true;
-          recordButton.disabled = false;
-
           try {
             const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || "audio/webm" });
             const durationMs = Math.max(0, Date.now() - (recordingStartedAt || Date.now()));
@@ -226,13 +328,13 @@
             mediaRecorder = null;
             recordingStartedAt = null;
             audioChunks = [];
+            updateRecordingButtons();
           }
         };
 
         mediaRecorder.start();
-        recordButton.disabled = true;
-        stopButton.disabled = false;
-        setRecordingStatus("Recording in progress. Tap Stop when you finish.");
+        updateRecordingButtons();
+        setRecordingStatus(`Recording in progress for ${selectedGroupSlug()}. Tap Stop when you finish.`);
       }
 
       function stopRecording() {
@@ -273,6 +375,11 @@
         }
       }
 
+      groupSelectEl.addEventListener("change", () => {
+        updateRecordingButtons();
+        loadLatestRecording();
+      });
+
       recordButton.addEventListener("click", async () => {
         try {
           await startRecording();
@@ -283,10 +390,10 @@
 
       stopButton.addEventListener("click", stopRecording);
       refreshAudioButton.addEventListener("click", loadLatestRecording);
+      refreshGroupsButton.addEventListener("click", refreshRecordingUi);
 
-      await refreshRecordingUi();
       await loadReading();
-      await loadLatestRecording();
+      await refreshRecordingUi();
     </script>
   </body>
 </html>
