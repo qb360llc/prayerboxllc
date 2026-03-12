@@ -3,3 +3,6 @@ test/.pio/
 test/.vscode/
 test/include/secrets.h
 node_modules/
+portal/http-server.log
+portal/http-server.err
+supabase/.temp/
