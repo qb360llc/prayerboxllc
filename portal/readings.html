@@ -21,6 +21,14 @@
       .content h4 { margin:20px 0 8px; }
       .content p { color:var(--ink); }
       .content a { color:var(--accent-strong); }
+      .actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:16px; }
+      button { padding:12px 16px; border:0; border-radius:999px; font:inherit; font-weight:600; color:#fff; background:var(--accent); cursor:pointer; }
+      button.secondary { background:var(--accent-strong); }
+      button:disabled { opacity:.6; cursor:wait; }
+      .recording-panel { margin-bottom:18px; }
+      .status { margin-top:14px; padding:12px 14px; border-radius:12px; background:rgba(13,107,87,.08); color:var(--ink); white-space:pre-wrap; }
+      .status.error { background:rgba(161,40,40,.1); color:#a12828; }
+      audio { width:100%; margin-top:14px; }
     </style>
   </head>
   <body>
@@ -35,6 +43,17 @@
 
       <section class="panel">
         <p>This page loads the current daily reading from the official USCCB RSS feed and renders it inside the portal.</p>
+        <div class="recording-panel">
+          <div id="session-note" class="note">Sign in on the main portal if you want to record today's reading.</div>
+          <div class="actions">
+            <button id="record-button">Record Reading</button>
+            <button id="stop-button" class="secondary" disabled>Stop</button>
+            <button id="refresh-audio" class="secondary">Refresh Latest Audio</button>
+          </div>
+          <div id="recording-status" class="status">No shared recording loaded yet.</div>
+          <div id="recording-meta" class="note"></div>
+          <audio id="shared-audio" controls preload="none"></audio>
+        </div>
         <div id="status" class="quote">Loading today's reading...</div>
         <div id="reading-meta" class="note"></div>
         <div id="reading-content" class="content"></div>
@@ -42,18 +61,187 @@
       </section>
     </main>
 
-    <script>
+    <script type="module">
+      import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
       const config = window.PRAYERBOX_PORTAL_CONFIG || {};
       const projectUrl = config.projectUrl || "";
+      const anonKey = config.anonKey || "";
+      const supabase = projectUrl && anonKey ? createClient(projectUrl, anonKey) : null;
       const statusEl = document.querySelector("#status");
       const metaEl = document.querySelector("#reading-meta");
       const contentEl = document.querySelector("#reading-content");
       const officialLinkEl = document.querySelector("#official-link");
+      const recordButton = document.querySelector("#record-button");
+      const stopButton = document.querySelector("#stop-button");
+      const recordingStatusEl = document.querySelector("#recording-status");
+      const recordingMetaEl = document.querySelector("#recording-meta");
+      const sharedAudioEl = document.querySelector("#shared-audio");
+      const refreshAudioButton = document.querySelector("#refresh-audio");
+      const sessionNoteEl = document.querySelector("#session-note");
+
+      let currentReadingDate = new Date().toISOString().slice(0, 10);
+      let mediaRecorder = null;
+      let recordingStartedAt = null;
+      let audioChunks = [];
 
       function decodeHtmlEntities(input) {
         const textarea = document.createElement("textarea");
         textarea.innerHTML = input || "";
         return textarea.value;
+      }
+
+      function setRecordingStatus(message, isError = false) {
+        recordingStatusEl.textContent = message;
+        recordingStatusEl.classList.toggle("error", isError);
+      }
+
+      function preferredMimeType() {
+        const candidates = [
+          "audio/webm;codecs=opus",
+          "audio/webm",
+          "audio/mp4",
+        ];
+
+        return candidates.find((type) => window.MediaRecorder && MediaRecorder.isTypeSupported(type)) || "";
+      }
+
+      async function getSession() {
+        if (!supabase) {
+          return null;
+        }
+
+        const { data } = await supabase.auth.getSession();
+        return data.session;
+      }
+
+      async function refreshRecordingUi() {
+        const session = await getSession();
+        const canRecord = Boolean(session && navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
+        sessionNoteEl.textContent = session
+          ? `Signed in as ${session.user.email}. You can record today's reading from this page.`
+          : "Sign in on the main portal if you want to record today's reading.";
+        recordButton.disabled = !canRecord;
+      }
+
+      async function loadLatestRecording() {
+        if (!projectUrl) {
+          setRecordingStatus("Portal config is missing. Ask the admin to update portal/config.js.", true);
+          return;
+        }
+
+        try {
+          const response = await fetch(`${projectUrl}/functions/v1/daily-reading-recordings?readingDate=${currentReadingDate}`);
+          const payload = await response.json();
+
+          if (!response.ok || !payload.ok) {
+            throw new Error(payload.error || "Failed to load daily reading audio.");
+          }
+
+          const recording = payload.recording;
+          if (!recording) {
+            sharedAudioEl.removeAttribute("src");
+            sharedAudioEl.load();
+            recordingMetaEl.textContent = "";
+            setRecordingStatus("No shared recording for today's reading yet.");
+            return;
+          }
+
+          sharedAudioEl.src = recording.audioUrl;
+          recordingMetaEl.textContent = `Latest recording uploaded: ${recording.createdAt || "Unknown"}`;
+          setRecordingStatus("Latest community recording is ready. Press play to listen.");
+        } catch (error) {
+          setRecordingStatus(error.message || "Failed to load daily reading audio.", true);
+        }
+      }
+
+      async function uploadRecording(blob, durationMs) {
+        const session = await getSession();
+        if (!session) {
+          throw new Error("Sign in on the main portal before uploading a reading.");
+        }
+
+        const extension = blob.type.includes("mp4") ? "m4a" : "webm";
+        const file = new File([blob], `reading-${currentReadingDate}.${extension}`, {
+          type: blob.type || "audio/webm",
+        });
+
+        const form = new FormData();
+        form.append("audio", file);
+        form.append("readingDate", currentReadingDate);
+        form.append("durationMs", String(durationMs));
+
+        const response = await fetch(`${projectUrl}/functions/v1/daily-reading-recordings`, {
+          method: "POST",
+          headers: {
+            apikey: anonKey,
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: form,
+        });
+
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error || "Failed to upload recording.");
+        }
+
+        setRecordingStatus("Recording uploaded. Everyone can now play the latest reading.");
+        await loadLatestRecording();
+      }
+
+      async function startRecording() {
+        const session = await getSession();
+        if (!session) {
+          throw new Error("Sign in on the main portal before recording.");
+        }
+
+        if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+          throw new Error("This device/browser does not support in-browser recording.");
+        }
+
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mimeType = preferredMimeType();
+        mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+        audioChunks = [];
+        recordingStartedAt = Date.now();
+
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data && event.data.size > 0) {
+            audioChunks.push(event.data);
+          }
+        };
+
+        mediaRecorder.onstop = async () => {
+          stream.getTracks().forEach((track) => track.stop());
+          stopButton.disabled = true;
+          recordButton.disabled = false;
+
+          try {
+            const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || "audio/webm" });
+            const durationMs = Math.max(0, Date.now() - (recordingStartedAt || Date.now()));
+            await uploadRecording(blob, durationMs);
+          } catch (error) {
+            setRecordingStatus(error.message || "Failed to process recording.", true);
+          } finally {
+            mediaRecorder = null;
+            recordingStartedAt = null;
+            audioChunks = [];
+          }
+        };
+
+        mediaRecorder.start();
+        recordButton.disabled = true;
+        stopButton.disabled = false;
+        setRecordingStatus("Recording in progress. Tap Stop when you finish.");
+      }
+
+      function stopRecording() {
+        if (!mediaRecorder || mediaRecorder.state !== "recording") {
+          return;
+        }
+
+        mediaRecorder.stop();
+        setRecordingStatus("Uploading recording...");
       }
 
       async function loadReading() {
@@ -72,6 +260,7 @@
 
           const reading = payload.reading;
           statusEl.textContent = reading.title || "Today's Reading";
+          currentReadingDate = reading.pubDate ? new Date(reading.pubDate).toISOString().slice(0, 10) : currentReadingDate;
           metaEl.innerHTML = `
             Published: ${reading.pubDate || "Unknown"}<br>
             Source: <a href="${reading.link || "https://bible.usccb.org/daily-bible-reading"}" target="_blank" rel="noopener noreferrer">${reading.sourceName || "USCCB"}</a>
@@ -84,7 +273,20 @@
         }
       }
 
-      loadReading();
+      recordButton.addEventListener("click", async () => {
+        try {
+          await startRecording();
+        } catch (error) {
+          setRecordingStatus(error.message || "Failed to start recording.", true);
+        }
+      });
+
+      stopButton.addEventListener("click", stopRecording);
+      refreshAudioButton.addEventListener("click", loadLatestRecording);
+
+      await refreshRecordingUi();
+      await loadReading();
+      await loadLatestRecording();
     </script>
   </body>
 </html>
