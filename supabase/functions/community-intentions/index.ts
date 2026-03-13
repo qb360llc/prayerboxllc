@@ -468,18 +468,23 @@ Deno.serve(async (request) => {
 
         if (targetIntentionError) throw targetIntentionError;
 
+        const intentionPreview = String(targetIntention.body)
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, 120);
+
         await notifyRecipient(
           supabase,
           targetIntention.created_by_user_id,
           user.id,
           group.id,
           "intention_loved",
-          "Someone loved your intention",
-          `${actorName} loved your intention in ${group.name}.`,
+          `${actorName} loved your intention`,
+          `${actorName} loved your intention in ${group.name}: "${intentionPreview}${String(targetIntention.body).length > intentionPreview.length ? "..." : ""}"`,
           {
             groupSlug: group.slug,
             intentionId,
-            preview: String(targetIntention.body).slice(0, 120),
+            preview: intentionPreview,
           },
         );
       }
