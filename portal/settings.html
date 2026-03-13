@@ -71,6 +71,19 @@
       </section>
 
       <section class="panel">
+        <h2>My Profile</h2>
+        <p>Set the name other people will see when you post an intention in the community feed.</p>
+        <div class="grid two">
+          <div><label for="first-name">First Name</label><input id="first-name" placeholder="Jane"></div>
+          <div><label for="last-name">Last Name</label><input id="last-name" placeholder="Doe"></div>
+        </div>
+        <div class="actions">
+          <button id="save-profile">Save Name</button>
+          <button id="refresh-profile" class="secondary">Refresh Name</button>
+        </div>
+      </section>
+
+      <section class="panel">
         <h2>Claim Device</h2>
         <div class="grid">
           <div><label for="claim-code">Claim Code</label><input id="claim-code" placeholder="PBX-XXXXXXXXXXXX"></div>
@@ -123,14 +136,18 @@
         devicesEmpty: document.querySelector("#devices-empty"),
         devicesList: document.querySelector("#devices-list"),
         email: document.querySelector("#email"),
+        firstName: document.querySelector("#first-name"),
         groupInviteCode: document.querySelector("#group-invite-code"),
         groupName: document.querySelector("#group-name"),
         groupsEmpty: document.querySelector("#groups-empty"),
         groupsList: document.querySelector("#groups-list"),
         joinGroup: document.querySelector("#join-group"),
+        lastName: document.querySelector("#last-name"),
         password: document.querySelector("#password"),
         refreshDevices: document.querySelector("#refresh-devices"),
+        refreshProfile: document.querySelector("#refresh-profile"),
         refreshGroups: document.querySelector("#refresh-groups"),
+        saveProfile: document.querySelector("#save-profile"),
         sessionState: document.querySelector("#session-state"),
         signIn: document.querySelector("#sign-in"),
         signOut: document.querySelector("#sign-out"),
@@ -171,16 +188,56 @@
         return groups.map((group) => `<option value="${escapeHtml(group.slug)}"${group.slug === selectedGroupId ? " selected" : ""}>${escapeHtml(group.name)}</option>`).join("");
       }
 
+      async function getSignedInUser() {
+        const client = getClient();
+        const { data: sessionData } = await client.auth.getSession();
+        const user = sessionData.session?.user;
+        if (!user) throw new Error("Sign in first.");
+        return user;
+      }
+
       async function refreshSessionState() {
         try {
-          const client = getClient();
-          const { data } = await client.auth.getSession();
-          const session = data.session;
+          const user = await getSignedInUser();
+          const session = { user };
           els.sessionState.value = session ? `Signed in as ${session.user.email}` : "Signed out";
-        } catch (error) {
-          els.sessionState.value = "Config incomplete";
-          setStatus(error.message, true);
+        } catch {
+          els.sessionState.value = "Signed out";
         }
+      }
+
+      async function loadProfile() {
+        const client = getClient();
+        const user = await getSignedInUser();
+        const { data, error } = await client
+          .from("profiles")
+          .select("first_name, last_name")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (error) throw error;
+        els.firstName.value = data?.first_name || "";
+        els.lastName.value = data?.last_name || "";
+      }
+
+      async function saveProfile() {
+        const client = getClient();
+        const user = await getSignedInUser();
+        const firstName = els.firstName.value.trim();
+        const lastName = els.lastName.value.trim();
+        const displayName = [firstName, lastName].filter(Boolean).join(" ") || user.email?.split("@")[0] || "Community member";
+
+        const { error } = await client
+          .from("profiles")
+          .update({
+            display_name: displayName,
+            first_name: firstName || null,
+            last_name: lastName || null,
+          })
+          .eq("id", user.id);
+
+        if (error) throw error;
+        setStatus(`Saved profile name as ${displayName}.`);
       }
 
       function renderClaimResult(device) {
@@ -319,6 +376,7 @@
         }
         setStatus(`${mode === "signup" ? "Signed up" : "Signed in"} as ${email}.`);
         await refreshSessionState();
+        await loadProfile();
         await loadMyGroups();
         await loadMyDevices();
       }
@@ -330,6 +388,8 @@
         renderClaimResult(null);
         renderGroups([]);
         renderDevices([]);
+        els.firstName.value = "";
+        els.lastName.value = "";
         setStatus("Signed out.");
         await refreshSessionState();
       }
@@ -397,11 +457,14 @@
       els.signUp.addEventListener("click", () => wrap(() => signIn("signup"), els.signUp));
       els.signOut.addEventListener("click", () => wrap(signOut, els.signOut));
       els.claimButton.addEventListener("click", () => wrap(claimDevice, els.claimButton));
+      els.saveProfile.addEventListener("click", () => wrap(saveProfile, els.saveProfile));
+      els.refreshProfile.addEventListener("click", () => wrap(loadProfile, els.refreshProfile));
       els.createGroup.addEventListener("click", () => wrap(createGroup, els.createGroup));
       els.joinGroup.addEventListener("click", () => wrap(joinGroup, els.joinGroup));
       els.refreshGroups.addEventListener("click", () => wrap(loadMyGroups, els.refreshGroups));
       els.refreshDevices.addEventListener("click", () => wrap(loadMyDevices, els.refreshDevices));
       refreshSessionState();
+      loadProfile().catch(() => {});
     </script>
   </body>
 </html>

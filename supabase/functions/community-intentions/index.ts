@@ -154,11 +154,19 @@ async function fetchIntentions(
     new Set((intentions ?? []).map((item: Record<string, unknown>) => String(item.created_by_user_id))),
   );
 
-  let authorsById = new Map<string, { display_name?: string | null; email?: string | null }>();
+  let authorsById = new Map<
+    string,
+    {
+      display_name?: string | null;
+      email?: string | null;
+      first_name?: string | null;
+      last_name?: string | null;
+    }
+  >();
   if (authorIds.length) {
     const { data: authors, error: authorsError } = await supabase
       .from("profiles")
-      .select("id, display_name, email")
+      .select("id, first_name, last_name, display_name, email")
       .in("id", authorIds);
 
     if (authorsError) {
@@ -171,6 +179,8 @@ async function fetchIntentions(
         {
           display_name: typeof author.display_name === "string" ? author.display_name : null,
           email: typeof author.email === "string" ? author.email : null,
+          first_name: typeof author.first_name === "string" ? author.first_name : null,
+          last_name: typeof author.last_name === "string" ? author.last_name : null,
         },
       ]),
     );
@@ -206,6 +216,10 @@ async function fetchIntentions(
 
   return (intentions ?? []).map((item: Record<string, unknown>) => {
     const profile = authorsById.get(String(item.created_by_user_id)) ?? null;
+    const fullName = [profile?.first_name, profile?.last_name]
+      .map((value) => (typeof value === "string" ? value.trim() : ""))
+      .filter(Boolean)
+      .join(" ");
     const reactionState = reactionsByIntention.get(String(item.id)) ?? {
       likeCount: 0,
       loveCount: 0,
@@ -215,7 +229,7 @@ async function fetchIntentions(
     return {
       body: item.body,
       createdAt: item.created_at,
-      createdBy: profile?.display_name || profile?.email || "Community member",
+      createdBy: fullName || profile?.display_name || profile?.email || "Community member",
       createdByUserId: item.created_by_user_id,
       id: item.id,
       likeCount: reactionState.likeCount,
