@@ -84,6 +84,7 @@ unsigned long lastBootstrapAttemptMs = 0;
   void publishHeartbeat();
   void publishOnlineStatus();
   void flushPendingActivation();
+  void refreshTopicsForGroupChange(const String& nextGroupId);
 
 const char* deviceId() {
   return runtimeDeviceId;
@@ -284,12 +285,30 @@ void publishJson(const char* topic, JsonDocument& doc, bool retained = false) {
 }
 
   void logManifestResponse(const JsonDocument& doc) {
-  JsonVariantConst device = doc["device"];
-  if (!device.isNull()) {
-    Serial.print("Manifest device: ");
-    Serial.println(device["deviceId"] | "unknown");
-    Serial.print("Manifest group: ");
-    Serial.println(device["groupId"] | "unknown");
+    JsonVariantConst device = doc["device"];
+    if (!device.isNull()) {
+      Serial.print("Manifest device: ");
+      Serial.println(device["deviceId"] | "unknown");
+      Serial.print("Manifest group: ");
+      Serial.println(device["groupId"] | "unknown");
+    }
+
+    JsonVariantConst firmware = doc["firmware"];
+    if (!firmware.isNull()) {
+    const char* latestVersion = firmware["version"] | "unknown";
+    Serial.print("Manifest firmware version: ");
+    Serial.println(latestVersion);
+    Serial.print("Current firmware version: ");
+    Serial.println(kAppVersion);
+
+    if (String(latestVersion) != kAppVersion) {
+      Serial.println("Firmware update available.");
+    } else {
+      Serial.println("Firmware is up to date.");
+    }
+    } else {
+      Serial.println("No active firmware release in manifest.");
+    }
   }
 
   void refreshTopicsForGroupChange(const String& nextGroupId) {
@@ -323,25 +342,7 @@ void publishJson(const char* topic, JsonDocument& doc, bool retained = false) {
     }
   }
 
-  JsonVariantConst firmware = doc["firmware"];
-  if (!firmware.isNull()) {
-    const char* latestVersion = firmware["version"] | "unknown";
-    Serial.print("Manifest firmware version: ");
-    Serial.println(latestVersion);
-    Serial.print("Current firmware version: ");
-    Serial.println(kAppVersion);
-
-    if (String(latestVersion) != kAppVersion) {
-      Serial.println("Firmware update available.");
-    } else {
-      Serial.println("Firmware is up to date.");
-    }
-  } else {
-    Serial.println("No active firmware release in manifest.");
-  }
-}
-
-void checkDeviceBootstrap() {
+  void checkDeviceBootstrap() {
 #ifndef DEVICE_BOOTSTRAP_URL
   return;
 #else
@@ -586,87 +587,89 @@ bool performOtaUpdate(const char* firmwareUrl, const char* expectedChecksum) {
       WiFi.status() != WL_CONNECTED ||
       now - lastManifestAttemptMs < kManifestRetryIntervalMs
     ) {
-    return;
-  }
+      return;
+    }
 
-  lastManifestAttemptMs = now;
+    lastManifestAttemptMs = now;
 
-  HTTPClient http;
-  if (strlen(DEVICE_MANIFEST_ROOT_CA) > 0) {
-    manifestClient.setCACert(DEVICE_MANIFEST_ROOT_CA);
-  } else {
-    manifestClient.setInsecure();
-  }
+    HTTPClient http;
+    if (strlen(DEVICE_MANIFEST_ROOT_CA) > 0) {
+      manifestClient.setCACert(DEVICE_MANIFEST_ROOT_CA);
+    } else {
+      manifestClient.setInsecure();
+    }
 
-  Serial.println("Checking device manifest...");
-  Serial.print("Manifest key fingerprint: ");
-  Serial.println(summarizeDeviceApiKey());
+    Serial.println("Checking device manifest...");
+    Serial.print("Manifest key fingerprint: ");
+    Serial.println(summarizeDeviceApiKey());
 
-  if (!http.begin(manifestClient, DEVICE_MANIFEST_URL)) {
-    Serial.println("Failed to start manifest request.");
-    return;
-  }
+    if (!http.begin(manifestClient, DEVICE_MANIFEST_URL)) {
+      Serial.println("Failed to start manifest request.");
+      return;
+    }
 
-  http.addHeader("Content-Type", "application/json");
-  http.addHeader("x-prayerbox-device-key", activeDeviceApiKey());
+    http.addHeader("Content-Type", "application/json");
+    http.addHeader("x-prayerbox-device-key", activeDeviceApiKey());
 
-  JsonDocument requestDoc;
-  requestDoc["deviceId"] = deviceId();
-  requestDoc["channel"] = "stable";
-  requestDoc["currentVersion"] = kAppVersion;
+    JsonDocument requestDoc;
+    requestDoc["deviceId"] = deviceId();
+    requestDoc["channel"] = "stable";
+    requestDoc["currentVersion"] = kAppVersion;
 
-  String requestBody;
-  serializeJson(requestDoc, requestBody);
+    String requestBody;
+    serializeJson(requestDoc, requestBody);
 
-  const int statusCode = http.POST(requestBody);
-  if (statusCode <= 0) {
-    Serial.print("Manifest request failed: ");
-    Serial.println(http.errorToString(statusCode));
+    const int statusCode = http.POST(requestBody);
+    if (statusCode <= 0) {
+      Serial.print("Manifest request failed: ");
+      Serial.println(http.errorToString(statusCode));
+      http.end();
+      return;
+    }
+
+    Serial.print("Manifest status: ");
+    Serial.println(statusCode);
+
+    const String responseBody = http.getString();
     http.end();
-    return;
-  }
 
-  Serial.print("Manifest status: ");
-  Serial.println(statusCode);
+    Serial.println("Manifest body:");
+    Serial.println(responseBody);
 
-  const String responseBody = http.getString();
-  http.end();
-
-  Serial.println("Manifest body:");
-  Serial.println(responseBody);
-
-  JsonDocument responseDoc;
-  const auto err = deserializeJson(responseDoc, responseBody);
-  if (err) {
-    Serial.print("Manifest JSON parse failed: ");
-    Serial.println(err.c_str());
-    return;
-  }
+    JsonDocument responseDoc;
+    const auto err = deserializeJson(responseDoc, responseBody);
+    if (err) {
+      Serial.print("Manifest JSON parse failed: ");
+      Serial.println(err.c_str());
+      return;
+    }
 
     String manifestGroupId;
     String manifestLatestVersion;
     String manifestFirmwareUrl;
     String manifestChecksumSha256;
+
     {
       JsonVariantConst deviceData = responseDoc["device"];
       if (!deviceData.isNull() && deviceData["groupId"].is<const char*>()) {
         manifestGroupId = deviceData["groupId"].as<const char*>();
       }
     }
+
     {
       JsonVariantConst firmwareData = responseDoc["firmware"];
-    if (!firmwareData.isNull()) {
-      if (firmwareData["version"].is<const char*>()) {
-        manifestLatestVersion = firmwareData["version"].as<const char*>();
-      }
-      if (firmwareData["firmware_url"].is<const char*>()) {
-        manifestFirmwareUrl = firmwareData["firmware_url"].as<const char*>();
-      }
-      if (firmwareData["checksum_sha256"].is<const char*>()) {
-        manifestChecksumSha256 = firmwareData["checksum_sha256"].as<const char*>();
+      if (!firmwareData.isNull()) {
+        if (firmwareData["version"].is<const char*>()) {
+          manifestLatestVersion = firmwareData["version"].as<const char*>();
+        }
+        if (firmwareData["firmware_url"].is<const char*>()) {
+          manifestFirmwareUrl = firmwareData["firmware_url"].as<const char*>();
+        }
+        if (firmwareData["checksum_sha256"].is<const char*>()) {
+          manifestChecksumSha256 = firmwareData["checksum_sha256"].as<const char*>();
+        }
       }
     }
-  }
 
     manifestChecked = true;
     if (manifestGroupId.length() > 0) {
@@ -674,32 +677,32 @@ bool performOtaUpdate(const char* firmwareUrl, const char* expectedChecksum) {
     }
     logManifestResponse(responseDoc);
 
-  const bool updateAvailable =
-    manifestLatestVersion.length() > 0 && manifestLatestVersion != kAppVersion;
+    const bool updateAvailable =
+      manifestLatestVersion.length() > 0 && manifestLatestVersion != kAppVersion;
 
-  Serial.print("AUTO_APPLY_OTA: ");
-  Serial.println(AUTO_APPLY_OTA ? "1" : "0");
-  Serial.print("Manifest latestVersion: ");
-  Serial.println(manifestLatestVersion.length() > 0 ? manifestLatestVersion : "(null)");
-  Serial.print("Manifest firmwareUrl: ");
-  Serial.println(manifestFirmwareUrl.length() > 0 ? manifestFirmwareUrl : "(null)");
-  Serial.print("Manifest checksumSha256: ");
-  Serial.println(manifestChecksumSha256.length() > 0 ? manifestChecksumSha256 : "(null)");
-  Serial.print("Update available decision: ");
-  Serial.println(updateAvailable ? "true" : "false");
-  Serial.print("OTA already attempted: ");
-  Serial.println(otaAttempted ? "true" : "false");
+    Serial.print("AUTO_APPLY_OTA: ");
+    Serial.println(AUTO_APPLY_OTA ? "1" : "0");
+    Serial.print("Manifest latestVersion: ");
+    Serial.println(manifestLatestVersion.length() > 0 ? manifestLatestVersion : "(null)");
+    Serial.print("Manifest firmwareUrl: ");
+    Serial.println(manifestFirmwareUrl.length() > 0 ? manifestFirmwareUrl : "(null)");
+    Serial.print("Manifest checksumSha256: ");
+    Serial.println(manifestChecksumSha256.length() > 0 ? manifestChecksumSha256 : "(null)");
+    Serial.print("Update available decision: ");
+    Serial.println(updateAvailable ? "true" : "false");
+    Serial.print("OTA already attempted: ");
+    Serial.println(otaAttempted ? "true" : "false");
 
-  if (updateAvailable && AUTO_APPLY_OTA && !otaAttempted) {
-    Serial.println("Entering OTA install branch.");
-    otaAttempted = true;
-    if (!performOtaUpdate(manifestFirmwareUrl.c_str(), manifestChecksumSha256.c_str())) {
-      Serial.println("OTA attempt failed.");
+    if (updateAvailable && AUTO_APPLY_OTA && !otaAttempted) {
+      Serial.println("Entering OTA install branch.");
+      otaAttempted = true;
+      if (!performOtaUpdate(manifestFirmwareUrl.c_str(), manifestChecksumSha256.c_str())) {
+        Serial.println("OTA attempt failed.");
+      }
+    } else {
+      Serial.println("Skipping OTA install branch.");
     }
-  } else {
-    Serial.println("Skipping OTA install branch.");
   }
-}
 
   bool publishActivation() {
     JsonDocument doc;
