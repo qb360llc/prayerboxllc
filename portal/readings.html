@@ -16,6 +16,7 @@
       .topbar { display:flex; justify-content:flex-end; gap:10px; }
       .topnav { display:flex; flex-wrap:wrap; gap:10px; }
       .topnav a { display:inline-block; padding:10px 14px; border-radius:999px; text-decoration:none; background:rgba(13,107,87,.08); }
+      .mobile-top-title { display:none; font-size:1.2rem; font-weight:700; align-self:center; color:var(--ink); }
       .hero { margin-top:18px; }
       .nav-toggle { position:absolute; opacity:0; pointer-events:none; }
       .mobile-nav-button { display:none; width:48px; height:48px; border-radius:14px; background:var(--accent); cursor:pointer; align-items:center; justify-content:center; box-shadow:0 10px 24px rgba(27,26,23,.12); }
@@ -47,10 +48,12 @@
       .status.error { background:rgba(161,40,40,.1); color:#a12828; }
       audio { width:100%; margin-top:14px; }
       @media (max-width:720px) {
-        .topbar { justify-content:flex-start; }
+        .topbar { justify-content:flex-start; align-items:center; }
         .topnav { display:none; }
         .mobile-nav-button { display:flex; }
+        .mobile-top-title { display:block; }
         .hero { margin-top:14px; }
+        .hero h1 { display:none; }
         .nav-toggle:checked ~ .mobile-overlay { display:block; position:fixed; inset:0; background:rgba(27,26,23,.36); z-index:25; }
         .nav-toggle:checked ~ .mobile-drawer { transform:translateX(0); }
       }
@@ -61,6 +64,7 @@
       <input id="nav-toggle" class="nav-toggle" type="checkbox">
       <div class="topbar">
         <label for="nav-toggle" class="mobile-nav-button" aria-label="Open navigation menu"><span></span></label>
+        <div class="mobile-top-title">Daily Readings</div>
         <nav class="topnav" aria-label="Primary">
           <a href="./index.html">Controls</a>
           <a href="./settings.html">Settings</a>
