@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PRayerbox Settings</title>
+    <script src="./config.js"></script>
+    <style>
+      :root { --bg:#f3efe4; --panel:#fffaf0; --ink:#1b1a17; --muted:#6f675d; --accent:#0d6b57; --accent-strong:#084c3e; --line:#d8cfbf; --danger:#a12828; }
+      * { box-sizing:border-box; }
+      body { margin:0; min-height:100vh; font-family:Georgia,"Times New Roman",serif; color:var(--ink); background:radial-gradient(circle at top left, rgba(13,107,87,.12), transparent 30%), linear-gradient(180deg, #efe7d6 0%, var(--bg) 100%); }
+      main { max-width:760px; margin:0 auto; padding:32px 20px 64px; }
+      h1 { margin:0 0 8px; font-size:clamp(2rem,5vw,3.4rem); line-height:1; }
+      p { color:var(--muted); line-height:1.5; }
+      a { color:var(--accent-strong); }
+      .topbar { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+      .panel { margin-top:24px; padding:20px; border:1px solid var(--line); border-radius:18px; background:color-mix(in srgb, var(--panel) 88%, white 12%); box-shadow:0 14px 40px rgba(27,26,23,.08); }
+      .grid { display:grid; gap:12px; }
+      @media (min-width:640px) { .grid.two { grid-template-columns:1fr 1fr; } }
+      label { display:block; font-size:.92rem; margin-bottom:6px; color:var(--muted); }
+      input, select { width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:12px; font:inherit; background:#fff; color:var(--ink); }
+      button { padding:12px 16px; border:0; border-radius:999px; font:inherit; font-weight:600; color:#fff; background:var(--accent); cursor:pointer; }
+      button.secondary { background:var(--accent-strong); }
+      button.ghost { background:#fff; color:var(--accent-strong); border:1px solid var(--line); }
+      button:disabled { opacity:.6; cursor:wait; }
+      .actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:16px; }
+      .status { margin-top:16px; padding:12px 14px; border-radius:12px; background:rgba(13,107,87,.08); color:var(--ink); white-space:pre-wrap; }
+      .status.error { background:rgba(161,40,40,.1); color:var(--danger); }
+      .kv { display:grid; gap:10px; margin-top:12px; }
+      .kv div { padding-bottom:10px; border-bottom:1px solid var(--line); }
+      .device-actions, .group-actions { display:flex; gap:10px; margin-top:10px; flex-wrap:wrap; }
+      .group-card, .device-card { padding:14px; border:1px solid var(--line); border-radius:14px; background:rgba(255,255,255,.55); margin-top:12px; }
+      .invite-row { display:flex; gap:10px; margin-top:10px; align-items:center; }
+      .invite-row input { flex:1; }
+      code { font-family:"Courier New", monospace; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="topbar">
+        <div>
+          <h1>PRayerbox Settings</h1>
+          <p>Sign in, claim devices, create communities, and manage which group each device belongs to.</p>
+        </div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+          <a href="./index.html">Controls</a>
+          <a href="./readings.html">Daily Readings</a>
+        </div>
+      </div>
+
+      <section class="panel">
+        <h2>Sign In</h2>
+        <div class="grid two">
+          <div><label for="email">Email</label><input id="email" type="email" placeholder="you@example.com"></div>
+          <div><label for="password">Password</label><input id="password" type="password" placeholder="Password"></div>
+        </div>
+        <div class="grid" style="margin-top:12px;">
+          <div><label for="session-state">Session State</label><input id="session-state" value="Signed out" readonly></div>
+        </div>
+        <div class="actions">
+          <button id="sign-in">Sign In</button>
+          <button id="sign-up" class="secondary">Sign Up</button>
+          <button id="sign-out" class="secondary">Sign Out</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Claim Device</h2>
+        <div class="grid">
+          <div><label for="claim-code">Claim Code</label><input id="claim-code" placeholder="PBX-XXXXXXXXXXXX"></div>
+        </div>
+        <div class="actions"><button id="claim-button">Claim Device</button></div>
+        <div id="claim-result" class="kv"></div>
+      </section>
+
+      <section class="panel">
+        <h2>My Communities</h2>
+        <p>Create a group for your own people, or join another one with an invite code. Use the copy button to share your group code quickly.</p>
+        <div class="grid two">
+          <div><label for="group-name">New Group Name</label><input id="group-name" placeholder="St. Michael Prayer Circle"></div>
+          <div><label for="group-invite-code">Join With Invite Code</label><input id="group-invite-code" placeholder="GRP-XXXXXXXXXX"></div>
+        </div>
+        <div class="actions">
+          <button id="create-group">Create Group</button>
+          <button id="join-group" class="secondary">Join Group</button>
+          <button id="refresh-groups" class="secondary">Refresh Groups</button>
+        </div>
+        <div id="groups-empty" class="status">No communities loaded yet.</div>
+        <div id="groups-list"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Device Groups</h2>
+        <p>Choose which community each of your claimed devices should sync with.</p>
+        <div class="actions"><button id="refresh-devices">Refresh Devices</button></div>
+        <div id="devices-empty" class="status">No claimed devices loaded yet.</div>
+        <div id="devices-list"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Status</h2>
+        <div id="status" class="status">Idle.</div>
+      </section>
+    </main>
+
+    <script type="module">
+      import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+      const config = window.PRAYERBOX_PORTAL_CONFIG || {};
+      const projectUrl = config.projectUrl || "";
+      const anonKey = config.anonKey || "";
+      const els = {
+        claimButton: document.querySelector("#claim-button"),
+        claimCode: document.querySelector("#claim-code"),
+        claimResult: document.querySelector("#claim-result"),
+        createGroup: document.querySelector("#create-group"),
+        devicesEmpty: document.querySelector("#devices-empty"),
+        devicesList: document.querySelector("#devices-list"),
+        email: document.querySelector("#email"),
+        groupInviteCode: document.querySelector("#group-invite-code"),
+        groupName: document.querySelector("#group-name"),
+        groupsEmpty: document.querySelector("#groups-empty"),
+        groupsList: document.querySelector("#groups-list"),
+        joinGroup: document.querySelector("#join-group"),
+        password: document.querySelector("#password"),
+        refreshDevices: document.querySelector("#refresh-devices"),
+        refreshGroups: document.querySelector("#refresh-groups"),
+        sessionState: document.querySelector("#session-state"),
+        signIn: document.querySelector("#sign-in"),
+        signOut: document.querySelector("#sign-out"),
+        signUp: document.querySelector("#sign-up"),
+        status: document.querySelector("#status"),
+      };
+      let groups = [];
+      let supabase = null;
+
+      function setStatus(message, isError = false) {
+        els.status.textContent = message;
+        els.status.classList.toggle("error", isError);
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;");
+      }
+
+      async function copyText(text) {
+        await navigator.clipboard.writeText(text);
+      }
+
+      function getClient() {
+        if (!projectUrl || !anonKey) {
+          throw new Error("Portal config is missing. Ask the admin to update portal/config.js.");
+        }
+        if (!supabase) {
+          supabase = createClient(projectUrl, anonKey);
+        }
+        return supabase;
+      }
+
+      function groupOptionsMarkup(selectedGroupId) {
+        return groups.map((group) => `<option value="${escapeHtml(group.slug)}"${group.slug === selectedGroupId ? " selected" : ""}>${escapeHtml(group.name)}</option>`).join("");
+      }
+
+      async function refreshSessionState() {
+        try {
+          const client = getClient();
+          const { data } = await client.auth.getSession();
+          const session = data.session;
+          els.sessionState.value = session ? `Signed in as ${session.user.email}` : "Signed out";
+        } catch (error) {
+          els.sessionState.value = "Config incomplete";
+          setStatus(error.message, true);
+        }
+      }
+
+      function renderClaimResult(device) {
+        els.claimResult.innerHTML = "";
+        if (!device) return;
+        [["Device UID", device.device_uid], ["Display Name", device.display_name], ["Community", device.group_slug]].forEach(([label, value]) => {
+          const row = document.createElement("div");
+          row.innerHTML = `<strong>${label}</strong><code>${value ?? ""}</code>`;
+          els.claimResult.appendChild(row);
+        });
+      }
+
+      function renderGroups(items) {
+        groups = items || [];
+        els.groupsList.innerHTML = "";
+        if (!groups.length) {
+          els.groupsEmpty.textContent = "You are not a member of any communities yet.";
+          return;
+        }
+
+        els.groupsEmpty.textContent = `${groups.length} communit${groups.length === 1 ? "y" : "ies"} loaded.`;
+        groups.forEach((group) => {
+          const card = document.createElement("div");
+          card.className = "group-card";
+          card.innerHTML = `
+            <strong>${escapeHtml(group.name)}</strong>
+            <div class="group-actions">
+              <span>Role: ${escapeHtml(group.role)}</span>
+            </div>
+            <div class="invite-row">
+              <input value="${escapeHtml(group.inviteCode)}" readonly aria-label="Invite code for ${escapeHtml(group.name)}">
+              <button class="ghost copy-invite" data-invite-code="${escapeHtml(group.inviteCode)}">Copy Code</button>
+            </div>`;
+          els.groupsList.appendChild(card);
+        });
+
+        els.groupsList.querySelectorAll(".copy-invite").forEach((button) => {
+          button.addEventListener("click", async () => {
+            try {
+              await copyText(button.dataset.inviteCode || "");
+              setStatus(`Copied invite code ${button.dataset.inviteCode}.`);
+            } catch (error) {
+              setStatus(error.message || "Failed to copy invite code.", true);
+            }
+          });
+        });
+      }
+
+      function renderDevices(devices) {
+        els.devicesList.innerHTML = "";
+        if (!devices.length) {
+          els.devicesEmpty.textContent = "No claimed devices loaded yet.";
+          return;
+        }
+
+        els.devicesEmpty.textContent = `${devices.length} claimed device${devices.length === 1 ? "" : "s"} loaded.`;
+        devices.forEach((device) => {
+          const card = document.createElement("div");
+          card.className = "device-card";
+          card.innerHTML = `
+            <strong>${escapeHtml(device.displayName || device.deviceId)}</strong>
+            <div>Current community: ${escapeHtml(device.groupName || device.groupId || "Unassigned")}</div>
+            <div class="device-actions">
+              <select class="device-group-select" data-device-id="${device.deviceId}" ${groups.length ? "" : "disabled"}>
+                ${groupOptionsMarkup(device.groupId)}
+              </select>
+              <button class="move-device secondary" data-device-id="${device.deviceId}" ${groups.length ? "" : "disabled"}>Save Group</button>
+            </div>`;
+          els.devicesList.appendChild(card);
+        });
+
+        els.devicesList.querySelectorAll(".move-device").forEach((button) => {
+          button.addEventListener("click", () => wrap(
+            () => {
+              const select = button.parentElement?.querySelector(".device-group-select");
+              return moveDeviceToGroup(button.dataset.deviceId, select?.value || "");
+            },
+            button,
+          ));
+        });
+      }
+
+      async function authedFetch(path, options = {}) {
+        const client = getClient();
+        const { data: sessionData } = await client.auth.getSession();
+        const accessToken = sessionData.session?.access_token;
+        if (!accessToken) throw new Error("Sign in first.");
+        return fetch(`${projectUrl}${path}`, {
+          ...options,
+          headers: {
+            apikey: anonKey,
+            Authorization: `Bearer ${accessToken}`,
+            ...(options.headers || {}),
+          },
+        });
+      }
+
+      async function loadMyGroups() {
+        const response = await authedFetch("/functions/v1/my-groups", { method: "GET" });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || payload.message || "Failed to load communities.");
+        renderGroups(payload.groups || []);
+      }
+
+      async function loadMyDevices() {
+        const response = await authedFetch("/functions/v1/my-devices", { method: "GET" });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || payload.message || "Failed to load devices.");
+        renderDevices(payload.devices || []);
+      }
+
+      async function moveDeviceToGroup(deviceId, groupSlug) {
+        if (!deviceId || !groupSlug) throw new Error("Pick a target community first.");
+        const response = await authedFetch("/functions/v1/set-device-group", {
+          body: JSON.stringify({ deviceId, groupSlug }),
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || payload.message || "Failed to move device.");
+        setStatus(`Moved ${payload.device.deviceId} into ${payload.device.groupName}.`);
+        await loadMyDevices();
+      }
+
+      async function signIn(mode) {
+        const client = getClient();
+        const email = els.email.value.trim();
+        const password = els.password.value;
+        if (!email || !password) throw new Error("Email and password are required.");
+        const method = mode === "signup" ? client.auth.signUp({ email, password }) : client.auth.signInWithPassword({ email, password });
+        const { data, error } = await method;
+        if (error) throw error;
+        if (mode === "signup" && !data.session) {
+          setStatus("Sign-up succeeded, but no session was returned. Confirm email or ask admin to disable confirmation.");
+          return;
+        }
+        setStatus(`${mode === "signup" ? "Signed up" : "Signed in"} as ${email}.`);
+        await refreshSessionState();
+        await loadMyGroups();
+        await loadMyDevices();
+      }
+
+      async function signOut() {
+        const client = getClient();
+        const { error } = await client.auth.signOut();
+        if (error) throw error;
+        renderClaimResult(null);
+        renderGroups([]);
+        renderDevices([]);
+        setStatus("Signed out.");
+        await refreshSessionState();
+      }
+
+      async function claimDevice() {
+        const claimCode = els.claimCode.value.trim();
+        if (!claimCode) throw new Error("Claim code is required.");
+        const response = await authedFetch("/functions/v1/claim-device", {
+          body: JSON.stringify({ claimCode }),
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || payload.message || "Claim failed.");
+        renderClaimResult(payload.device);
+        setStatus(`Claimed ${payload.device.device_uid} successfully.`);
+        await loadMyGroups();
+        await loadMyDevices();
+      }
+
+      async function createGroup() {
+        const name = els.groupName.value.trim();
+        if (!name) throw new Error("Group name is required.");
+        const response = await authedFetch("/functions/v1/create-group", {
+          body: JSON.stringify({ name }),
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || payload.message || "Failed to create group.");
+        els.groupName.value = "";
+        setStatus(`Created community ${payload.group.name}.`);
+        await loadMyGroups();
+        await loadMyDevices();
+      }
+
+      async function joinGroup() {
+        const inviteCode = els.groupInviteCode.value.trim().toUpperCase();
+        if (!inviteCode) throw new Error("Invite code is required.");
+        const response = await authedFetch("/functions/v1/join-group", {
+          body: JSON.stringify({ inviteCode }),
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || payload.message || "Failed to join group.");
+        els.groupInviteCode.value = "";
+        setStatus(`Joined community ${payload.group.name}.`);
+        await loadMyGroups();
+        await loadMyDevices();
+      }
+
+      async function wrap(fn, button) {
+        try {
+          button.disabled = true;
+          await fn();
+        } catch (error) {
+          setStatus(error.message || "Request failed.", true);
+        } finally {
+          button.disabled = false;
+        }
+      }
+
+      els.signIn.addEventListener("click", () => wrap(() => signIn("signin"), els.signIn));
+      els.signUp.addEventListener("click", () => wrap(() => signIn("signup"), els.signUp));
+      els.signOut.addEventListener("click", () => wrap(signOut, els.signOut));
+      els.claimButton.addEventListener("click", () => wrap(claimDevice, els.claimButton));
+      els.createGroup.addEventListener("click", () => wrap(createGroup, els.createGroup));
+      els.joinGroup.addEventListener("click", () => wrap(joinGroup, els.joinGroup));
+      els.refreshGroups.addEventListener("click", () => wrap(loadMyGroups, els.refreshGroups));
+      els.refreshDevices.addEventListener("click", () => wrap(loadMyDevices, els.refreshDevices));
+      refreshSessionState();
+    </script>
+  </body>
+</html>
