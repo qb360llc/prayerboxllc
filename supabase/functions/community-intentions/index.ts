@@ -140,16 +140,7 @@ async function fetchIntentions(
 ) {
   const { data: intentions, error: intentionsError } = await supabase
     .from("community_intentions")
-    .select(`
-      id,
-      body,
-      created_at,
-      created_by_user_id,
-      profiles!community_intentions_created_by_user_id_fkey (
-        display_name,
-        email
-      )
-    `)
+    .select("id, body, created_at, created_by_user_id")
     .eq("group_id", group.id)
     .order("created_at", { ascending: false })
     .limit(100);
@@ -159,6 +150,31 @@ async function fetchIntentions(
   }
 
   const intentionIds = (intentions ?? []).map((item: Record<string, unknown>) => String(item.id));
+  const authorIds = Array.from(
+    new Set((intentions ?? []).map((item: Record<string, unknown>) => String(item.created_by_user_id))),
+  );
+
+  let authorsById = new Map<string, { display_name?: string | null; email?: string | null }>();
+  if (authorIds.length) {
+    const { data: authors, error: authorsError } = await supabase
+      .from("profiles")
+      .select("id, display_name, email")
+      .in("id", authorIds);
+
+    if (authorsError) {
+      throw authorsError;
+    }
+
+    authorsById = new Map(
+      (authors ?? []).map((author: Record<string, unknown>) => [
+        String(author.id),
+        {
+          display_name: typeof author.display_name === "string" ? author.display_name : null,
+          email: typeof author.email === "string" ? author.email : null,
+        },
+      ]),
+    );
+  }
 
   let reactionsByIntention = new Map<string, { likeCount: number; loveCount: number; userReaction: string | null }>();
   if (intentionIds.length) {
@@ -189,7 +205,7 @@ async function fetchIntentions(
   }
 
   return (intentions ?? []).map((item: Record<string, unknown>) => {
-    const profile = item.profiles as Record<string, unknown> | null;
+    const profile = authorsById.get(String(item.created_by_user_id)) ?? null;
     const reactionState = reactionsByIntention.get(String(item.id)) ?? {
       likeCount: 0,
       loveCount: 0,
