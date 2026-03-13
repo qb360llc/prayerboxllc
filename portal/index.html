@@ -17,6 +17,7 @@
       .topnav { display:flex; flex-wrap:wrap; gap:10px; }
       .topnav a { display:inline-block; padding:10px 14px; border-radius:999px; text-decoration:none; background:rgba(13,107,87,.08); }
       .notify-link { display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:999px; text-decoration:none; background:rgba(13,107,87,.16); font-weight:600; }
+      .notify-count { min-width:1.45rem; padding:2px 6px; border-radius:999px; background:var(--accent-strong); color:#fff; font-size:.78rem; line-height:1.2; text-align:center; }
       .mobile-top-title { display:none; font-size:1.2rem; font-weight:700; align-self:center; color:var(--ink); }
       .hero { margin-top:18px; }
       .nav-toggle { position:absolute; opacity:0; pointer-events:none; }
@@ -68,10 +69,9 @@
             <a href="./settings.html">Settings</a>
             <a href="./community.html">Community</a>
             <a href="./readings.html">Daily Readings</a>
-            <a href="./admin.html">Admin</a>
           </nav>
         </div>
-        <a class="notify-link" href="./notifications.html">Alerts</a>
+        <a class="notify-link" href="./notifications.html">Alerts <span class="notify-count" data-notify-count hidden>0</span></a>
       </div>
       <label for="nav-toggle" class="mobile-overlay" aria-hidden="true"></label>
       <aside class="mobile-drawer" aria-label="Mobile navigation">
@@ -81,7 +81,6 @@
           <a href="./community.html">Community</a>
           <a href="./readings.html">Daily Readings</a>
           <a href="./notifications.html">Notifications</a>
-          <a href="./admin.html">Admin</a>
         </nav>
       </aside>
       <div class="hero">
@@ -141,6 +140,13 @@
         return supabase;
       }
 
+      function setNotificationBadge(count) {
+        document.querySelectorAll("[data-notify-count]").forEach((badge) => {
+          badge.hidden = !count;
+          badge.textContent = count > 99 ? "99+" : String(count || 0);
+        });
+      }
+
       async function authedFetch(path, options = {}) {
         const client = getClient();
         const { data: sessionData } = await client.auth.getSession();
@@ -156,6 +162,17 @@
         });
       }
 
+      async function refreshNotificationBadge() {
+        try {
+          const response = await authedFetch("/functions/v1/my-notifications", { method: "GET" });
+          const payload = await response.json();
+          if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to load notifications.");
+          setNotificationBadge(payload.unreadCount || 0);
+        } catch {
+          setNotificationBadge(0);
+        }
+      }
+
       async function refreshSessionState() {
         try {
           const client = getClient();
@@ -163,12 +180,15 @@
           const session = data.session;
           if (!session) {
             els.sessionState.textContent = "Signed out. Open Settings to sign in, claim devices, or manage communities.";
+            setNotificationBadge(0);
             return false;
           }
           els.sessionState.textContent = `Signed in as ${session.user.email}`;
+          await refreshNotificationBadge();
           return true;
         } catch (error) {
           els.sessionState.textContent = error.message || "Session unavailable.";
+          setNotificationBadge(0);
           return false;
         }
       }
