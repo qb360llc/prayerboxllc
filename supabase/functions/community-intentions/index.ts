@@ -381,16 +381,21 @@ Deno.serve(async (request) => {
       }
 
       const actorName = await getActorName(supabase, user.id);
+      const intentionPreview = intentionBody
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 120);
       await notifyGroupMembers(
         supabase,
         group.id,
         user.id,
         "intention_posted",
         "New prayer intention",
-        `${actorName} shared a new intention in ${group.name}.`,
+        `${actorName} shared a new intention in ${group.name}: "${intentionPreview}${intentionBody.length > intentionPreview.length ? "..." : ""}"`,
         {
           intentionId: insertedIntention.id,
           groupSlug: group.slug,
+          preview: intentionPreview,
         },
       );
     } else if (action === "react") {
