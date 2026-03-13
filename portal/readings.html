@@ -16,6 +16,7 @@
       .topbar { display:flex; justify-content:flex-end; gap:10px; }
       .topnav { display:flex; flex-wrap:wrap; gap:10px; }
       .topnav a { display:inline-block; padding:10px 14px; border-radius:999px; text-decoration:none; background:rgba(13,107,87,.08); }
+      .notify-link { display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:999px; text-decoration:none; background:rgba(13,107,87,.16); font-weight:600; }
       .mobile-top-title { display:none; font-size:1.2rem; font-weight:700; align-self:center; color:var(--ink); }
       .hero { margin-top:18px; }
       .nav-toggle { position:absolute; opacity:0; pointer-events:none; }
@@ -48,12 +49,13 @@
       .status.error { background:rgba(161,40,40,.1); color:#a12828; }
       audio { width:100%; margin-top:14px; }
       @media (max-width:720px) {
-        .topbar { justify-content:flex-start; align-items:center; }
+        .topbar { justify-content:space-between; align-items:center; }
         .topnav { display:none; }
         .mobile-nav-button { display:flex; }
         .mobile-top-title { display:block; }
         .hero { margin-top:14px; }
         .hero h1 { display:none; }
+        .notify-link { margin-left:auto; }
         .nav-toggle:checked ~ .mobile-overlay { display:block; position:fixed; inset:0; background:rgba(27,26,23,.36); z-index:25; }
         .nav-toggle:checked ~ .mobile-drawer { transform:translateX(0); }
       }
@@ -63,15 +65,18 @@
     <main>
       <input id="nav-toggle" class="nav-toggle" type="checkbox">
       <div class="topbar">
-        <label for="nav-toggle" class="mobile-nav-button" aria-label="Open navigation menu"><span></span></label>
-        <div class="mobile-top-title">Daily Readings</div>
-        <nav class="topnav" aria-label="Primary">
-          <a href="./index.html">Controls</a>
-          <a href="./settings.html">Settings</a>
-          <a href="./community.html">Community</a>
-          <a href="./readings.html">Daily Readings</a>
-          <a href="./admin.html">Admin</a>
-        </nav>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <label for="nav-toggle" class="mobile-nav-button" aria-label="Open navigation menu"><span></span></label>
+          <div class="mobile-top-title">Daily Readings</div>
+          <nav class="topnav" aria-label="Primary">
+            <a href="./index.html">Controls</a>
+            <a href="./settings.html">Settings</a>
+            <a href="./community.html">Community</a>
+            <a href="./readings.html">Daily Readings</a>
+            <a href="./admin.html">Admin</a>
+          </nav>
+        </div>
+        <a class="notify-link" href="./notifications.html">Alerts</a>
       </div>
       <label for="nav-toggle" class="mobile-overlay" aria-hidden="true"></label>
       <aside class="mobile-drawer" aria-label="Mobile navigation">
@@ -80,6 +85,7 @@
           <a href="./settings.html">Settings</a>
           <a href="./community.html">Community</a>
           <a href="./readings.html">Daily Readings</a>
+          <a href="./notifications.html">Notifications</a>
           <a href="./admin.html">Admin</a>
         </nav>
       </aside>

@@ -3,17 +3,18 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>PRayerbox Controls</title>
+    <title>PRayerbox Notifications</title>
     <script src="./config.js"></script>
     <style>
       :root { --bg:#f3efe4; --panel:#fffaf0; --ink:#1b1a17; --muted:#6f675d; --accent:#0d6b57; --accent-strong:#084c3e; --line:#d8cfbf; --danger:#a12828; }
       * { box-sizing:border-box; }
       body { margin:0; min-height:100vh; font-family:Georgia,"Times New Roman",serif; color:var(--ink); background:radial-gradient(circle at top left, rgba(13,107,87,.12), transparent 30%), linear-gradient(180deg, #efe7d6 0%, var(--bg) 100%); }
-      main { max-width:760px; margin:0 auto; padding:32px 20px 64px; }
+      main { max-width:860px; margin:0 auto; padding:32px 20px 64px; }
       h1 { margin:0 0 8px; font-size:clamp(2rem,5vw,3.4rem); line-height:1; }
+      h2 { margin:0; }
       p { color:var(--muted); line-height:1.5; }
       a { color:var(--accent-strong); }
-      .topbar { display:flex; justify-content:flex-end; gap:10px; }
+      .topbar { display:flex; justify-content:space-between; align-items:center; gap:10px; }
       .topnav { display:flex; flex-wrap:wrap; gap:10px; }
       .topnav a { display:inline-block; padding:10px 14px; border-radius:999px; text-decoration:none; background:rgba(13,107,87,.08); }
       .notify-link { display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:999px; text-decoration:none; background:rgba(13,107,87,.16); font-weight:600; }
@@ -33,22 +34,18 @@
       .actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:16px; }
       button { padding:12px 16px; border:0; border-radius:999px; font:inherit; font-weight:600; color:#fff; background:var(--accent); cursor:pointer; }
       button.secondary { background:var(--accent-strong); }
-      button:disabled { opacity:.6; cursor:wait; }
       .status { margin-top:16px; padding:12px 14px; border-radius:12px; background:rgba(13,107,87,.08); color:var(--ink); white-space:pre-wrap; }
       .status.error { background:rgba(161,40,40,.1); color:var(--danger); }
-      .device-list { display:grid; gap:12px; margin-top:16px; }
-      .device-card { padding:16px; border:1px solid var(--line); border-radius:16px; background:rgba(255,255,255,.55); }
-      .device-card strong { display:block; margin-bottom:8px; }
-      .pill-row { display:flex; flex-wrap:wrap; gap:8px; }
-      .pill { display:inline-block; padding:4px 10px; border-radius:999px; background:rgba(13,107,87,.12); color:var(--accent-strong); font-size:.85rem; }
-      .pill.offline { background:rgba(161,40,40,.12); color:var(--danger); }
-      .helper { margin-top:12px; font-size:.95rem; color:var(--muted); }
+      .list { display:grid; gap:12px; margin-top:16px; }
+      .card { padding:14px; border:1px solid var(--line); border-radius:14px; background:rgba(255,255,255,.55); }
+      .card.unread { border-color:rgba(13,107,87,.45); background:rgba(13,107,87,.07); }
+      .meta { margin-top:10px; color:var(--muted); font-size:.92rem; }
+      .pill { display:inline-block; padding:4px 10px; border-radius:999px; background:rgba(13,107,87,.12); color:var(--accent-strong); font-size:.85rem; margin-bottom:8px; }
       @media (max-width:720px) {
-        .topbar { justify-content:space-between; align-items:center; }
+        .topbar { justify-content:space-between; }
         .topnav { display:none; }
         .mobile-nav-button { display:flex; }
         .mobile-top-title { display:block; }
-        .hero { margin-top:14px; }
         .hero h1 { display:none; }
         .notify-link { margin-left:auto; }
         .nav-toggle:checked ~ .mobile-overlay { display:block; position:fixed; inset:0; background:rgba(27,26,23,.36); z-index:25; }
@@ -62,7 +59,7 @@
       <div class="topbar">
         <div style="display:flex; align-items:center; gap:10px;">
           <label for="nav-toggle" class="mobile-nav-button" aria-label="Open navigation menu"><span></span></label>
-          <div class="mobile-top-title">Controls</div>
+          <div class="mobile-top-title">Notifications</div>
           <nav class="topnav" aria-label="Primary">
             <a href="./index.html">Controls</a>
             <a href="./settings.html">Settings</a>
@@ -71,7 +68,7 @@
             <a href="./admin.html">Admin</a>
           </nav>
         </div>
-        <a class="notify-link" href="./notifications.html">Alerts</a>
+        <a class="notify-link" href="./notifications.html" aria-current="page">Alerts</a>
       </div>
       <label for="nav-toggle" class="mobile-overlay" aria-hidden="true"></label>
       <aside class="mobile-drawer" aria-label="Mobile navigation">
@@ -85,24 +82,18 @@
         </nav>
       </aside>
       <div class="hero">
-        <h1>PRayerbox Controls</h1>
-        <p>Use this page only for controlling your lights. Group setup and claims live in Settings.</p>
+        <h1>Notifications</h1>
+        <p>See who posted intentions, who loved your messages, and who activated their lights.</p>
       </div>
 
       <section class="panel">
-        <h2>Session</h2>
-        <div id="session-state" class="status">Checking sign-in...</div>
-        <div class="helper">If this says signed out, open <a href="./settings.html">Settings</a> to sign in.</div>
-      </section>
-
-      <section class="panel">
-        <h2>My Lights</h2>
+        <h2>Inbox</h2>
         <div class="actions">
-          <button id="refresh-devices">Refresh Devices</button>
-          <a href="./settings.html">Open Settings</a>
+          <button id="refresh">Refresh</button>
+          <button id="mark-all" class="secondary">Mark All Read</button>
         </div>
-        <div id="devices-empty" class="status">No devices loaded yet.</div>
-        <div id="devices-list" class="device-list"></div>
+        <div id="empty" class="status">Loading notifications...</div>
+        <div id="list" class="list"></div>
       </section>
 
       <section class="panel">
@@ -118,10 +109,10 @@
       const projectUrl = config.projectUrl || "";
       const anonKey = config.anonKey || "";
       const els = {
-        devicesEmpty: document.querySelector("#devices-empty"),
-        devicesList: document.querySelector("#devices-list"),
-        refreshDevices: document.querySelector("#refresh-devices"),
-        sessionState: document.querySelector("#session-state"),
+        empty: document.querySelector("#empty"),
+        list: document.querySelector("#list"),
+        markAll: document.querySelector("#mark-all"),
+        refresh: document.querySelector("#refresh"),
         status: document.querySelector("#status"),
       };
       let supabase = null;
@@ -129,6 +120,14 @@
       function setStatus(message, isError = false) {
         els.status.textContent = message;
         els.status.classList.toggle("error", isError);
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;");
       }
 
       function getClient() {
@@ -156,77 +155,65 @@
         });
       }
 
-      async function refreshSessionState() {
-        try {
-          const client = getClient();
-          const { data } = await client.auth.getSession();
-          const session = data.session;
-          if (!session) {
-            els.sessionState.textContent = "Signed out. Open Settings to sign in, claim devices, or manage communities.";
-            return false;
-          }
-          els.sessionState.textContent = `Signed in as ${session.user.email}`;
-          return true;
-        } catch (error) {
-          els.sessionState.textContent = error.message || "Session unavailable.";
-          return false;
-        }
-      }
-
-      function renderDevices(ownerEmail, devices) {
-        els.devicesList.innerHTML = "";
-        if (!devices.length) {
-          els.devicesEmpty.textContent = ownerEmail ? `No claimed devices found for ${ownerEmail}.` : "No devices loaded yet.";
+      function renderNotifications(items, unreadCount) {
+        els.list.innerHTML = "";
+        if (!items.length) {
+          els.empty.textContent = "No notifications yet.";
           return;
         }
 
-        els.devicesEmpty.textContent = `${devices.length} light${devices.length === 1 ? "" : "s"} loaded.`;
-        devices.forEach((device) => {
-          const card = document.createElement("div");
-          card.className = "device-card";
+        els.empty.textContent = `${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}.`;
+        items.forEach((item) => {
+          const card = document.createElement("article");
+          card.className = `card ${item.isRead ? "" : "unread"}`;
           card.innerHTML = `
-            <strong>${device.displayName || device.deviceId}</strong>
-            <div class="pill-row">
-              <span class="pill">${device.groupName || device.groupId || "No group"}</span>
-              <span class="pill ${device.isOnline ? "" : "offline"}">${device.isOnline ? "Online" : "Offline"}</span>
-              <span class="pill">${device.isActive ? "Active" : "Inactive"}</span>
-            </div>
-            <div class="actions">
-              <button class="toggle-device" data-device-id="${device.deviceId}" data-next-active="${device.isActive ? "false" : "true"}">${device.isActive ? "Turn Off" : "Turn On"}</button>
-            </div>`;
-          els.devicesList.appendChild(card);
+            <span class="pill">${escapeHtml(item.type.replaceAll("_", " "))}</span>
+            <h3>${escapeHtml(item.title)}</h3>
+            <p>${escapeHtml(item.body)}</p>
+            <div class="meta">${new Date(item.createdAt).toLocaleString()}</div>
+            ${item.isRead ? "" : `<div class="actions"><button class="mark-read secondary" data-id="${item.id}">Mark Read</button></div>`}`;
+          els.list.appendChild(card);
         });
 
-        els.devicesList.querySelectorAll(".toggle-device").forEach((button) => {
+        els.list.querySelectorAll(".mark-read").forEach((button) => {
           button.addEventListener("click", () => wrap(
-            () => toggleDevice(button.dataset.deviceId, button.dataset.nextActive === "true"),
+            () => markRead(button.dataset.id || ""),
             button,
           ));
         });
       }
 
-      async function loadMyDevices() {
-        const client = getClient();
-        const { data: sessionData } = await client.auth.getSession();
-        const ownerEmail = sessionData.session?.user?.email || "";
-        const response = await authedFetch("/functions/v1/my-devices", { method: "GET" });
+      async function loadNotifications() {
+        const response = await authedFetch("/functions/v1/my-notifications", { method: "GET" });
         const payload = await response.json();
-        if (!response.ok || !payload.ok) throw new Error(payload.error || payload.message || "Failed to load devices.");
-        renderDevices(ownerEmail, payload.devices || []);
-        setStatus(`Loaded ${payload.devices.length} device${payload.devices.length === 1 ? "" : "s"}.`);
+        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to load notifications.");
+        renderNotifications(payload.notifications || [], payload.unreadCount || 0);
+        setStatus("Notifications refreshed.");
       }
 
-      async function toggleDevice(deviceId, active) {
-        if (!deviceId) throw new Error("Device UID is required.");
-        const response = await authedFetch("/functions/v1/set-device-active", {
-          body: JSON.stringify({ active, deviceId }),
+      async function markRead(notificationId) {
+        if (!notificationId) throw new Error("Notification id is required.");
+        const response = await authedFetch("/functions/v1/my-notifications", {
+          body: JSON.stringify({ notificationId }),
           headers: { "Content-Type": "application/json" },
           method: "POST",
         });
         const payload = await response.json();
-        if (!response.ok || !payload.ok) throw new Error(payload.error || payload.message || "Failed to update device state.");
-        setStatus(`${active ? "Turned on" : "Turned off"} ${payload.device.deviceId}. Group mode is now ${payload.groupState.lightingMode}.`);
-        await loadMyDevices();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to mark notification as read.");
+        renderNotifications(payload.notifications || [], payload.unreadCount || 0);
+        setStatus("Marked notification as read.");
+      }
+
+      async function markAllRead() {
+        const response = await authedFetch("/functions/v1/my-notifications", {
+          body: JSON.stringify({ markAll: true }),
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to mark notifications as read.");
+        renderNotifications(payload.notifications || [], payload.unreadCount || 0);
+        setStatus("Marked all notifications as read.");
       }
 
       async function wrap(fn, button) {
@@ -240,12 +227,10 @@
         }
       }
 
-      els.refreshDevices.addEventListener("click", () => wrap(loadMyDevices, els.refreshDevices));
+      els.refresh.addEventListener("click", () => wrap(loadNotifications, els.refresh));
+      els.markAll.addEventListener("click", () => wrap(markAllRead, els.markAll));
 
-      const signedIn = await refreshSessionState();
-      if (signedIn) {
-        await loadMyDevices();
-      }
+      await loadNotifications();
     </script>
   </body>
 </html>

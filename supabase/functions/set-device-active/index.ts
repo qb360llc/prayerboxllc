@@ -68,6 +68,58 @@ async function publishLightingMode(
   }
 }
 
+async function getActorName(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+) {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("first_name, last_name, display_name, email")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  const fullName = [data?.first_name, data?.last_name]
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .filter(Boolean)
+    .join(" ");
+
+  return fullName || data?.display_name || data?.email || "Someone";
+}
+
+async function notifyGroupMembers(
+  supabase: ReturnType<typeof createClient>,
+  groupId: string,
+  actorUserId: string,
+  title: string,
+  body: string,
+  metadata: Record<string, unknown>,
+) {
+  const { data: members, error } = await supabase
+    .from("group_memberships")
+    .select("user_id")
+    .eq("group_id", groupId)
+    .neq("user_id", actorUserId);
+
+  if (error) throw error;
+
+  if (!(members ?? []).length) return;
+
+  const rows = (members ?? []).map((member: Record<string, unknown>) => ({
+    actor_user_id: actorUserId,
+    body,
+    group_id: groupId,
+    metadata,
+    notification_type: "lights_activated",
+    recipient_user_id: member.user_id,
+    title,
+  }));
+
+  const { error: insertError } = await supabase.from("notifications").insert(rows);
+  if (insertError) throw insertError;
+}
+
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders(request) });
@@ -194,6 +246,22 @@ Deno.serve(async (request) => {
 
     const groupActivity = groupActivityData as GroupActivityRow;
     await publishLightingMode(groupActivity.lighting_mode, groupActivity.slug);
+
+    if (body.active) {
+      const actorName = await getActorName(supabase, user.id);
+      await notifyGroupMembers(
+        supabase,
+        device.group_id,
+        user.id,
+        "Lights activated",
+        `${actorName} activated ${device.display_name || device.device_uid} in ${group.name}.`,
+        {
+          deviceId: device.device_uid,
+          groupSlug: group.slug,
+          source: "portal",
+        },
+      );
+    }
 
     return json(request, 200, {
       ok: true,

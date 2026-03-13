@@ -68,6 +68,58 @@ async function publishLightingMode(
   }
 }
 
+async function getActorName(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+) {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("first_name, last_name, display_name, email")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  const fullName = [data?.first_name, data?.last_name]
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .filter(Boolean)
+    .join(" ");
+
+  return fullName || data?.display_name || data?.email || "Someone";
+}
+
+async function notifyGroupMembers(
+  supabase: ReturnType<typeof createClient>,
+  groupId: string,
+  actorUserId: string,
+  title: string,
+  body: string,
+  metadata: Record<string, unknown>,
+) {
+  const { data: members, error } = await supabase
+    .from("group_memberships")
+    .select("user_id")
+    .eq("group_id", groupId)
+    .neq("user_id", actorUserId);
+
+  if (error) throw error;
+
+  if (!(members ?? []).length) return;
+
+  const rows = (members ?? []).map((member: Record<string, unknown>) => ({
+    actor_user_id: actorUserId,
+    body,
+    group_id: groupId,
+    metadata,
+    notification_type: "lights_activated",
+    recipient_user_id: member.user_id,
+    title,
+  }));
+
+  const { error: insertError } = await supabase.from("notifications").insert(rows);
+  if (insertError) throw insertError;
+}
+
 function validateSecret(request: Request) {
   const configuredSecret = Deno.env.get("PRAYERBOX_WEBHOOK_SECRET");
   if (!configuredSecret) {
@@ -143,6 +195,8 @@ Deno.serve(async (request) => {
 
     const existingDevice = existingDeviceData as DeviceRow | null;
     let deviceId = existingDevice?.id;
+    let deviceOwnerUserId: string | null = null;
+    let deviceDisplayName = payload.deviceId;
 
     if (!existingDevice) {
       const { data: insertedDevice, error: insertDeviceError } = await supabase
@@ -155,7 +209,7 @@ Deno.serve(async (request) => {
           is_online: true,
           last_seen_at: now,
         })
-        .select("id")
+        .select("id, owner_user_id, display_name")
         .single();
 
       if (insertDeviceError) {
@@ -163,7 +217,22 @@ Deno.serve(async (request) => {
       }
 
       deviceId = insertedDevice.id;
+      deviceOwnerUserId = insertedDevice.owner_user_id;
+      deviceDisplayName = insertedDevice.display_name || payload.deviceId;
     } else {
+      const { data: currentDevice, error: currentDeviceError } = await supabase
+        .from("devices")
+        .select("owner_user_id, display_name")
+        .eq("id", existingDevice.id)
+        .single();
+
+      if (currentDeviceError) {
+        throw currentDeviceError;
+      }
+
+      deviceOwnerUserId = currentDevice.owner_user_id;
+      deviceDisplayName = currentDevice.display_name || payload.deviceId;
+
       const { error: updateDeviceError } = await supabase
         .from("devices")
         .update({
@@ -208,6 +277,22 @@ Deno.serve(async (request) => {
 
     const groupActivity = groupActivityData as GroupActivityRow;
     await publishLightingMode(groupActivity.lighting_mode, groupActivity.slug);
+
+    if (payload.active && deviceOwnerUserId) {
+      const actorName = await getActorName(supabase, deviceOwnerUserId);
+      await notifyGroupMembers(
+        supabase,
+        groupRow.id,
+        deviceOwnerUserId,
+        "Lights activated",
+        `${actorName} activated ${deviceDisplayName} in ${groupRow.slug}.`,
+        {
+          deviceId: payload.deviceId,
+          groupSlug: groupRow.slug,
+          source: "device",
+        },
+      );
+    }
 
     return json(200, {
       activeCount: groupActivity.active_count,

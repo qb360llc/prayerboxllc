@@ -48,6 +48,84 @@ function isAdminProfile(profile: Record<string, unknown> | null) {
   return Boolean(profile?.is_admin);
 }
 
+async function getActorName(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+) {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("first_name, last_name, display_name, email")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  const fullName = [data?.first_name, data?.last_name]
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .filter(Boolean)
+    .join(" ");
+
+  return fullName || data?.display_name || data?.email || "Someone";
+}
+
+async function notifyGroupMembers(
+  supabase: ReturnType<typeof createClient>,
+  groupId: string,
+  actorUserId: string,
+  type: "intention_posted" | "lights_activated",
+  title: string,
+  body: string,
+  metadata: Record<string, unknown>,
+) {
+  const { data: members, error } = await supabase
+    .from("group_memberships")
+    .select("user_id")
+    .eq("group_id", groupId)
+    .neq("user_id", actorUserId);
+
+  if (error) throw error;
+
+  if (!(members ?? []).length) return;
+
+  const rows = (members ?? []).map((member: Record<string, unknown>) => ({
+    actor_user_id: actorUserId,
+    body,
+    group_id: groupId,
+    metadata,
+    notification_type: type,
+    recipient_user_id: member.user_id,
+    title,
+  }));
+
+  const { error: insertError } = await supabase.from("notifications").insert(rows);
+  if (insertError) throw insertError;
+}
+
+async function notifyRecipient(
+  supabase: ReturnType<typeof createClient>,
+  recipientUserId: string,
+  actorUserId: string,
+  groupId: string,
+  type: "intention_loved",
+  title: string,
+  body: string,
+  metadata: Record<string, unknown>,
+) {
+  if (recipientUserId === actorUserId) return;
+
+  const { error } = await supabase.from("notifications").insert({
+    actor_user_id: actorUserId,
+    body,
+    group_id: groupId,
+    metadata,
+    notification_type: type,
+    recipient_user_id: recipientUserId,
+    title,
+  });
+
+  if (error) throw error;
+}
+
 async function getSupabase() {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -288,17 +366,33 @@ Deno.serve(async (request) => {
         return json(request, 400, { error: "Prayer or intention text is required.", ok: false });
       }
 
-      const { error: insertError } = await supabase
+      const { data: insertedIntention, error: insertError } = await supabase
         .from("community_intentions")
         .insert({
           body: intentionBody,
           created_by_user_id: user.id,
           group_id: group.id,
-        });
+        })
+        .select("id")
+        .single();
 
       if (insertError) {
         throw insertError;
       }
+
+      const actorName = await getActorName(supabase, user.id);
+      await notifyGroupMembers(
+        supabase,
+        group.id,
+        user.id,
+        "intention_posted",
+        "New prayer intention",
+        `${actorName} shared a new intention in ${group.name}.`,
+        {
+          intentionId: insertedIntention.id,
+          groupSlug: group.slug,
+        },
+      );
     } else if (action === "react") {
       const intentionId = body.intentionId?.trim();
       const reactionType = body.reactionType;
@@ -362,6 +456,32 @@ Deno.serve(async (request) => {
         if (insertReactionError) {
           throw insertReactionError;
         }
+      }
+
+      if (reactionType === "love" && existingReaction?.reaction_type !== "love") {
+        const actorName = await getActorName(supabase, user.id);
+        const { data: targetIntention, error: targetIntentionError } = await supabase
+          .from("community_intentions")
+          .select("created_by_user_id, body")
+          .eq("id", intentionId)
+          .single();
+
+        if (targetIntentionError) throw targetIntentionError;
+
+        await notifyRecipient(
+          supabase,
+          targetIntention.created_by_user_id,
+          user.id,
+          group.id,
+          "intention_loved",
+          "Someone loved your intention",
+          `${actorName} loved your intention in ${group.name}.`,
+          {
+            groupSlug: group.slug,
+            intentionId,
+            preview: String(targetIntention.body).slice(0, 120),
+          },
+        );
       }
     } else {
       return json(request, 400, { error: "Unknown action.", ok: false });
