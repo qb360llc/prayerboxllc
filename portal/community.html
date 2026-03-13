@@ -45,8 +45,10 @@
       .feed { display:grid; gap:14px; }
       .intention { padding:16px; border:1px solid var(--line); border-radius:16px; background:rgba(255,255,255,.55); }
       .meta { margin-top:12px; color:var(--muted); font-size:.92rem; }
-      .reaction-row { display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; }
-      .reaction-row button.active { box-shadow:inset 0 0 0 2px var(--accent-strong); }
+      .reaction-row { display:flex; align-items:center; gap:10px; margin-top:14px; }
+      .heart-button { width:42px; height:42px; padding:0; border-radius:999px; background:#fff; border:1px solid var(--line); color:#b55b5b; font-size:1.2rem; line-height:1; }
+      .heart-button.active { background:#fde7e7; border-color:#d45a5a; color:#c62828; }
+      .heart-count { font-size:.95rem; color:var(--muted); }
       .empty { color:var(--muted); }
       .composer { display:grid; gap:12px; }
       .composer-bar { display:flex; gap:12px; align-items:flex-end; }
@@ -223,8 +225,8 @@
             <h3>${escapeHtml(item.body)}</h3>
             <div class="meta">Shared by ${escapeHtml(item.createdBy)} on ${new Date(item.createdAt).toLocaleString()}</div>
             <div class="reaction-row">
-              <button class="ghost react ${item.userReaction === "like" ? "active" : ""}" data-intention-id="${item.id}" data-reaction="like">Like (${item.likeCount})</button>
-              <button class="ghost react ${item.userReaction === "love" ? "active" : ""}" data-intention-id="${item.id}" data-reaction="love">Love (${item.loveCount})</button>
+              <button class="heart-button react ${item.userReaction === "love" ? "active" : ""}" aria-label="Love this intention" data-intention-id="${item.id}" data-reaction="love">${item.userReaction === "love" ? "♥" : "♡"}</button>
+              <span class="heart-count">${item.loveCount} ${item.loveCount === 1 ? "person loves" : "people love"} this</span>
             </div>`;
           els.feed.appendChild(card);
         });
@@ -306,7 +308,7 @@
         const payload = await response.json();
         if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to react to intention.");
         renderFeed(payload.intentions || []);
-        setStatus(`Updated your ${reactionType} reaction.`);
+        setStatus("Updated your love reaction.");
       }
 
       async function wrap(fn, button) {
