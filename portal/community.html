@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PRayerbox Community</title>
+    <script src="./config.js"></script>
+    <style>
+      :root { --bg:#f3efe4; --panel:#fffaf0; --ink:#1b1a17; --muted:#6f675d; --accent:#0d6b57; --accent-strong:#084c3e; --line:#d8cfbf; --danger:#a12828; }
+      * { box-sizing:border-box; }
+      body { margin:0; min-height:100vh; font-family:Georgia,"Times New Roman",serif; color:var(--ink); background:radial-gradient(circle at top left, rgba(13,107,87,.12), transparent 30%), linear-gradient(180deg, #efe7d6 0%, var(--bg) 100%); }
+      main { max-width:860px; margin:0 auto; padding:32px 20px 64px; }
+      h1 { margin:0 0 8px; font-size:clamp(2rem,5vw,3.4rem); line-height:1; }
+      h2, h3 { margin:0; }
+      p { color:var(--muted); line-height:1.5; }
+      a { color:var(--accent-strong); }
+      .topbar { display:flex; justify-content:flex-end; gap:10px; }
+      .topnav { display:flex; flex-wrap:wrap; gap:10px; }
+      .topnav a { display:inline-block; padding:10px 14px; border-radius:999px; text-decoration:none; background:rgba(13,107,87,.08); }
+      .hero { margin-top:18px; }
+      .panel { margin-top:24px; padding:20px; border:1px solid var(--line); border-radius:18px; background:color-mix(in srgb, var(--panel) 88%, white 12%); box-shadow:0 14px 40px rgba(27,26,23,.08); }
+      .grid { display:grid; gap:12px; }
+      @media (min-width:720px) { .grid.two { grid-template-columns:1fr auto; align-items:end; } }
+      label { display:block; font-size:.92rem; margin-bottom:6px; color:var(--muted); }
+      select, textarea { width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:12px; font:inherit; background:#fff; color:var(--ink); }
+      textarea { min-height:120px; resize:vertical; }
+      button { padding:12px 16px; border:0; border-radius:999px; font:inherit; font-weight:600; color:#fff; background:var(--accent); cursor:pointer; }
+      button.secondary { background:var(--accent-strong); }
+      button.ghost { background:#fff; color:var(--accent-strong); border:1px solid var(--line); }
+      button:disabled { opacity:.6; cursor:wait; }
+      .actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:16px; }
+      .status { margin-top:16px; padding:12px 14px; border-radius:12px; background:rgba(13,107,87,.08); color:var(--ink); white-space:pre-wrap; }
+      .status.error { background:rgba(161,40,40,.1); color:var(--danger); }
+      .feed { display:grid; gap:14px; margin-top:18px; }
+      .intention { padding:16px; border:1px solid var(--line); border-radius:16px; background:rgba(255,255,255,.55); }
+      .meta { margin-top:12px; color:var(--muted); font-size:.92rem; }
+      .reaction-row { display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; }
+      .reaction-row button.active { box-shadow:inset 0 0 0 2px var(--accent-strong); }
+      .empty { color:var(--muted); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="topbar">
+        <nav class="topnav" aria-label="Primary">
+          <a href="./index.html">Controls</a>
+          <a href="./settings.html">Settings</a>
+          <a href="./community.html">Community</a>
+          <a href="./readings.html">Daily Readings</a>
+          <a href="./admin.html">Admin</a>
+        </nav>
+      </div>
+      <div class="hero">
+        <h1>Community Intentions</h1>
+        <p>Share prayers and intentions with your own community, then respond with a simple Like or Love.</p>
+      </div>
+
+      <section class="panel">
+        <h2>Session</h2>
+        <div id="session-state" class="status">Checking sign-in...</div>
+        <div class="status">Use <a href="./settings.html">Settings</a> to sign in and manage which communities you belong to.</div>
+      </section>
+
+      <section class="panel">
+        <h2>Choose Community</h2>
+        <div class="grid two">
+          <div>
+            <label for="group-select">Community</label>
+            <select id="group-select"></select>
+          </div>
+          <button id="refresh-feed" class="secondary">Refresh Feed</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Add Prayer or Intention</h2>
+        <label for="intention-body">Message</label>
+        <textarea id="intention-body" placeholder="Please pray for my family, for healing, for peace, or for a special intention..."></textarea>
+        <div class="actions">
+          <button id="post-intention">Post Intention</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Community Feed</h2>
+        <div id="feed-empty" class="status">No intentions loaded yet.</div>
+        <div id="feed" class="feed"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Status</h2>
+        <div id="status" class="status">Idle.</div>
+      </section>
+    </main>
+
+    <script type="module">
+      import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+      const config = window.PRAYERBOX_PORTAL_CONFIG || {};
+      const projectUrl = config.projectUrl || "";
+      const anonKey = config.anonKey || "";
+      const els = {
+        feed: document.querySelector("#feed"),
+        feedEmpty: document.querySelector("#feed-empty"),
+        groupSelect: document.querySelector("#group-select"),
+        intentionBody: document.querySelector("#intention-body"),
+        postIntention: document.querySelector("#post-intention"),
+        refreshFeed: document.querySelector("#refresh-feed"),
+        sessionState: document.querySelector("#session-state"),
+        status: document.querySelector("#status"),
+      };
+
+      let supabase = null;
+      let groups = [];
+
+      function setStatus(message, isError = false) {
+        els.status.textContent = message;
+        els.status.classList.toggle("error", isError);
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;");
+      }
+
+      function getClient() {
+        if (!projectUrl || !anonKey) {
+          throw new Error("Portal config is missing. Ask the admin to update portal/config.js.");
+        }
+        if (!supabase) {
+          supabase = createClient(projectUrl, anonKey);
+        }
+        return supabase;
+      }
+
+      async function authedFetch(path, options = {}) {
+        const client = getClient();
+        const { data: sessionData } = await client.auth.getSession();
+        const accessToken = sessionData.session?.access_token;
+        if (!accessToken) throw new Error("Sign in first from the Settings page.");
+        return fetch(`${projectUrl}${path}`, {
+          ...options,
+          headers: {
+            apikey: anonKey,
+            Authorization: `Bearer ${accessToken}`,
+            ...(options.headers || {}),
+          },
+        });
+      }
+
+      function selectedGroupSlug() {
+        return els.groupSelect.value || "";
+      }
+
+      function renderGroups(items) {
+        groups = items || [];
+        els.groupSelect.innerHTML = groups.map((group) => `<option value="${escapeHtml(group.slug)}">${escapeHtml(group.name)}</option>`).join("");
+        els.groupSelect.disabled = !groups.length;
+        els.postIntention.disabled = !groups.length;
+        els.refreshFeed.disabled = !groups.length;
+        if (!groups.length) {
+          els.feedEmpty.textContent = "Join or create a community in Settings before posting intentions.";
+        }
+      }
+
+      function renderFeed(intentions) {
+        els.feed.innerHTML = "";
+        if (!intentions.length) {
+          els.feedEmpty.textContent = "No intentions yet for this community.";
+          return;
+        }
+
+        els.feedEmpty.textContent = `${intentions.length} intention${intentions.length === 1 ? "" : "s"} loaded.`;
+        intentions.forEach((item) => {
+          const card = document.createElement("article");
+          card.className = "intention";
+          card.innerHTML = `
+            <h3>${escapeHtml(item.body)}</h3>
+            <div class="meta">Shared by ${escapeHtml(item.createdBy)} on ${new Date(item.createdAt).toLocaleString()}</div>
+            <div class="reaction-row">
+              <button class="ghost react ${item.userReaction === "like" ? "active" : ""}" data-intention-id="${item.id}" data-reaction="like">Like (${item.likeCount})</button>
+              <button class="ghost react ${item.userReaction === "love" ? "active" : ""}" data-intention-id="${item.id}" data-reaction="love">Love (${item.loveCount})</button>
+            </div>`;
+          els.feed.appendChild(card);
+        });
+
+        els.feed.querySelectorAll(".react").forEach((button) => {
+          button.addEventListener("click", () => wrap(
+            () => reactToIntention(button.dataset.intentionId || "", button.dataset.reaction || ""),
+            button,
+          ));
+        });
+      }
+
+      async function refreshSessionState() {
+        try {
+          const client = getClient();
+          const { data } = await client.auth.getSession();
+          const session = data.session;
+          if (!session) {
+            els.sessionState.textContent = "Signed out. Open Settings to sign in and join a community.";
+            return false;
+          }
+          els.sessionState.textContent = `Signed in as ${session.user.email}`;
+          return true;
+        } catch (error) {
+          els.sessionState.textContent = error.message || "Session unavailable.";
+          return false;
+        }
+      }
+
+      async function loadGroups() {
+        const response = await authedFetch("/functions/v1/my-groups", { method: "GET" });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to load communities.");
+        renderGroups(payload.groups || []);
+      }
+
+      async function loadFeed() {
+        const groupSlug = selectedGroupSlug();
+        if (!groupSlug) {
+          renderFeed([]);
+          return;
+        }
+
+        const response = await authedFetch(`/functions/v1/community-intentions?groupSlug=${encodeURIComponent(groupSlug)}`, { method: "GET" });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to load intentions.");
+        renderFeed(payload.intentions || []);
+        setStatus(`Loaded intentions for ${payload.group?.name || groupSlug}.`);
+      }
+
+      async function postIntention() {
+        const groupSlug = selectedGroupSlug();
+        const body = els.intentionBody.value.trim();
+        if (!groupSlug) throw new Error("Choose a community first.");
+        if (!body) throw new Error("Enter a prayer or intention first.");
+
+        const response = await authedFetch("/functions/v1/community-intentions", {
+          body: JSON.stringify({ action: "create", body, groupSlug }),
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to post intention.");
+        els.intentionBody.value = "";
+        renderFeed(payload.intentions || []);
+        setStatus("Posted your intention to the community feed.");
+      }
+
+      async function reactToIntention(intentionId, reactionType) {
+        const groupSlug = selectedGroupSlug();
+        if (!groupSlug) throw new Error("Choose a community first.");
+        if (!intentionId) throw new Error("Unknown intention.");
+
+        const response = await authedFetch("/functions/v1/community-intentions", {
+          body: JSON.stringify({ action: "react", groupSlug, intentionId, reactionType }),
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to react to intention.");
+        renderFeed(payload.intentions || []);
+        setStatus(`Updated your ${reactionType} reaction.`);
+      }
+
+      async function wrap(fn, button) {
+        try {
+          button.disabled = true;
+          await fn();
+        } catch (error) {
+          setStatus(error.message || "Request failed.", true);
+        } finally {
+          button.disabled = false;
+        }
+      }
+
+      els.refreshFeed.addEventListener("click", () => wrap(loadFeed, els.refreshFeed));
+      els.postIntention.addEventListener("click", () => wrap(postIntention, els.postIntention));
+      els.groupSelect.addEventListener("change", async () => {
+        try {
+          await loadFeed();
+        } catch (error) {
+          setStatus(error.message || "Failed to load intentions.", true);
+        }
+      });
+
+      const signedIn = await refreshSessionState();
+      if (signedIn) {
+        await loadGroups();
+        await loadFeed();
+      }
+    </script>
+  </body>
+</html>
