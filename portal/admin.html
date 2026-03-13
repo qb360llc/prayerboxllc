@@ -13,7 +13,13 @@
       h1 { margin:0 0 8px; font-size:clamp(2rem,5vw,3.4rem); line-height:1; }
       p { color:var(--muted); line-height:1.5; }
       a { color:var(--accent-strong); }
-      .topbar { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+      .topbar { display:flex; align-items:flex-start; gap:16px; }
+      .menu { position:relative; }
+      .menu summary { list-style:none; padding:12px 16px; border-radius:999px; font-weight:600; color:#fff; background:var(--accent); cursor:pointer; user-select:none; }
+      .menu summary::-webkit-details-marker { display:none; }
+      .menu-panel { position:absolute; top:56px; left:0; min-width:190px; padding:10px; border:1px solid var(--line); border-radius:16px; background:var(--panel); box-shadow:0 14px 30px rgba(27,26,23,.12); display:grid; gap:8px; z-index:10; }
+      .menu-panel a { display:block; padding:10px 12px; border-radius:12px; text-decoration:none; background:rgba(13,107,87,.08); }
+      .hero { flex:1; }
       .panel { margin-top:24px; padding:20px; border:1px solid var(--line); border-radius:18px; background:color-mix(in srgb, var(--panel) 88%, white 12%); box-shadow:0 14px 40px rgba(27,26,23,.08); }
       .grid { display:grid; gap:12px; }
       @media (min-width:640px) { .grid.two { grid-template-columns:1fr 1fr; } }
@@ -36,13 +42,18 @@
   <body>
     <main>
       <div class="topbar">
-        <div>
+        <details class="menu">
+          <summary>Menu</summary>
+          <div class="menu-panel">
+            <a href="./index.html">Controls</a>
+            <a href="./settings.html">Settings</a>
+            <a href="./readings.html">Daily Readings</a>
+            <a href="./admin.html">Admin</a>
+          </div>
+        </details>
+        <div class="hero">
           <h1>PRayerbox Admin</h1>
           <p>Provision boards and publish firmware releases.</p>
-        </div>
-        <div style="display:flex; gap:12px; flex-wrap:wrap;">
-          <a href="./index.html">Controls</a>
-          <a href="./settings.html">Settings</a>
         </div>
       </div>
 
