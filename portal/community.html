@@ -109,7 +109,6 @@
         <h2>Choose Community</h2>
         <div class="grid two">
           <div>
-            <label for="group-select">Community</label>
             <select id="group-select"></select>
           </div>
           <button id="refresh-feed" class="secondary">Refresh Feed</button>
@@ -245,7 +244,7 @@
           return;
         }
 
-        els.feedEmpty.textContent = `${intentions.length} intention${intentions.length === 1 ? "" : "s"} loaded.`;
+        els.feedEmpty.textContent = "";
         intentions.forEach((item) => {
           const card = document.createElement("article");
           card.className = "intention";
