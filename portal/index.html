@@ -32,6 +32,8 @@
       .mobile-drawer a { display:block; padding:12px 14px; border-radius:14px; text-decoration:none; background:rgba(13,107,87,.08); }
       .panel { margin-top:24px; padding:20px; border:1px solid var(--line); border-radius:18px; background:color-mix(in srgb, var(--panel) 88%, white 12%); box-shadow:0 14px 40px rgba(27,26,23,.08); }
       .actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:16px; }
+      select { width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:12px; font:inherit; background:#fff; color:var(--ink); }
+      label { display:block; font-size:.92rem; margin-bottom:6px; color:var(--muted); }
       button { padding:12px 16px; border:0; border-radius:999px; font:inherit; font-weight:600; color:#fff; background:var(--accent); cursor:pointer; }
       button.secondary { background:var(--accent-strong); }
       button:disabled { opacity:.6; cursor:wait; }
@@ -89,19 +91,19 @@
       </div>
 
       <section class="panel">
-        <h2>Session</h2>
-        <div id="session-state" class="status">Checking sign-in...</div>
-        <div class="helper">If this says signed out, open <a href="./settings.html">Settings</a> to sign in.</div>
-      </section>
-
-      <section class="panel">
         <h2>My Lights</h2>
         <div class="actions">
           <button id="refresh-devices">Refresh Devices</button>
           <a href="./settings.html">Open Settings</a>
         </div>
+        <div style="margin-top:16px;">
+          <label for="device-select">Choose a light</label>
+          <select id="device-select" disabled>
+            <option value="">Loading your devices...</option>
+          </select>
+        </div>
         <div id="devices-empty" class="status">No devices loaded yet.</div>
-        <div id="devices-list" class="device-list"></div>
+        <div id="selected-device" class="device-list"></div>
       </section>
 
       <section class="panel">
@@ -117,12 +119,13 @@
       const projectUrl = config.projectUrl || "";
       const anonKey = config.anonKey || "";
       const els = {
+        deviceSelect: document.querySelector("#device-select"),
         devicesEmpty: document.querySelector("#devices-empty"),
-        devicesList: document.querySelector("#devices-list"),
         refreshDevices: document.querySelector("#refresh-devices"),
-        sessionState: document.querySelector("#session-state"),
+        selectedDevice: document.querySelector("#selected-device"),
         status: document.querySelector("#status"),
       };
+      let currentDevices = [];
       let supabase = null;
 
       function setStatus(message, isError = false) {
@@ -179,50 +182,72 @@
           const { data } = await client.auth.getSession();
           const session = data.session;
           if (!session) {
-            els.sessionState.textContent = "Signed out. Open Settings to sign in, claim devices, or manage communities.";
+            els.devicesEmpty.textContent = "Sign in from Settings to control your lights.";
+            els.deviceSelect.innerHTML = `<option value="">Sign in first</option>`;
+            els.deviceSelect.disabled = true;
+            els.selectedDevice.innerHTML = "";
             setNotificationBadge(0);
             return false;
           }
-          els.sessionState.textContent = `Signed in as ${session.user.email}`;
           await refreshNotificationBadge();
           return true;
         } catch (error) {
-          els.sessionState.textContent = error.message || "Session unavailable.";
+          els.devicesEmpty.textContent = error.message || "Session unavailable.";
+          els.deviceSelect.innerHTML = `<option value="">Unavailable</option>`;
+          els.deviceSelect.disabled = true;
+          els.selectedDevice.innerHTML = "";
           setNotificationBadge(0);
           return false;
         }
       }
 
-      function renderDevices(ownerEmail, devices) {
-        els.devicesList.innerHTML = "";
-        if (!devices.length) {
-          els.devicesEmpty.textContent = ownerEmail ? `No claimed devices found for ${ownerEmail}.` : "No devices loaded yet.";
+      function renderSelectedDevice(deviceId) {
+        const device = currentDevices.find((item) => item.deviceId === deviceId) || currentDevices[0];
+        els.selectedDevice.innerHTML = "";
+        if (!device) {
           return;
         }
 
-        els.devicesEmpty.textContent = `${devices.length} light${devices.length === 1 ? "" : "s"} loaded.`;
-        devices.forEach((device) => {
-          const card = document.createElement("div");
-          card.className = "device-card";
-          card.innerHTML = `
-            <strong>${device.displayName || device.deviceId}</strong>
-            <div class="pill-row">
-              <span class="pill">${device.groupName || device.groupId || "No group"}</span>
-              <span class="pill ${device.isOnline ? "" : "offline"}">${device.isOnline ? "Online" : "Offline"}</span>
-              <span class="pill">${device.isActive ? "Active" : "Inactive"}</span>
-            </div>
-            <div class="actions">
-              <button class="toggle-device" data-device-id="${device.deviceId}" data-next-active="${device.isActive ? "false" : "true"}">${device.isActive ? "Turn Off" : "Turn On"}</button>
-            </div>`;
-          els.devicesList.appendChild(card);
-        });
+        els.deviceSelect.value = device.deviceId;
+        const card = document.createElement("div");
+        card.className = "device-card";
+        card.innerHTML = `
+          <strong>${device.displayName || device.deviceId}</strong>
+          <div class="pill-row">
+            <span class="pill">${device.groupName || device.groupId || "No group"}</span>
+            <span class="pill ${device.isOnline ? "" : "offline"}">${device.isOnline ? "Online" : "Offline"}</span>
+            <span class="pill">${device.isActive ? "Active" : "Inactive"}</span>
+          </div>
+          <div class="actions">
+            <button class="toggle-device" data-device-id="${device.deviceId}" data-next-active="${device.isActive ? "false" : "true"}">${device.isActive ? "Turn Off" : "Turn On"}</button>
+          </div>`;
+        els.selectedDevice.appendChild(card);
 
-        els.devicesList.querySelectorAll(".toggle-device").forEach((button) => {
+        const button = els.selectedDevice.querySelector(".toggle-device");
+        if (button) {
           button.addEventListener("click", () => wrap(
             () => toggleDevice(button.dataset.deviceId, button.dataset.nextActive === "true"),
             button,
           ));
-        });
+        }
+      }
+
+      function renderDevices(ownerEmail, devices) {
+        currentDevices = devices || [];
+        els.selectedDevice.innerHTML = "";
+        if (!currentDevices.length) {
+          els.devicesEmpty.textContent = ownerEmail ? `No claimed devices found for ${ownerEmail}.` : "No devices loaded yet.";
+          els.deviceSelect.innerHTML = `<option value="">No devices available</option>`;
+          els.deviceSelect.disabled = true;
+          return;
+        }
+
+        els.devicesEmpty.textContent = `${currentDevices.length} light${currentDevices.length === 1 ? "" : "s"} loaded.`;
+        els.deviceSelect.innerHTML = currentDevices
+          .map((device) => `<option value="${device.deviceId}">${device.displayName || device.deviceId}</option>`)
+          .join("");
+        els.deviceSelect.disabled = false;
+        renderSelectedDevice(els.deviceSelect.value || currentDevices[0].deviceId);
       }
 
       async function loadMyDevices() {
@@ -261,6 +286,7 @@
       }
 
       els.refreshDevices.addEventListener("click", () => wrap(loadMyDevices, els.refreshDevices));
+      els.deviceSelect.addEventListener("change", () => renderSelectedDevice(els.deviceSelect.value));
 
       const signedIn = await refreshSessionState();
       if (signedIn) {
