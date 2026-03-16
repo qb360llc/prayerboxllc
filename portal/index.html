@@ -102,7 +102,7 @@
             <option value="">Loading your devices...</option>
           </select>
         </div>
-        <div id="devices-empty" class="status">No devices loaded yet.</div>
+        <div id="devices-empty" class="status" hidden>No devices loaded yet.</div>
         <div id="selected-device" class="device-list"></div>
       </section>
 
@@ -182,10 +182,11 @@
           const { data } = await client.auth.getSession();
           const session = data.session;
           if (!session) {
-            els.devicesEmpty.textContent = "Sign in from Settings to control your lights.";
-            els.deviceSelect.innerHTML = `<option value="">Sign in first</option>`;
-            els.deviceSelect.disabled = true;
-            els.selectedDevice.innerHTML = "";
+          els.devicesEmpty.textContent = "Sign in from Settings to control your lights.";
+          els.devicesEmpty.hidden = false;
+          els.deviceSelect.innerHTML = `<option value="">Sign in first</option>`;
+          els.deviceSelect.disabled = true;
+          els.selectedDevice.innerHTML = "";
             setNotificationBadge(0);
             return false;
           }
@@ -193,6 +194,7 @@
           return true;
         } catch (error) {
           els.devicesEmpty.textContent = error.message || "Session unavailable.";
+          els.devicesEmpty.hidden = false;
           els.deviceSelect.innerHTML = `<option value="">Unavailable</option>`;
           els.deviceSelect.disabled = true;
           els.selectedDevice.innerHTML = "";
@@ -237,12 +239,13 @@
         els.selectedDevice.innerHTML = "";
         if (!currentDevices.length) {
           els.devicesEmpty.textContent = ownerEmail ? `No claimed devices found for ${ownerEmail}.` : "No devices loaded yet.";
+          els.devicesEmpty.hidden = false;
           els.deviceSelect.innerHTML = `<option value="">No devices available</option>`;
           els.deviceSelect.disabled = true;
           return;
         }
 
-        els.devicesEmpty.textContent = "Choose a light from the list below.";
+        els.devicesEmpty.hidden = true;
         els.deviceSelect.innerHTML = currentDevices
           .map((device) => `<option value="${device.deviceId}">${device.displayName || device.deviceId}</option>`)
           .join("");
