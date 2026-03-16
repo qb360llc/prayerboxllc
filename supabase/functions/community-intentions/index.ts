@@ -2,6 +2,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 
 type PostBody =
   | { action?: "create"; body?: string; groupSlug?: string }
+  | { action: "edit"; body?: string; intentionId?: string; groupSlug?: string }
   | { action: "react"; intentionId?: string; reactionType?: "like" | "love"; groupSlug?: string };
 
 function corsHeaders(request: Request) {
@@ -310,6 +311,7 @@ async function fetchIntentions(
       createdBy: fullName || profile?.display_name || profile?.email || "Community member",
       createdByUserId: item.created_by_user_id,
       id: item.id,
+      isOwn: String(item.created_by_user_id) === userId,
       likeCount: reactionState.likeCount,
       loveCount: reactionState.loveCount,
       userReaction: reactionState.userReaction,
@@ -398,6 +400,41 @@ Deno.serve(async (request) => {
           preview: intentionPreview,
         },
       );
+    } else if (action === "edit") {
+      const intentionId = body.intentionId?.trim();
+      const intentionBody = body.body?.trim();
+
+      if (!intentionId || !intentionBody) {
+        return json(request, 400, { error: "intentionId and body are required.", ok: false });
+      }
+
+      const { data: targetIntention, error: targetIntentionError } = await supabase
+        .from("community_intentions")
+        .select("id, group_id, created_by_user_id")
+        .eq("id", intentionId)
+        .maybeSingle();
+
+      if (targetIntentionError) {
+        throw targetIntentionError;
+      }
+
+      if (!targetIntention || targetIntention.group_id !== group.id) {
+        return json(request, 404, { error: "Unknown intention for this group.", ok: false });
+      }
+
+      const profile = await getProfile(supabase, user.id);
+      if (String(targetIntention.created_by_user_id) !== user.id && !isAdminProfile(profile)) {
+        return json(request, 403, { error: "You can only edit your own intentions.", ok: false });
+      }
+
+      const { error: updateError } = await supabase
+        .from("community_intentions")
+        .update({ body: intentionBody })
+        .eq("id", intentionId);
+
+      if (updateError) {
+        throw updateError;
+      }
     } else if (action === "react") {
       const intentionId = body.intentionId?.trim();
       const reactionType = body.reactionType;
