@@ -155,7 +155,7 @@
         const client = getClient();
         const { data: sessionData } = await client.auth.getSession();
         const accessToken = sessionData.session?.access_token;
-        if (!accessToken) throw new Error("Sign in first from the Settings page.");
+        if (!accessToken) throw new Error("Sign in on the home page first.");
         return fetch(`${projectUrl}${path}`, {
           ...options,
           headers: {
@@ -183,7 +183,7 @@
           const { data } = await client.auth.getSession();
           const session = data.session;
           if (!session) {
-          els.devicesEmpty.textContent = "Sign in from Settings to control your lights.";
+          els.devicesEmpty.textContent = "Sign in from the home page to control your lights.";
           els.devicesEmpty.hidden = false;
           els.deviceSelect.innerHTML = `<option value="">Sign in first</option>`;
           els.deviceSelect.disabled = true;

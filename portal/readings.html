@@ -175,7 +175,7 @@
       async function authedFetch(path, options = {}) {
         const session = await getSession();
         if (!session) {
-          throw new Error("Sign in on the main portal first.");
+          throw new Error("Sign in on the home page first.");
         }
 
         return fetch(`${projectUrl}${path}`, {
@@ -299,7 +299,7 @@
         const session = await getSession();
         const groupSlug = selectedGroupSlug();
         if (!session) {
-          throw new Error("Sign in on the main portal before uploading a reading.");
+          throw new Error("Sign in on the home page before uploading a reading.");
         }
         if (!groupSlug) {
           throw new Error("Choose a community group first.");
@@ -337,7 +337,7 @@
       async function startRecording() {
         const session = await getSession();
         if (!session) {
-          throw new Error("Sign in on the main portal before recording.");
+          throw new Error("Sign in on the home page before recording.");
         }
 
         if (!selectedGroupSlug()) {

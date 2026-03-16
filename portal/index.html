@@ -3,17 +3,39 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>PRayerbox Community</title>
+    <title>PRayerbox</title>
     <script src="./config.js"></script>
     <style>
       :root { --bg:#f3efe4; --panel:#fffaf0; --ink:#1b1a17; --muted:#6f675d; --accent:#0d6b57; --accent-strong:#084c3e; --line:#d8cfbf; --danger:#a12828; }
       * { box-sizing:border-box; }
       body { margin:0; min-height:100vh; font-family:Georgia,"Times New Roman",serif; color:var(--ink); background:radial-gradient(circle at top left, rgba(13,107,87,.12), transparent 30%), linear-gradient(180deg, #efe7d6 0%, var(--bg) 100%); }
-      main { max-width:860px; margin:0 auto; padding:32px 20px 64px; }
+      main { margin:0 auto; padding:32px 20px 64px; }
       h1 { margin:0 0 8px; font-size:clamp(2rem,5vw,3.4rem); line-height:1; }
       h2, h3 { margin:0; }
       p { color:var(--muted); line-height:1.5; }
       a { color:var(--accent-strong); }
+      button { padding:12px 16px; border:0; border-radius:999px; font:inherit; font-weight:600; color:#fff; background:var(--accent); cursor:pointer; }
+      button.secondary { background:var(--accent-strong); }
+      button.ghost { background:#fff; color:var(--accent-strong); border:1px solid var(--line); }
+      button:disabled { opacity:.6; cursor:wait; }
+      input, textarea { width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:12px; font:inherit; background:#fff; color:var(--ink); }
+      textarea { min-height:72px; resize:vertical; }
+      label { display:block; font-size:.92rem; margin-bottom:6px; color:var(--muted); }
+      .status { margin-top:16px; padding:12px 14px; border-radius:12px; background:rgba(13,107,87,.08); color:var(--ink); white-space:pre-wrap; }
+      .status.error { background:rgba(161,40,40,.1); color:var(--danger); }
+      .actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:16px; }
+
+      #auth-shell { max-width:520px; min-height:100vh; display:grid; align-content:center; }
+      .auth-card { padding:28px; border:1px solid var(--line); border-radius:24px; background:color-mix(in srgb, var(--panel) 90%, white 10%); box-shadow:0 20px 46px rgba(27,26,23,.12); }
+      .auth-brand { margin-bottom:20px; }
+      .auth-tabs { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:18px 0; padding:6px; border-radius:18px; background:rgba(13,107,87,.08); }
+      .auth-tab { border-radius:14px; background:transparent; color:var(--accent-strong); }
+      .auth-tab.active { background:var(--accent); color:#fff; }
+      .auth-grid { display:grid; gap:12px; }
+      .auth-grid.two { grid-template-columns:1fr 1fr; }
+      .auth-helper { margin-top:16px; font-size:.95rem; }
+
+      #app-shell { max-width:860px; }
       .topbar { display:flex; justify-content:flex-end; gap:10px; }
       .topnav { display:flex; flex-wrap:wrap; gap:10px; }
       .topnav a { display:inline-block; padding:10px 14px; border-radius:999px; text-decoration:none; background:rgba(13,107,87,.08); }
@@ -32,16 +54,6 @@
       .mobile-drawer nav { display:grid; gap:10px; }
       .mobile-drawer a { display:block; padding:12px 14px; border-radius:14px; text-decoration:none; background:rgba(13,107,87,.08); }
       .panel { margin-top:24px; padding:20px; border:1px solid var(--line); border-radius:18px; background:color-mix(in srgb, var(--panel) 88%, white 12%); box-shadow:0 14px 40px rgba(27,26,23,.08); }
-      label { display:block; font-size:.92rem; margin-bottom:6px; color:var(--muted); }
-      select, textarea { width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:12px; font:inherit; background:#fff; color:var(--ink); }
-      textarea { min-height:72px; resize:vertical; }
-      button { padding:12px 16px; border:0; border-radius:999px; font:inherit; font-weight:600; color:#fff; background:var(--accent); cursor:pointer; }
-      button.secondary { background:var(--accent-strong); }
-      button.ghost { background:#fff; color:var(--accent-strong); border:1px solid var(--line); }
-      button:disabled { opacity:.6; cursor:wait; }
-      .actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:16px; }
-      .status { margin-top:16px; padding:12px 14px; border-radius:12px; background:rgba(13,107,87,.08); color:var(--ink); white-space:pre-wrap; }
-      .status.error { background:rgba(161,40,40,.1); color:var(--danger); }
       .feed-shell { margin-top:18px; max-height:560px; overflow:auto; padding-right:6px; }
       .feed { display:grid; gap:14px; }
       .intention { padding:16px; border:1px solid var(--line); border-radius:16px; background:rgba(255,255,255,.55); }
@@ -59,7 +71,9 @@
       .composer-bar { display:flex; gap:12px; align-items:flex-end; }
       .composer-bar textarea { flex:1; margin:0; }
       .composer-bar button { white-space:nowrap; }
+
       @media (max-width:720px) {
+        .auth-grid.two { grid-template-columns:1fr; }
         .topbar { justify-content:space-between; align-items:center; }
         .topnav { display:none; }
         .mobile-nav-button { display:flex; }
@@ -76,7 +90,54 @@
     </style>
   </head>
   <body>
-    <main>
+    <main id="auth-shell">
+      <section class="auth-card">
+        <div class="auth-brand">
+          <h1>PRayerbox</h1>
+          <p>Sign in to join your community, share intentions, and keep your lights in sync.</p>
+        </div>
+
+        <div class="auth-tabs">
+          <button id="mode-signin" class="auth-tab active" type="button">Log In</button>
+          <button id="mode-signup" class="auth-tab" type="button">Sign Up</button>
+        </div>
+
+        <div class="auth-grid two" id="signup-name-row" hidden>
+          <div>
+            <label for="auth-first-name">First Name</label>
+            <input id="auth-first-name" placeholder="Jane">
+          </div>
+          <div>
+            <label for="auth-last-name">Last Name</label>
+            <input id="auth-last-name" placeholder="Doe">
+          </div>
+        </div>
+
+        <div class="auth-grid" style="margin-top:12px;">
+          <div>
+            <label for="auth-email">Email</label>
+            <input id="auth-email" type="email" placeholder="you@example.com">
+          </div>
+          <div>
+            <label for="auth-password">Password</label>
+            <input id="auth-password" type="password" placeholder="Password">
+          </div>
+          <div id="signup-confirm-row" hidden>
+            <label for="auth-confirm-password">Confirm Password</label>
+            <input id="auth-confirm-password" type="password" placeholder="Confirm Password">
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="auth-submit">Log In</button>
+          <button id="auth-switch" class="ghost" type="button">Need an account? Sign Up</button>
+        </div>
+        <div id="auth-status" class="status">Welcome. Sign in to continue.</div>
+        <div class="auth-helper">Admins can still use <a href="./admin.html">Admin</a> for device provisioning.</div>
+      </section>
+    </main>
+
+    <main id="app-shell" hidden>
       <input id="nav-toggle" class="nav-toggle" type="checkbox">
       <div class="topbar">
         <div style="display:flex; align-items:center; gap:10px;">
@@ -121,7 +182,7 @@
       <section class="panel">
         <div class="section-title">
           <h2>Community Feed</h2>
-          <button id="refresh-feed" class="secondary icon-button" aria-label="Refresh feed" title="Refresh feed">↻</button>
+          <button id="refresh-feed" class="secondary icon-button" aria-label="Refresh feed" title="Refresh feed">&#x21bb;</button>
         </div>
         <div class="group-summary">
           <div id="active-group" class="empty">Loading your selected community...</div>
@@ -133,14 +194,17 @@
       </section>
 
       <section class="panel">
-        <h2>Status</h2>
-        <div id="status" class="status">Idle.</div>
+        <h2>Session</h2>
+        <div id="session-state" class="status">Checking sign-in...</div>
+        <div class="actions">
+          <a href="./settings.html">Open Settings</a>
+          <button id="sign-out-app" class="secondary" type="button">Sign Out</button>
+        </div>
       </section>
 
       <section class="panel">
-        <h2>Session</h2>
-        <div id="session-state" class="status">Checking sign-in...</div>
-        <div class="status">Use <a href="./settings.html">Settings</a> to sign in and manage which communities you belong to.</div>
+        <h2>Status</h2>
+        <div id="status" class="status">Idle.</div>
       </section>
     </main>
 
@@ -150,24 +214,44 @@
       const config = window.PRAYERBOX_PORTAL_CONFIG || {};
       const projectUrl = config.projectUrl || "";
       const anonKey = config.anonKey || "";
+      const SELECTED_GROUP_STORAGE_KEY = "prayerboxSelectedGroupSlug";
       const els = {
         activeGroup: document.querySelector("#active-group"),
+        appShell: document.querySelector("#app-shell"),
+        authConfirmPassword: document.querySelector("#auth-confirm-password"),
+        authEmail: document.querySelector("#auth-email"),
+        authFirstName: document.querySelector("#auth-first-name"),
+        authLastName: document.querySelector("#auth-last-name"),
+        authPassword: document.querySelector("#auth-password"),
+        authShell: document.querySelector("#auth-shell"),
+        authStatus: document.querySelector("#auth-status"),
+        authSubmit: document.querySelector("#auth-submit"),
+        authSwitch: document.querySelector("#auth-switch"),
         feed: document.querySelector("#feed"),
         feedEmpty: document.querySelector("#feed-empty"),
         intentionBody: document.querySelector("#intention-body"),
+        modeSignin: document.querySelector("#mode-signin"),
+        modeSignup: document.querySelector("#mode-signup"),
         postIntention: document.querySelector("#post-intention"),
         refreshFeed: document.querySelector("#refresh-feed"),
         sessionState: document.querySelector("#session-state"),
+        signOutApp: document.querySelector("#sign-out-app"),
+        signupConfirmRow: document.querySelector("#signup-confirm-row"),
+        signupNameRow: document.querySelector("#signup-name-row"),
         status: document.querySelector("#status"),
       };
-      const SELECTED_GROUP_STORAGE_KEY = "prayerboxSelectedGroupSlug";
 
+      let authMode = "signin";
       let supabase = null;
-      let activeGroup = null;
 
       function setStatus(message, isError = false) {
         els.status.textContent = message;
         els.status.classList.toggle("error", isError);
+      }
+
+      function setAuthStatus(message, isError = false) {
+        els.authStatus.textContent = message;
+        els.authStatus.classList.toggle("error", isError);
       }
 
       function escapeHtml(value) {
@@ -195,11 +279,38 @@
         });
       }
 
+      function selectedGroupSlug() {
+        return localStorage.getItem(SELECTED_GROUP_STORAGE_KEY) || "";
+      }
+
+      function setAuthMode(mode) {
+        authMode = mode;
+        const isSignup = mode === "signup";
+        els.modeSignin.classList.toggle("active", !isSignup);
+        els.modeSignup.classList.toggle("active", isSignup);
+        els.signupNameRow.hidden = !isSignup;
+        els.signupConfirmRow.hidden = !isSignup;
+        els.authSubmit.textContent = isSignup ? "Create Account" : "Log In";
+        els.authSwitch.textContent = isSignup ? "Already have an account? Log In" : "Need an account? Sign Up";
+        setAuthStatus(isSignup ? "Create your account to join PRayerbox." : "Welcome back. Log in to continue.");
+      }
+
+      function showAuthShell() {
+        els.authShell.hidden = false;
+        els.appShell.hidden = true;
+      }
+
+      function showAppShell(email) {
+        els.authShell.hidden = true;
+        els.appShell.hidden = false;
+        els.sessionState.textContent = `Signed in as ${email}`;
+      }
+
       async function authedFetch(path, options = {}) {
         const client = getClient();
         const { data: sessionData } = await client.auth.getSession();
         const accessToken = sessionData.session?.access_token;
-        if (!accessToken) throw new Error("Sign in first from the Settings page.");
+        if (!accessToken) throw new Error("Sign in on the home page first.");
         return fetch(`${projectUrl}${path}`, {
           ...options,
           headers: {
@@ -221,14 +332,26 @@
         }
       }
 
-      function selectedGroupSlug() {
-        return localStorage.getItem(SELECTED_GROUP_STORAGE_KEY) || "";
+      async function updateProfileNames(userId, emailFallback) {
+        const client = getClient();
+        const firstName = els.authFirstName.value.trim();
+        const lastName = els.authLastName.value.trim();
+        if (!firstName && !lastName) return;
+        const displayName = [firstName, lastName].filter(Boolean).join(" ") || emailFallback;
+        await client
+          .from("profiles")
+          .update({
+            display_name: displayName,
+            first_name: firstName || null,
+            last_name: lastName || null,
+          })
+          .eq("id", userId);
       }
 
       function renderGroups(items) {
         const groups = items || [];
         const savedGroupSlug = selectedGroupSlug();
-        activeGroup = groups.find((group) => group.slug === savedGroupSlug) || groups[0] || null;
+        const activeGroup = groups.find((group) => group.slug === savedGroupSlug) || groups[0] || null;
         els.postIntention.disabled = !activeGroup;
         els.refreshFeed.disabled = !activeGroup;
         if (!activeGroup) {
@@ -264,7 +387,7 @@
                 </div>
               </div>` : ""}
             <div class="reaction-row">
-              <button class="heart-button react ${item.userReaction === "love" ? "active" : ""}" aria-label="Love this intention" data-intention-id="${item.id}" data-reaction="love">${item.userReaction === "love" ? "♥" : "♡"}</button>
+              <button class="heart-button react ${item.userReaction === "love" ? "active" : ""}" aria-label="Love this intention" data-intention-id="${item.id}" data-reaction="love">${item.userReaction === "love" ? "&#9829;" : "&#9825;"}</button>
               <span class="heart-count">${item.loveCount} ${item.loveCount === 1 ? "person loves" : "people love"} this</span>
             </div>`;
           els.feed.appendChild(card);
@@ -286,26 +409,6 @@
             button,
           ));
         });
-      }
-
-      async function refreshSessionState() {
-        try {
-          const client = getClient();
-          const { data } = await client.auth.getSession();
-          const session = data.session;
-          if (!session) {
-            els.sessionState.textContent = "Signed out. Open Settings to sign in and join a community.";
-            setNotificationBadge(0);
-            return false;
-          }
-          els.sessionState.textContent = `Signed in as ${session.user.email}`;
-          await refreshNotificationBadge();
-          return true;
-        } catch (error) {
-          els.sessionState.textContent = error.message || "Session unavailable.";
-          setNotificationBadge(0);
-          return false;
-        }
       }
 
       async function loadGroups() {
@@ -381,25 +484,98 @@
         setStatus("Updated your love reaction.");
       }
 
+      async function signOut() {
+        const client = getClient();
+        const { error } = await client.auth.signOut();
+        if (error) throw error;
+        showAuthShell();
+        setAuthMode("signin");
+        setNotificationBadge(0);
+      }
+
+      async function handleAuthSubmit() {
+        const client = getClient();
+        const email = els.authEmail.value.trim();
+        const password = els.authPassword.value;
+        if (!email || !password) {
+          throw new Error("Email and password are required.");
+        }
+
+        if (authMode === "signup") {
+          const confirmPassword = els.authConfirmPassword.value;
+          if (password !== confirmPassword) {
+            throw new Error("Passwords do not match.");
+          }
+
+          const { data, error } = await client.auth.signUp({ email, password });
+          if (error) throw error;
+
+          if (!data.session) {
+            setAuthMode("signin");
+            setAuthStatus("Account created. Check your email, then log in.", false);
+            return;
+          }
+
+          await updateProfileNames(data.session.user.id, data.session.user.email?.split("@")[0] || "Community member");
+          await openCommunity(data.session.user.email || email);
+          return;
+        }
+
+        const { data, error } = await client.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        await openCommunity(data.user?.email || email);
+      }
+
+      async function openCommunity(email) {
+        showAppShell(email);
+        await refreshNotificationBadge();
+        await loadGroups();
+        await loadFeed();
+      }
+
+      async function boot() {
+        try {
+          const client = getClient();
+          const { data } = await client.auth.getSession();
+          const session = data.session;
+          if (!session) {
+            showAuthShell();
+            setAuthMode("signin");
+            return;
+          }
+          await openCommunity(session.user.email || "your account");
+        } catch (error) {
+          showAuthShell();
+          setAuthMode("signin");
+          setAuthStatus(error.message || "Unable to load the portal.", true);
+        }
+      }
+
       async function wrap(fn, button) {
         try {
           button.disabled = true;
           await fn();
         } catch (error) {
-          setStatus(error.message || "Request failed.", true);
+          const message = error.message || "Request failed.";
+          if (els.appShell.hidden) {
+            setAuthStatus(message, true);
+          } else {
+            setStatus(message, true);
+          }
         } finally {
           button.disabled = false;
         }
       }
 
+      els.modeSignin.addEventListener("click", () => setAuthMode("signin"));
+      els.modeSignup.addEventListener("click", () => setAuthMode("signup"));
+      els.authSwitch.addEventListener("click", () => setAuthMode(authMode === "signin" ? "signup" : "signin"));
+      els.authSubmit.addEventListener("click", () => wrap(handleAuthSubmit, els.authSubmit));
       els.refreshFeed.addEventListener("click", () => wrap(loadFeed, els.refreshFeed));
       els.postIntention.addEventListener("click", () => wrap(postIntention, els.postIntention));
+      els.signOutApp.addEventListener("click", () => wrap(signOut, els.signOutApp));
 
-      const signedIn = await refreshSessionState();
-      if (signedIn) {
-        await loadGroups();
-        await loadFeed();
-      }
+      boot();
     </script>
   </body>
 </html>
