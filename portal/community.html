@@ -45,7 +45,9 @@
       .feed-shell { margin-top:18px; max-height:560px; overflow:auto; padding-right:6px; }
       .feed { display:grid; gap:14px; }
       .intention { padding:16px; border:1px solid var(--line); border-radius:16px; background:rgba(255,255,255,.55); }
+      .section-title { display:flex; align-items:center; gap:10px; }
       .group-summary { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+      .icon-button { width:42px; height:42px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:999px; }
       .meta { margin-top:12px; color:var(--muted); font-size:.92rem; }
       .reaction-row { display:flex; align-items:center; gap:10px; margin-top:14px; }
       .heart-button { width:42px; height:42px; padding:0; border-radius:999px; background:#fff; border:1px solid var(--line); color:#b55b5b; font-size:1.2rem; line-height:1; }
@@ -105,10 +107,12 @@
       </div>
 
       <section class="panel">
-        <h2>Community Feed</h2>
+        <div class="section-title">
+          <h2>Community Feed</h2>
+          <button id="refresh-feed" class="secondary icon-button" aria-label="Refresh feed" title="Refresh feed">↻</button>
+        </div>
         <div class="group-summary">
           <div id="active-group" class="empty">Loading your selected community...</div>
-          <button id="refresh-feed" class="secondary">Refresh Feed</button>
         </div>
         <div id="feed-empty" class="empty">No intentions loaded yet.</div>
         <div class="feed-shell">
