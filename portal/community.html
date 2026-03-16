@@ -17,7 +17,8 @@
       button { padding:12px 16px; border:0; border-radius:999px; font:inherit; font-weight:600; color:#fff; background:var(--accent); cursor:pointer; }
       button.secondary { background:var(--accent-strong); }
       button:disabled { opacity:.6; cursor:wait; }
-      textarea { width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:12px; font:inherit; background:#fff; color:var(--ink); min-height:72px; resize:vertical; }
+      textarea, input { width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:12px; font:inherit; background:#fff; color:var(--ink); }
+      textarea { min-height:72px; resize:vertical; }
       label { display:block; font-size:.92rem; margin-bottom:6px; color:var(--muted); }
       .status { margin-top:16px; padding:12px 14px; border-radius:12px; background:rgba(13,107,87,.08); color:var(--ink); white-space:pre-wrap; }
       .status.error { background:rgba(161,40,40,.1); color:var(--danger); }
@@ -43,6 +44,16 @@
       .feed-shell { margin-top:18px; max-height:560px; overflow:auto; padding-right:6px; }
       .feed { display:grid; gap:14px; }
       .intention { padding:16px; border:1px solid var(--line); border-radius:16px; background:rgba(255,255,255,.55); }
+      .chat-shell { margin-top:18px; max-height:480px; overflow:auto; padding-right:6px; }
+      .chat-list { display:grid; gap:12px; }
+      .chat-row { display:flex; }
+      .chat-row.own { justify-content:flex-end; }
+      .chat-bubble { max-width:min(86%, 540px); padding:14px 16px; border:1px solid var(--line); border-radius:18px; background:rgba(255,255,255,.72); }
+      .chat-row.own .chat-bubble { background:rgba(13,107,87,.12); border-color:rgba(13,107,87,.24); }
+      .chat-author { font-size:.86rem; color:var(--muted); margin-bottom:8px; }
+      .chat-text { white-space:pre-wrap; line-height:1.45; }
+      .chat-audio { width:100%; margin-top:8px; }
+      .chat-meta { margin-top:8px; color:var(--muted); font-size:.82rem; }
       .section-title { display:flex; align-items:center; gap:10px; }
       .group-summary { display:flex; align-items:center; justify-content:space-between; gap:12px; }
       .icon-button { width:42px; height:42px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:999px; }
@@ -57,6 +68,11 @@
       .composer-bar { display:flex; gap:12px; align-items:flex-end; }
       .composer-bar textarea { flex:1; margin:0; }
       .composer-bar button { white-space:nowrap; }
+      .chat-composer { display:grid; gap:12px; margin-top:16px; }
+      .chat-composer-row { display:flex; gap:12px; align-items:flex-end; }
+      .chat-composer-row input { flex:1; }
+      .chat-voice-tools { display:flex; gap:10px; flex-wrap:wrap; }
+      .chat-voice-tools button { min-width:110px; }
       @media (max-width:720px) {
         .topbar { justify-content:space-between; align-items:center; }
         .topnav { display:none; }
@@ -131,6 +147,31 @@
       </section>
 
       <section class="panel">
+        <div class="section-title">
+          <h2>Community Chat</h2>
+          <button id="refresh-chat" class="secondary icon-button" aria-label="Refresh chat" title="Refresh chat">&#x21bb;</button>
+        </div>
+        <div id="chat-empty" class="empty">No chat messages yet.</div>
+        <div id="chat-shell" class="chat-shell">
+          <div id="chat-list" class="chat-list"></div>
+        </div>
+        <div class="chat-composer">
+          <div>
+            <label for="chat-text">Message</label>
+            <div class="chat-composer-row">
+              <input id="chat-text" type="text" placeholder="Send a message to your community...">
+              <button id="send-chat">Send</button>
+            </div>
+          </div>
+          <div class="chat-voice-tools">
+            <button id="record-chat">Record Voice</button>
+            <button id="stop-chat" class="secondary" disabled>Stop</button>
+          </div>
+          <div id="chat-recording-status" class="status">Voice chat is ready when your group is active.</div>
+        </div>
+      </section>
+
+      <section class="panel">
         <h2>Session</h2>
         <div id="session-state" class="status">Checking sign-in...</div>
         <div class="actions">
@@ -155,17 +196,29 @@
       const HOME_URL = "./index.html";
       const els = {
         activeGroup: document.querySelector("#active-group"),
+        chatEmpty: document.querySelector("#chat-empty"),
+        chatList: document.querySelector("#chat-list"),
+        chatRecordingStatus: document.querySelector("#chat-recording-status"),
+        chatShell: document.querySelector("#chat-shell"),
+        chatText: document.querySelector("#chat-text"),
         feed: document.querySelector("#feed"),
         feedEmpty: document.querySelector("#feed-empty"),
         intentionBody: document.querySelector("#intention-body"),
         postIntention: document.querySelector("#post-intention"),
+        recordChat: document.querySelector("#record-chat"),
+        refreshChat: document.querySelector("#refresh-chat"),
         refreshFeed: document.querySelector("#refresh-feed"),
+        sendChat: document.querySelector("#send-chat"),
         sessionState: document.querySelector("#session-state"),
         signOutApp: document.querySelector("#sign-out-app"),
+        stopChat: document.querySelector("#stop-chat"),
         status: document.querySelector("#status"),
       };
 
       let supabase = null;
+      let chatRecorder = null;
+      let chatRecordingStartedAt = null;
+      let chatAudioChunks = [];
 
       function setStatus(message, isError = false) {
         els.status.textContent = message;
@@ -201,6 +254,29 @@
         return localStorage.getItem(SELECTED_GROUP_STORAGE_KEY) || "";
       }
 
+      function setChatRecordingStatus(message, isError = false) {
+        els.chatRecordingStatus.textContent = message;
+        els.chatRecordingStatus.classList.toggle("error", isError);
+      }
+
+      function preferredMimeType() {
+        const candidates = [
+          "audio/webm;codecs=opus",
+          "audio/webm",
+          "audio/mp4",
+        ];
+
+        return candidates.find((type) => window.MediaRecorder && MediaRecorder.isTypeSupported(type)) || "";
+      }
+
+      function updateChatRecorderButtons() {
+        const hasGroup = Boolean(selectedGroupSlug());
+        const hasRecorder = Boolean(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
+        const isRecording = Boolean(chatRecorder && chatRecorder.state === "recording");
+        els.recordChat.disabled = !hasGroup || !hasRecorder || isRecording;
+        els.stopChat.disabled = !isRecording;
+      }
+
       async function authedFetch(path, options = {}) {
         const client = getClient();
         const { data: sessionData } = await client.auth.getSession();
@@ -233,15 +309,20 @@
         const activeGroup = groups.find((group) => group.slug === savedGroupSlug) || groups[0] || null;
         els.postIntention.disabled = !activeGroup;
         els.refreshFeed.disabled = !activeGroup;
+        els.sendChat.disabled = !activeGroup;
+        els.refreshChat.disabled = !activeGroup;
         if (!activeGroup) {
           els.activeGroup.textContent = "Choose your active community in Settings first.";
           els.feedEmpty.textContent = "Join or create a community in Settings before posting intentions.";
+          els.chatEmpty.textContent = "Choose your active community in Settings before chatting.";
+          updateChatRecorderButtons();
           return;
         }
         if (activeGroup.slug !== savedGroupSlug) {
           localStorage.setItem(SELECTED_GROUP_STORAGE_KEY, activeGroup.slug);
         }
         els.activeGroup.textContent = `Showing ${activeGroup.name}. Change this in Settings.`;
+        updateChatRecorderButtons();
       }
 
       function renderFeed(intentions) {
@@ -311,6 +392,69 @@
         setStatus(`Loaded intentions for ${payload.group?.name || groupSlug}.`);
       }
 
+      function renderChat(messages) {
+        els.chatList.innerHTML = "";
+        if (!messages.length) {
+          els.chatEmpty.textContent = "No chat messages yet.";
+          return;
+        }
+
+        els.chatEmpty.textContent = "";
+        messages.forEach((item) => {
+          const row = document.createElement("article");
+          row.className = `chat-row${item.isOwn ? " own" : ""}`;
+
+          const bubble = document.createElement("div");
+          bubble.className = "chat-bubble";
+
+          const author = document.createElement("div");
+          author.className = "chat-author";
+          author.textContent = item.isOwn ? `You • ${new Date(item.createdAt).toLocaleString()}` : `${item.createdBy} • ${new Date(item.createdAt).toLocaleString()}`;
+          bubble.appendChild(author);
+
+          if (item.messageType === "audio" && item.audioUrl) {
+            const audio = document.createElement("audio");
+            audio.className = "chat-audio";
+            audio.controls = true;
+            audio.preload = "none";
+            audio.src = item.audioUrl;
+            bubble.appendChild(audio);
+          } else {
+            const text = document.createElement("div");
+            text.className = "chat-text";
+            text.textContent = item.body || "";
+            bubble.appendChild(text);
+          }
+
+          if (item.durationMs) {
+            const meta = document.createElement("div");
+            meta.className = "chat-meta";
+            meta.textContent = `Voice message ${Math.max(1, Math.round(item.durationMs / 1000))} sec`;
+            bubble.appendChild(meta);
+          }
+
+          row.appendChild(bubble);
+          els.chatList.appendChild(row);
+        });
+
+        requestAnimationFrame(() => {
+          els.chatShell.scrollTop = els.chatShell.scrollHeight;
+        });
+      }
+
+      async function loadChat() {
+        const groupSlug = selectedGroupSlug();
+        if (!groupSlug) {
+          renderChat([]);
+          return;
+        }
+
+        const response = await authedFetch(`/functions/v1/community-chat?groupSlug=${encodeURIComponent(groupSlug)}`, { method: "GET" });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to load chat.");
+        renderChat(payload.messages || []);
+      }
+
       async function postIntention() {
         const groupSlug = selectedGroupSlug();
         const body = els.intentionBody.value.trim();
@@ -327,6 +471,24 @@
         els.intentionBody.value = "";
         renderFeed(payload.intentions || []);
         setStatus("Posted your intention to the community feed.");
+      }
+
+      async function sendChatMessage() {
+        const groupSlug = selectedGroupSlug();
+        const body = els.chatText.value.trim();
+        if (!groupSlug) throw new Error("Choose a community first.");
+        if (!body) throw new Error("Enter a chat message first.");
+
+        const response = await authedFetch("/functions/v1/community-chat", {
+          body: JSON.stringify({ body, groupSlug }),
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to send chat message.");
+        els.chatText.value = "";
+        renderChat(payload.messages || []);
+        setStatus("Sent your chat message.");
       }
 
       async function editIntention(intentionId, body) {
@@ -363,6 +525,88 @@
         setStatus("Updated your love reaction.");
       }
 
+      async function uploadChatRecording(blob, durationMs) {
+        const client = getClient();
+        const { data } = await client.auth.getSession();
+        const session = data.session;
+        const groupSlug = selectedGroupSlug();
+        if (!session) throw new Error("Sign in on the home page before recording.");
+        if (!groupSlug) throw new Error("Choose a community first.");
+
+        const extension = blob.type.includes("mp4") ? "m4a" : "webm";
+        const file = new File([blob], `chat-${Date.now()}.${extension}`, {
+          type: blob.type || "audio/webm",
+        });
+
+        const form = new FormData();
+        form.append("audio", file);
+        form.append("groupSlug", groupSlug);
+        form.append("durationMs", String(durationMs));
+
+        const response = await fetch(`${projectUrl}/functions/v1/community-chat`, {
+          method: "POST",
+          headers: {
+            apikey: anonKey,
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: form,
+        });
+
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to upload voice message.");
+        renderChat(payload.messages || []);
+        setStatus("Sent your voice message.");
+        setChatRecordingStatus(`Voice message sent to ${groupSlug}.`);
+      }
+
+      async function startChatRecording() {
+        const client = getClient();
+        const { data } = await client.auth.getSession();
+        if (!data.session) throw new Error("Sign in on the home page before recording.");
+        if (!selectedGroupSlug()) throw new Error("Choose a community first.");
+        if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+          throw new Error("This device/browser does not support voice recording.");
+        }
+
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mimeType = preferredMimeType();
+        chatRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+        chatAudioChunks = [];
+        chatRecordingStartedAt = Date.now();
+
+        chatRecorder.ondataavailable = (event) => {
+          if (event.data && event.data.size > 0) {
+            chatAudioChunks.push(event.data);
+          }
+        };
+
+        chatRecorder.onstop = async () => {
+          stream.getTracks().forEach((track) => track.stop());
+          try {
+            const blob = new Blob(chatAudioChunks, { type: chatRecorder.mimeType || "audio/webm" });
+            const durationMs = Math.max(0, Date.now() - (chatRecordingStartedAt || Date.now()));
+            setChatRecordingStatus("Uploading voice message...");
+            await uploadChatRecording(blob, durationMs);
+          } catch (error) {
+            setChatRecordingStatus(error.message || "Failed to process voice message.", true);
+          } finally {
+            chatRecorder = null;
+            chatRecordingStartedAt = null;
+            chatAudioChunks = [];
+            updateChatRecorderButtons();
+          }
+        };
+
+        chatRecorder.start();
+        updateChatRecorderButtons();
+        setChatRecordingStatus(`Recording voice message for ${selectedGroupSlug()}...`);
+      }
+
+      function stopChatRecording() {
+        if (!chatRecorder || chatRecorder.state !== "recording") return;
+        chatRecorder.stop();
+      }
+
       async function signOut() {
         const client = getClient();
         const { error } = await client.auth.signOut();
@@ -383,6 +627,8 @@
           await refreshNotificationBadge();
           await loadGroups();
           await loadFeed();
+          await loadChat();
+          setChatRecordingStatus("Voice chat is ready when your group is active.");
         } catch (error) {
           setStatus(error.message || "Unable to load the portal.", true);
         }
@@ -400,7 +646,23 @@
       }
 
       els.refreshFeed.addEventListener("click", () => wrap(loadFeed, els.refreshFeed));
+      els.refreshChat.addEventListener("click", () => wrap(loadChat, els.refreshChat));
       els.postIntention.addEventListener("click", () => wrap(postIntention, els.postIntention));
+      els.sendChat.addEventListener("click", () => wrap(sendChatMessage, els.sendChat));
+      els.chatText.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && !event.shiftKey) {
+          event.preventDefault();
+          wrap(sendChatMessage, els.sendChat);
+        }
+      });
+      els.recordChat.addEventListener("click", async () => {
+        try {
+          await startChatRecording();
+        } catch (error) {
+          setChatRecordingStatus(error.message || "Failed to start voice recording.", true);
+        }
+      });
+      els.stopChat.addEventListener("click", stopChatRecording);
       els.signOutApp.addEventListener("click", () => wrap(signOut, els.signOutApp));
 
       boot();
