@@ -242,7 +242,7 @@
           return;
         }
 
-        els.devicesEmpty.textContent = `${currentDevices.length} light${currentDevices.length === 1 ? "" : "s"} loaded.`;
+        els.devicesEmpty.textContent = "Choose a light from the list below.";
         els.deviceSelect.innerHTML = currentDevices
           .map((device) => `<option value="${device.deviceId}">${device.displayName || device.deviceId}</option>`)
           .join("");
