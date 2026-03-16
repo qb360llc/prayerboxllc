@@ -293,6 +293,11 @@
         els.authFirstName.disabled = !isSignup;
         els.authLastName.disabled = !isSignup;
         els.authConfirmPassword.disabled = !isSignup;
+        if (!isSignup) {
+          els.authFirstName.value = "";
+          els.authLastName.value = "";
+          els.authConfirmPassword.value = "";
+        }
         els.authSubmit.textContent = isSignup ? "Create Account" : "Log In";
         els.authSwitch.textContent = isSignup ? "Already have an account? Log In" : "Need an account? Sign Up";
         setAuthStatus(isSignup ? "Create your account to join PRayerbox." : "Welcome back. Log in to continue.");
