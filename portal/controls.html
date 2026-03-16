@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PRayerbox Controls</title>
+    <script src="./config.js"></script>
+    <style>
+      :root { --bg:#f3efe4; --panel:#fffaf0; --ink:#1b1a17; --muted:#6f675d; --accent:#0d6b57; --accent-strong:#084c3e; --line:#d8cfbf; --danger:#a12828; }
+      * { box-sizing:border-box; }
+      body { margin:0; min-height:100vh; font-family:Georgia,"Times New Roman",serif; color:var(--ink); background:radial-gradient(circle at top left, rgba(13,107,87,.12), transparent 30%), linear-gradient(180deg, #efe7d6 0%, var(--bg) 100%); }
+      main { max-width:760px; margin:0 auto; padding:32px 20px 64px; }
+      h1 { margin:0 0 8px; font-size:clamp(2rem,5vw,3.4rem); line-height:1; }
+      p { color:var(--muted); line-height:1.5; }
+      a { color:var(--accent-strong); }
+      .topbar { display:flex; justify-content:flex-end; gap:10px; }
+      .topnav { display:flex; flex-wrap:wrap; gap:10px; }
+      .topnav a { display:inline-block; padding:10px 14px; border-radius:999px; text-decoration:none; background:rgba(13,107,87,.08); }
+      .notify-link { display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:999px; text-decoration:none; background:rgba(13,107,87,.16); font-weight:600; }
+      .notify-count { min-width:1.45rem; padding:2px 6px; border-radius:999px; background:var(--accent-strong); color:#fff; font-size:.78rem; line-height:1.2; text-align:center; }
+      .mobile-top-title { display:none; font-size:1.2rem; font-weight:700; align-self:center; color:var(--ink); }
+      .hero { margin-top:18px; }
+      .nav-toggle { position:absolute; opacity:0; pointer-events:none; }
+      .mobile-nav-button { display:none; width:48px; height:48px; border-radius:14px; background:var(--accent); cursor:pointer; align-items:center; justify-content:center; box-shadow:0 10px 24px rgba(27,26,23,.12); }
+      .mobile-nav-button span { display:block; width:20px; height:2px; background:#fff; position:relative; }
+      .mobile-nav-button span::before, .mobile-nav-button span::after { content:""; position:absolute; left:0; width:20px; height:2px; background:#fff; }
+      .mobile-nav-button span::before { top:-6px; }
+      .mobile-nav-button span::after { top:6px; }
+      .mobile-overlay { display:none; }
+      .mobile-drawer { position:fixed; top:0; left:0; height:100vh; width:min(280px, 82vw); padding:88px 18px 24px; background:var(--panel); border-right:1px solid var(--line); box-shadow:0 18px 40px rgba(27,26,23,.18); transform:translateX(-100%); transition:transform .22s ease; z-index:30; }
+      .mobile-drawer nav { display:grid; gap:10px; }
+      .mobile-drawer a { display:block; padding:12px 14px; border-radius:14px; text-decoration:none; background:rgba(13,107,87,.08); }
+      .panel { margin-top:24px; padding:20px; border:1px solid var(--line); border-radius:18px; background:color-mix(in srgb, var(--panel) 88%, white 12%); box-shadow:0 14px 40px rgba(27,26,23,.08); }
+      .actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:16px; }
+      select { width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:12px; font:inherit; background:#fff; color:var(--ink); }
+      label { display:block; font-size:.92rem; margin-bottom:6px; color:var(--muted); }
+      button { padding:12px 16px; border:0; border-radius:999px; font:inherit; font-weight:600; color:#fff; background:var(--accent); cursor:pointer; }
+      button.secondary { background:var(--accent-strong); }
+      button:disabled { opacity:.6; cursor:wait; }
+      .status { margin-top:16px; padding:12px 14px; border-radius:12px; background:rgba(13,107,87,.08); color:var(--ink); white-space:pre-wrap; }
+      .status.error { background:rgba(161,40,40,.1); color:var(--danger); }
+      .device-list { display:grid; gap:12px; margin-top:16px; }
+      .device-card { padding:16px; border:1px solid var(--line); border-radius:16px; background:rgba(255,255,255,.55); }
+      .device-card strong { display:block; margin-bottom:8px; }
+      .pill-row { display:flex; flex-wrap:wrap; gap:8px; }
+      .pill { display:inline-block; padding:4px 10px; border-radius:999px; background:rgba(13,107,87,.12); color:var(--accent-strong); font-size:.85rem; }
+      .pill.offline { background:rgba(161,40,40,.12); color:var(--danger); }
+      .helper { margin-top:12px; font-size:.95rem; color:var(--muted); }
+      @media (max-width:720px) {
+        .topbar { justify-content:space-between; align-items:center; }
+        .topnav { display:none; }
+        .mobile-nav-button { display:flex; }
+        .mobile-top-title { display:block; }
+        .hero { margin-top:14px; }
+        .hero h1 { display:none; }
+        .notify-link { margin-left:auto; }
+        .nav-toggle:checked ~ .mobile-overlay { display:block; position:fixed; inset:0; background:rgba(27,26,23,.36); z-index:25; }
+        .nav-toggle:checked ~ .mobile-drawer { transform:translateX(0); }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <input id="nav-toggle" class="nav-toggle" type="checkbox">
+      <div class="topbar">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <label for="nav-toggle" class="mobile-nav-button" aria-label="Open navigation menu"><span></span></label>
+          <div class="mobile-top-title">Controls</div>
+          <nav class="topnav" aria-label="Primary">
+            <a href="./index.html">Community</a>
+            <a href="./readings.html">Daily Readings</a>
+            <a href="./controls.html">Controls</a>
+            <a href="./notifications.html">Notifications</a>
+            <a href="./settings.html">Settings</a>
+          </nav>
+        </div>
+        <a class="notify-link" href="./notifications.html">Alerts <span class="notify-count" data-notify-count hidden>0</span></a>
+      </div>
+      <label for="nav-toggle" class="mobile-overlay" aria-hidden="true"></label>
+      <aside class="mobile-drawer" aria-label="Mobile navigation">
+        <nav>
+          <a href="./index.html">Community</a>
+          <a href="./readings.html">Daily Readings</a>
+          <a href="./controls.html">Controls</a>
+          <a href="./notifications.html">Notifications</a>
+          <a href="./settings.html">Settings</a>
+        </nav>
+      </aside>
+      <div class="hero">
+        <h1>PRayerbox Controls</h1>
+        <p>Use this page only for controlling your lights. Group setup and claims live in Settings.</p>
+      </div>
+
+      <section class="panel">
+        <h2>My Lights</h2>
+        <div class="actions">
+          <button id="refresh-devices">Refresh Devices</button>
+          <a href="./settings.html">Open Settings</a>
+        </div>
+        <div style="margin-top:16px;">
+          <label for="device-select">Choose a light</label>
+          <select id="device-select" disabled>
+            <option value="">Loading your devices...</option>
+          </select>
+        </div>
+        <div id="devices-empty" class="status" hidden>No devices loaded yet.</div>
+        <div id="selected-device" class="device-list"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Status</h2>
+        <div id="status" class="status">Idle.</div>
+      </section>
+    </main>
+
+    <script type="module">
+      import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+      const config = window.PRAYERBOX_PORTAL_CONFIG || {};
+      const projectUrl = config.projectUrl || "";
+      const anonKey = config.anonKey || "";
+      const els = {
+        deviceSelect: document.querySelector("#device-select"),
+        devicesEmpty: document.querySelector("#devices-empty"),
+        refreshDevices: document.querySelector("#refresh-devices"),
+        selectedDevice: document.querySelector("#selected-device"),
+        status: document.querySelector("#status"),
+      };
+      let currentDevices = [];
+      let supabase = null;
+
+      function setStatus(message, isError = false) {
+        els.status.textContent = message;
+        els.status.classList.toggle("error", isError);
+      }
+
+      function getClient() {
+        if (!projectUrl || !anonKey) {
+          throw new Error("Portal config is missing. Ask the admin to update portal/config.js.");
+        }
+        if (!supabase) {
+          supabase = createClient(projectUrl, anonKey);
+        }
+        return supabase;
+      }
+
+      function setNotificationBadge(count) {
+        document.querySelectorAll("[data-notify-count]").forEach((badge) => {
+          badge.hidden = !count;
+          badge.textContent = count > 99 ? "99+" : String(count || 0);
+        });
+      }
+
+      async function authedFetch(path, options = {}) {
+        const client = getClient();
+        const { data: sessionData } = await client.auth.getSession();
+        const accessToken = sessionData.session?.access_token;
+        if (!accessToken) throw new Error("Sign in first from the Settings page.");
+        return fetch(`${projectUrl}${path}`, {
+          ...options,
+          headers: {
+            apikey: anonKey,
+            Authorization: `Bearer ${accessToken}`,
+            ...(options.headers || {}),
+          },
+        });
+      }
+
+      async function refreshNotificationBadge() {
+        try {
+          const response = await authedFetch("/functions/v1/my-notifications", { method: "GET" });
+          const payload = await response.json();
+          if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to load notifications.");
+          setNotificationBadge(payload.unreadCount || 0);
+        } catch {
+          setNotificationBadge(0);
+        }
+      }
+
+      async function refreshSessionState() {
+        try {
+          const client = getClient();
+          const { data } = await client.auth.getSession();
+          const session = data.session;
+          if (!session) {
+          els.devicesEmpty.textContent = "Sign in from Settings to control your lights.";
+          els.devicesEmpty.hidden = false;
+          els.deviceSelect.innerHTML = `<option value="">Sign in first</option>`;
+          els.deviceSelect.disabled = true;
+          els.selectedDevice.innerHTML = "";
+            setNotificationBadge(0);
+            return false;
+          }
+          await refreshNotificationBadge();
+          return true;
+        } catch (error) {
+          els.devicesEmpty.textContent = error.message || "Session unavailable.";
+          els.devicesEmpty.hidden = false;
+          els.deviceSelect.innerHTML = `<option value="">Unavailable</option>`;
+          els.deviceSelect.disabled = true;
+          els.selectedDevice.innerHTML = "";
+          setNotificationBadge(0);
+          return false;
+        }
+      }
+
+      function renderSelectedDevice(deviceId) {
+        const device = currentDevices.find((item) => item.deviceId === deviceId) || currentDevices[0];
+        els.selectedDevice.innerHTML = "";
+        if (!device) {
+          return;
+        }
+
+        els.deviceSelect.value = device.deviceId;
+        const card = document.createElement("div");
+        card.className = "device-card";
+        card.innerHTML = `
+          <strong>${device.displayName || device.deviceId}</strong>
+          <div class="pill-row">
+            <span class="pill">${device.groupName || device.groupId || "No group"}</span>
+            <span class="pill ${device.isOnline ? "" : "offline"}">${device.isOnline ? "Online" : "Offline"}</span>
+            <span class="pill">${device.isActive ? "Active" : "Inactive"}</span>
+          </div>
+          <div class="actions">
+            <button class="toggle-device" data-device-id="${device.deviceId}" data-next-active="${device.isActive ? "false" : "true"}">${device.isActive ? "Turn Off" : "Turn On"}</button>
+          </div>`;
+        els.selectedDevice.appendChild(card);
+
+        const button = els.selectedDevice.querySelector(".toggle-device");
+        if (button) {
+          button.addEventListener("click", () => wrap(
+            () => toggleDevice(button.dataset.deviceId, button.dataset.nextActive === "true"),
+            button,
+          ));
+        }
+      }
+
+      function renderDevices(ownerEmail, devices) {
+        currentDevices = devices || [];
+        els.selectedDevice.innerHTML = "";
+        if (!currentDevices.length) {
+          els.devicesEmpty.textContent = ownerEmail ? `No claimed devices found for ${ownerEmail}.` : "No devices loaded yet.";
+          els.devicesEmpty.hidden = false;
+          els.deviceSelect.innerHTML = `<option value="">No devices available</option>`;
+          els.deviceSelect.disabled = true;
+          return;
+        }
+
+        els.devicesEmpty.hidden = true;
+        els.deviceSelect.innerHTML = currentDevices
+          .map((device) => `<option value="${device.deviceId}">${device.displayName || device.deviceId}</option>`)
+          .join("");
+        els.deviceSelect.disabled = false;
+        renderSelectedDevice(els.deviceSelect.value || currentDevices[0].deviceId);
+      }
+
+      async function loadMyDevices() {
+        const client = getClient();
+        const { data: sessionData } = await client.auth.getSession();
+        const ownerEmail = sessionData.session?.user?.email || "";
+        const response = await authedFetch("/functions/v1/my-devices", { method: "GET" });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || payload.message || "Failed to load devices.");
+        renderDevices(ownerEmail, payload.devices || []);
+        setStatus(`Loaded ${payload.devices.length} device${payload.devices.length === 1 ? "" : "s"}.`);
+      }
+
+      async function toggleDevice(deviceId, active) {
+        if (!deviceId) throw new Error("Device UID is required.");
+        const response = await authedFetch("/functions/v1/set-device-active", {
+          body: JSON.stringify({ active, deviceId }),
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || payload.message || "Failed to update device state.");
+        setStatus(`${active ? "Turned on" : "Turned off"} ${payload.device.deviceId}. Group mode is now ${payload.groupState.lightingMode}.`);
+        await loadMyDevices();
+      }
+
+      async function wrap(fn, button) {
+        try {
+          button.disabled = true;
+          await fn();
+        } catch (error) {
+          setStatus(error.message || "Request failed.", true);
+        } finally {
+          button.disabled = false;
+        }
+      }
+
+      els.refreshDevices.addEventListener("click", () => wrap(loadMyDevices, els.refreshDevices));
+      els.deviceSelect.addEventListener("change", () => renderSelectedDevice(els.deviceSelect.value));
+
+      const signedIn = await refreshSessionState();
+      if (signedIn) {
+        await loadMyDevices();
+      }
+    </script>
+  </body>
+</html>

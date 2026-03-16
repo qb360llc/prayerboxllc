@@ -3,14 +3,15 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>PRayerbox Controls</title>
+    <title>PRayerbox Community</title>
     <script src="./config.js"></script>
     <style>
       :root { --bg:#f3efe4; --panel:#fffaf0; --ink:#1b1a17; --muted:#6f675d; --accent:#0d6b57; --accent-strong:#084c3e; --line:#d8cfbf; --danger:#a12828; }
       * { box-sizing:border-box; }
       body { margin:0; min-height:100vh; font-family:Georgia,"Times New Roman",serif; color:var(--ink); background:radial-gradient(circle at top left, rgba(13,107,87,.12), transparent 30%), linear-gradient(180deg, #efe7d6 0%, var(--bg) 100%); }
-      main { max-width:760px; margin:0 auto; padding:32px 20px 64px; }
+      main { max-width:860px; margin:0 auto; padding:32px 20px 64px; }
       h1 { margin:0 0 8px; font-size:clamp(2rem,5vw,3.4rem); line-height:1; }
+      h2, h3 { margin:0; }
       p { color:var(--muted); line-height:1.5; }
       a { color:var(--accent-strong); }
       .topbar { display:flex; justify-content:flex-end; gap:10px; }
@@ -31,21 +32,33 @@
       .mobile-drawer nav { display:grid; gap:10px; }
       .mobile-drawer a { display:block; padding:12px 14px; border-radius:14px; text-decoration:none; background:rgba(13,107,87,.08); }
       .panel { margin-top:24px; padding:20px; border:1px solid var(--line); border-radius:18px; background:color-mix(in srgb, var(--panel) 88%, white 12%); box-shadow:0 14px 40px rgba(27,26,23,.08); }
-      .actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:16px; }
-      select { width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:12px; font:inherit; background:#fff; color:var(--ink); }
       label { display:block; font-size:.92rem; margin-bottom:6px; color:var(--muted); }
+      select, textarea { width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:12px; font:inherit; background:#fff; color:var(--ink); }
+      textarea { min-height:72px; resize:vertical; }
       button { padding:12px 16px; border:0; border-radius:999px; font:inherit; font-weight:600; color:#fff; background:var(--accent); cursor:pointer; }
       button.secondary { background:var(--accent-strong); }
+      button.ghost { background:#fff; color:var(--accent-strong); border:1px solid var(--line); }
       button:disabled { opacity:.6; cursor:wait; }
+      .actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:16px; }
       .status { margin-top:16px; padding:12px 14px; border-radius:12px; background:rgba(13,107,87,.08); color:var(--ink); white-space:pre-wrap; }
       .status.error { background:rgba(161,40,40,.1); color:var(--danger); }
-      .device-list { display:grid; gap:12px; margin-top:16px; }
-      .device-card { padding:16px; border:1px solid var(--line); border-radius:16px; background:rgba(255,255,255,.55); }
-      .device-card strong { display:block; margin-bottom:8px; }
-      .pill-row { display:flex; flex-wrap:wrap; gap:8px; }
-      .pill { display:inline-block; padding:4px 10px; border-radius:999px; background:rgba(13,107,87,.12); color:var(--accent-strong); font-size:.85rem; }
-      .pill.offline { background:rgba(161,40,40,.12); color:var(--danger); }
-      .helper { margin-top:12px; font-size:.95rem; color:var(--muted); }
+      .feed-shell { margin-top:18px; max-height:560px; overflow:auto; padding-right:6px; }
+      .feed { display:grid; gap:14px; }
+      .intention { padding:16px; border:1px solid var(--line); border-radius:16px; background:rgba(255,255,255,.55); }
+      .section-title { display:flex; align-items:center; gap:10px; }
+      .group-summary { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+      .icon-button { width:42px; height:42px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:999px; }
+      .meta { margin-top:12px; color:var(--muted); font-size:.92rem; }
+      .reaction-row { display:flex; align-items:center; gap:10px; margin-top:14px; }
+      .heart-button { width:42px; height:42px; padding:0; border-radius:999px; background:#fff; border:1px solid var(--line); color:#b55b5b; font-size:1.2rem; line-height:1; }
+      .heart-button.active { background:#fde7e7; border-color:#d45a5a; color:#c62828; }
+      .heart-count { font-size:.95rem; color:var(--muted); }
+      .empty { color:var(--muted); }
+      .composer { display:grid; gap:12px; }
+      .edit-bar { display:grid; gap:10px; margin-top:12px; }
+      .composer-bar { display:flex; gap:12px; align-items:flex-end; }
+      .composer-bar textarea { flex:1; margin:0; }
+      .composer-bar button { white-space:nowrap; }
       @media (max-width:720px) {
         .topbar { justify-content:space-between; align-items:center; }
         .topnav { display:none; }
@@ -57,6 +70,9 @@
         .nav-toggle:checked ~ .mobile-overlay { display:block; position:fixed; inset:0; background:rgba(27,26,23,.36); z-index:25; }
         .nav-toggle:checked ~ .mobile-drawer { transform:translateX(0); }
       }
+      @media (max-width:719px) {
+        .composer-bar { flex-direction:column; align-items:stretch; }
+      }
     </style>
   </head>
   <body>
@@ -65,12 +81,13 @@
       <div class="topbar">
         <div style="display:flex; align-items:center; gap:10px;">
           <label for="nav-toggle" class="mobile-nav-button" aria-label="Open navigation menu"><span></span></label>
-          <div class="mobile-top-title">Controls</div>
+          <div class="mobile-top-title">Community</div>
           <nav class="topnav" aria-label="Primary">
-            <a href="./index.html">Controls</a>
-            <a href="./settings.html">Settings</a>
-            <a href="./community.html">Community</a>
+            <a href="./index.html">Community</a>
             <a href="./readings.html">Daily Readings</a>
+            <a href="./controls.html">Controls</a>
+            <a href="./notifications.html">Notifications</a>
+            <a href="./settings.html">Settings</a>
           </nav>
         </div>
         <a class="notify-link" href="./notifications.html">Alerts <span class="notify-count" data-notify-count hidden>0</span></a>
@@ -78,37 +95,52 @@
       <label for="nav-toggle" class="mobile-overlay" aria-hidden="true"></label>
       <aside class="mobile-drawer" aria-label="Mobile navigation">
         <nav>
-          <a href="./index.html">Controls</a>
-          <a href="./settings.html">Settings</a>
-          <a href="./community.html">Community</a>
+          <a href="./index.html">Community</a>
           <a href="./readings.html">Daily Readings</a>
+          <a href="./controls.html">Controls</a>
           <a href="./notifications.html">Notifications</a>
+          <a href="./settings.html">Settings</a>
         </nav>
       </aside>
       <div class="hero">
-        <h1>PRayerbox Controls</h1>
-        <p>Use this page only for controlling your lights. Group setup and claims live in Settings.</p>
+        <h1>Community Intentions</h1>
+        <p>Share prayers and intentions with your own community, then respond with a simple heart.</p>
       </div>
 
       <section class="panel">
-        <h2>My Lights</h2>
-        <div class="actions">
-          <button id="refresh-devices">Refresh Devices</button>
-          <a href="./settings.html">Open Settings</a>
+        <h2>Add to the Timeline</h2>
+        <div class="composer">
+          <label for="intention-body">Prayer or Intention</label>
+          <div class="composer-bar">
+            <textarea id="intention-body" placeholder="Please pray for my family, for healing, for peace, or for a special intention..."></textarea>
+            <button id="post-intention">Post Intention</button>
+          </div>
         </div>
-        <div style="margin-top:16px;">
-          <label for="device-select">Choose a light</label>
-          <select id="device-select" disabled>
-            <option value="">Loading your devices...</option>
-          </select>
+      </section>
+
+      <section class="panel">
+        <div class="section-title">
+          <h2>Community Feed</h2>
+          <button id="refresh-feed" class="secondary icon-button" aria-label="Refresh feed" title="Refresh feed">↻</button>
         </div>
-        <div id="devices-empty" class="status" hidden>No devices loaded yet.</div>
-        <div id="selected-device" class="device-list"></div>
+        <div class="group-summary">
+          <div id="active-group" class="empty">Loading your selected community...</div>
+        </div>
+        <div id="feed-empty" class="empty">No intentions loaded yet.</div>
+        <div class="feed-shell">
+          <div id="feed" class="feed"></div>
+        </div>
       </section>
 
       <section class="panel">
         <h2>Status</h2>
         <div id="status" class="status">Idle.</div>
+      </section>
+
+      <section class="panel">
+        <h2>Session</h2>
+        <div id="session-state" class="status">Checking sign-in...</div>
+        <div class="status">Use <a href="./settings.html">Settings</a> to sign in and manage which communities you belong to.</div>
       </section>
     </main>
 
@@ -119,18 +151,31 @@
       const projectUrl = config.projectUrl || "";
       const anonKey = config.anonKey || "";
       const els = {
-        deviceSelect: document.querySelector("#device-select"),
-        devicesEmpty: document.querySelector("#devices-empty"),
-        refreshDevices: document.querySelector("#refresh-devices"),
-        selectedDevice: document.querySelector("#selected-device"),
+        activeGroup: document.querySelector("#active-group"),
+        feed: document.querySelector("#feed"),
+        feedEmpty: document.querySelector("#feed-empty"),
+        intentionBody: document.querySelector("#intention-body"),
+        postIntention: document.querySelector("#post-intention"),
+        refreshFeed: document.querySelector("#refresh-feed"),
+        sessionState: document.querySelector("#session-state"),
         status: document.querySelector("#status"),
       };
-      let currentDevices = [];
+      const SELECTED_GROUP_STORAGE_KEY = "prayerboxSelectedGroupSlug";
+
       let supabase = null;
+      let activeGroup = null;
 
       function setStatus(message, isError = false) {
         els.status.textContent = message;
         els.status.classList.toggle("error", isError);
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;");
       }
 
       function getClient() {
@@ -176,105 +221,164 @@
         }
       }
 
+      function selectedGroupSlug() {
+        return localStorage.getItem(SELECTED_GROUP_STORAGE_KEY) || "";
+      }
+
+      function renderGroups(items) {
+        const groups = items || [];
+        const savedGroupSlug = selectedGroupSlug();
+        activeGroup = groups.find((group) => group.slug === savedGroupSlug) || groups[0] || null;
+        els.postIntention.disabled = !activeGroup;
+        els.refreshFeed.disabled = !activeGroup;
+        if (!activeGroup) {
+          els.activeGroup.textContent = "Choose your active community in Settings first.";
+          els.feedEmpty.textContent = "Join or create a community in Settings before posting intentions.";
+          return;
+        }
+        if (activeGroup.slug !== savedGroupSlug) {
+          localStorage.setItem(SELECTED_GROUP_STORAGE_KEY, activeGroup.slug);
+        }
+        els.activeGroup.textContent = `Showing ${activeGroup.name}. Change this in Settings.`;
+      }
+
+      function renderFeed(intentions) {
+        els.feed.innerHTML = "";
+        if (!intentions.length) {
+          els.feedEmpty.textContent = "No intentions yet for this community.";
+          return;
+        }
+
+        els.feedEmpty.textContent = "";
+        intentions.forEach((item) => {
+          const card = document.createElement("article");
+          card.className = "intention";
+          card.innerHTML = `
+            <h3>${escapeHtml(item.body)}</h3>
+            <div class="meta">Shared by ${escapeHtml(item.createdBy)} on ${new Date(item.createdAt).toLocaleString()}</div>
+            ${item.isOwn ? `
+              <div class="edit-bar">
+                <textarea class="edit-intention-body" data-intention-id="${item.id}">${escapeHtml(item.body)}</textarea>
+                <div class="actions" style="margin-top:0;">
+                  <button class="save-intention secondary" data-intention-id="${item.id}">Save Edit</button>
+                </div>
+              </div>` : ""}
+            <div class="reaction-row">
+              <button class="heart-button react ${item.userReaction === "love" ? "active" : ""}" aria-label="Love this intention" data-intention-id="${item.id}" data-reaction="love">${item.userReaction === "love" ? "♥" : "♡"}</button>
+              <span class="heart-count">${item.loveCount} ${item.loveCount === 1 ? "person loves" : "people love"} this</span>
+            </div>`;
+          els.feed.appendChild(card);
+        });
+
+        els.feed.querySelectorAll(".save-intention").forEach((button) => {
+          button.addEventListener("click", () => wrap(
+            () => {
+              const input = button.closest(".intention")?.querySelector(".edit-intention-body");
+              return editIntention(button.dataset.intentionId || "", input?.value || "");
+            },
+            button,
+          ));
+        });
+
+        els.feed.querySelectorAll(".react").forEach((button) => {
+          button.addEventListener("click", () => wrap(
+            () => reactToIntention(button.dataset.intentionId || "", button.dataset.reaction || ""),
+            button,
+          ));
+        });
+      }
+
       async function refreshSessionState() {
         try {
           const client = getClient();
           const { data } = await client.auth.getSession();
           const session = data.session;
           if (!session) {
-          els.devicesEmpty.textContent = "Sign in from Settings to control your lights.";
-          els.devicesEmpty.hidden = false;
-          els.deviceSelect.innerHTML = `<option value="">Sign in first</option>`;
-          els.deviceSelect.disabled = true;
-          els.selectedDevice.innerHTML = "";
+            els.sessionState.textContent = "Signed out. Open Settings to sign in and join a community.";
             setNotificationBadge(0);
             return false;
           }
+          els.sessionState.textContent = `Signed in as ${session.user.email}`;
           await refreshNotificationBadge();
           return true;
         } catch (error) {
-          els.devicesEmpty.textContent = error.message || "Session unavailable.";
-          els.devicesEmpty.hidden = false;
-          els.deviceSelect.innerHTML = `<option value="">Unavailable</option>`;
-          els.deviceSelect.disabled = true;
-          els.selectedDevice.innerHTML = "";
+          els.sessionState.textContent = error.message || "Session unavailable.";
           setNotificationBadge(0);
           return false;
         }
       }
 
-      function renderSelectedDevice(deviceId) {
-        const device = currentDevices.find((item) => item.deviceId === deviceId) || currentDevices[0];
-        els.selectedDevice.innerHTML = "";
-        if (!device) {
-          return;
-        }
-
-        els.deviceSelect.value = device.deviceId;
-        const card = document.createElement("div");
-        card.className = "device-card";
-        card.innerHTML = `
-          <strong>${device.displayName || device.deviceId}</strong>
-          <div class="pill-row">
-            <span class="pill">${device.groupName || device.groupId || "No group"}</span>
-            <span class="pill ${device.isOnline ? "" : "offline"}">${device.isOnline ? "Online" : "Offline"}</span>
-            <span class="pill">${device.isActive ? "Active" : "Inactive"}</span>
-          </div>
-          <div class="actions">
-            <button class="toggle-device" data-device-id="${device.deviceId}" data-next-active="${device.isActive ? "false" : "true"}">${device.isActive ? "Turn Off" : "Turn On"}</button>
-          </div>`;
-        els.selectedDevice.appendChild(card);
-
-        const button = els.selectedDevice.querySelector(".toggle-device");
-        if (button) {
-          button.addEventListener("click", () => wrap(
-            () => toggleDevice(button.dataset.deviceId, button.dataset.nextActive === "true"),
-            button,
-          ));
-        }
-      }
-
-      function renderDevices(ownerEmail, devices) {
-        currentDevices = devices || [];
-        els.selectedDevice.innerHTML = "";
-        if (!currentDevices.length) {
-          els.devicesEmpty.textContent = ownerEmail ? `No claimed devices found for ${ownerEmail}.` : "No devices loaded yet.";
-          els.devicesEmpty.hidden = false;
-          els.deviceSelect.innerHTML = `<option value="">No devices available</option>`;
-          els.deviceSelect.disabled = true;
-          return;
-        }
-
-        els.devicesEmpty.hidden = true;
-        els.deviceSelect.innerHTML = currentDevices
-          .map((device) => `<option value="${device.deviceId}">${device.displayName || device.deviceId}</option>`)
-          .join("");
-        els.deviceSelect.disabled = false;
-        renderSelectedDevice(els.deviceSelect.value || currentDevices[0].deviceId);
-      }
-
-      async function loadMyDevices() {
-        const client = getClient();
-        const { data: sessionData } = await client.auth.getSession();
-        const ownerEmail = sessionData.session?.user?.email || "";
-        const response = await authedFetch("/functions/v1/my-devices", { method: "GET" });
+      async function loadGroups() {
+        const response = await authedFetch("/functions/v1/my-groups", { method: "GET" });
         const payload = await response.json();
-        if (!response.ok || !payload.ok) throw new Error(payload.error || payload.message || "Failed to load devices.");
-        renderDevices(ownerEmail, payload.devices || []);
-        setStatus(`Loaded ${payload.devices.length} device${payload.devices.length === 1 ? "" : "s"}.`);
+        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to load communities.");
+        renderGroups(payload.groups || []);
       }
 
-      async function toggleDevice(deviceId, active) {
-        if (!deviceId) throw new Error("Device UID is required.");
-        const response = await authedFetch("/functions/v1/set-device-active", {
-          body: JSON.stringify({ active, deviceId }),
+      async function loadFeed() {
+        const groupSlug = selectedGroupSlug();
+        if (!groupSlug) {
+          renderFeed([]);
+          return;
+        }
+
+        const response = await authedFetch(`/functions/v1/community-intentions?groupSlug=${encodeURIComponent(groupSlug)}`, { method: "GET" });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to load intentions.");
+        renderFeed(payload.intentions || []);
+        setStatus(`Loaded intentions for ${payload.group?.name || groupSlug}.`);
+      }
+
+      async function postIntention() {
+        const groupSlug = selectedGroupSlug();
+        const body = els.intentionBody.value.trim();
+        if (!groupSlug) throw new Error("Choose a community first.");
+        if (!body) throw new Error("Enter a prayer or intention first.");
+
+        const response = await authedFetch("/functions/v1/community-intentions", {
+          body: JSON.stringify({ action: "create", body, groupSlug }),
           headers: { "Content-Type": "application/json" },
           method: "POST",
         });
         const payload = await response.json();
-        if (!response.ok || !payload.ok) throw new Error(payload.error || payload.message || "Failed to update device state.");
-        setStatus(`${active ? "Turned on" : "Turned off"} ${payload.device.deviceId}. Group mode is now ${payload.groupState.lightingMode}.`);
-        await loadMyDevices();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to post intention.");
+        els.intentionBody.value = "";
+        renderFeed(payload.intentions || []);
+        setStatus("Posted your intention to the community feed.");
+      }
+
+      async function editIntention(intentionId, body) {
+        const groupSlug = selectedGroupSlug();
+        const nextBody = body.trim();
+        if (!groupSlug) throw new Error("Choose a community first.");
+        if (!intentionId) throw new Error("Unknown intention.");
+        if (!nextBody) throw new Error("Enter a prayer or intention first.");
+
+        const response = await authedFetch("/functions/v1/community-intentions", {
+          body: JSON.stringify({ action: "edit", body: nextBody, groupSlug, intentionId }),
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to update intention.");
+        renderFeed(payload.intentions || []);
+        setStatus("Updated your intention.");
+      }
+
+      async function reactToIntention(intentionId, reactionType) {
+        const groupSlug = selectedGroupSlug();
+        if (!groupSlug) throw new Error("Choose a community first.");
+        if (!intentionId) throw new Error("Unknown intention.");
+
+        const response = await authedFetch("/functions/v1/community-intentions", {
+          body: JSON.stringify({ action: "react", groupSlug, intentionId, reactionType }),
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to react to intention.");
+        renderFeed(payload.intentions || []);
+        setStatus("Updated your love reaction.");
       }
 
       async function wrap(fn, button) {
@@ -288,12 +392,13 @@
         }
       }
 
-      els.refreshDevices.addEventListener("click", () => wrap(loadMyDevices, els.refreshDevices));
-      els.deviceSelect.addEventListener("change", () => renderSelectedDevice(els.deviceSelect.value));
+      els.refreshFeed.addEventListener("click", () => wrap(loadFeed, els.refreshFeed));
+      els.postIntention.addEventListener("click", () => wrap(postIntention, els.postIntention));
 
       const signedIn = await refreshSessionState();
       if (signedIn) {
-        await loadMyDevices();
+        await loadGroups();
+        await loadFeed();
       }
     </script>
   </body>
