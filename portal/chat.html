@@ -39,7 +39,7 @@
       .mobile-drawer nav { display:grid; gap:10px; }
       .mobile-drawer a { display:block; padding:12px 14px; border-radius:14px; text-decoration:none; background:rgba(13,107,87,.08); }
       .panel { margin-top:24px; padding:20px; border:1px solid var(--line); border-radius:18px; background:color-mix(in srgb, var(--panel) 88%, white 12%); box-shadow:0 14px 40px rgba(27,26,23,.08); }
-      .chat-shell { margin-top:18px; max-height:520px; overflow:auto; padding-right:6px; }
+      .chat-shell { margin-top:18px; height:560px; overflow-y:auto; padding-right:6px; border-top:1px solid rgba(216,207,191,.8); border-bottom:1px solid rgba(216,207,191,.8); }
       .chat-list { display:grid; gap:12px; }
       .chat-row { display:flex; }
       .chat-row.own { justify-content:flex-end; }
@@ -71,6 +71,7 @@
       }
       @media (max-width:719px) {
         .chat-composer-row { flex-direction:column; align-items:stretch; }
+        .chat-shell { height:420px; }
       }
     </style>
   </head>
