@@ -48,6 +48,7 @@
       .group-card, .device-card { padding:14px; border:1px solid var(--line); border-radius:14px; background:rgba(255,255,255,.55); margin-top:12px; }
       .invite-row { display:flex; gap:10px; margin-top:10px; align-items:center; }
       .invite-row input { flex:1; }
+      .device-name-row { display:grid; gap:10px; margin-top:12px; }
       code { font-family:"Courier New", monospace; }
       @media (max-width:720px) {
         .topbar { justify-content:space-between; align-items:center; }
@@ -347,14 +348,31 @@
           card.className = "device-card";
           card.innerHTML = `
             <strong>${escapeHtml(device.displayName || device.deviceId)}</strong>
+            <div class="device-name-row">
+              <div>
+                <label for="device-name-${escapeHtml(device.deviceId)}">Device Name</label>
+                <input id="device-name-${escapeHtml(device.deviceId)}" class="device-name-input" data-device-id="${device.deviceId}" value="${escapeHtml(device.displayName || device.deviceId)}">
+              </div>
+            </div>
             <div>Current community: ${escapeHtml(device.groupName || device.groupId || "Unassigned")}</div>
             <div class="device-actions">
               <select class="device-group-select" data-device-id="${device.deviceId}" ${groups.length ? "" : "disabled"}>
                 ${groupOptionsMarkup(device.groupId)}
               </select>
+              <button class="rename-device ghost" data-device-id="${device.deviceId}">Save Name</button>
               <button class="move-device secondary" data-device-id="${device.deviceId}" ${groups.length ? "" : "disabled"}>Save Group</button>
             </div>`;
           els.devicesList.appendChild(card);
+        });
+
+        els.devicesList.querySelectorAll(".rename-device").forEach((button) => {
+          button.addEventListener("click", () => wrap(
+            () => {
+              const input = button.closest(".device-card")?.querySelector(".device-name-input");
+              return renameDevice(button.dataset.deviceId, input?.value || "");
+            },
+            button,
+          ));
         });
 
         els.devicesList.querySelectorAll(".move-device").forEach((button) => {
@@ -418,6 +436,20 @@
         const payload = await response.json();
         if (!response.ok || !payload.ok) throw new Error(payload.error || payload.message || "Failed to move device.");
         setStatus(`Moved ${payload.device.deviceId} into ${payload.device.groupName}.`);
+        await loadMyDevices();
+      }
+
+      async function renameDevice(deviceId, displayName) {
+        const nextName = displayName.trim();
+        if (!deviceId || !nextName) throw new Error("Enter a device name first.");
+        const response = await authedFetch("/functions/v1/set-device-name", {
+          body: JSON.stringify({ deviceId, displayName: nextName }),
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || payload.message || "Failed to rename device.");
+        setStatus(`Renamed ${payload.device.deviceId} to ${payload.device.displayName}.`);
         await loadMyDevices();
       }
 
