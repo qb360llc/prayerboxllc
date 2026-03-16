@@ -45,10 +45,15 @@
       .grid { display:grid; gap:12px; }
       @media (min-width:640px) { .grid.two { grid-template-columns:1fr 1fr; } }
       label { display:block; font-size:.92rem; margin-bottom:6px; color:var(--muted); }
+      .group-heading { font-size:1.08rem; font-weight:700; color:var(--ink); margin-bottom:10px; }
       select { width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:12px; font:inherit; background:#fff; color:var(--ink); }
       .status { margin-top:14px; padding:12px 14px; border-radius:12px; background:rgba(13,107,87,.08); color:var(--ink); white-space:pre-wrap; }
       .status.error { background:rgba(161,40,40,.1); color:#a12828; }
       audio { width:100%; margin-top:14px; }
+      .group-row { display:grid; grid-template-columns:1fr auto; gap:10px; align-items:end; }
+      .icon-button { width:46px; height:46px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:14px; font-size:1.15rem; line-height:1; }
+      .audio-tools { display:flex; gap:10px; margin-top:12px; }
+      .audio-tools .icon-button { border-radius:999px; }
       @media (max-width:720px) {
         .topbar { justify-content:space-between; align-items:center; }
         .topnav { display:none; }
@@ -94,30 +99,24 @@
       </div>
 
       <section class="panel">
-        <p>This page loads the current daily reading from the official USCCB RSS feed and keeps the community audio unique to your selected PRayerbox group.</p>
         <div class="recording-panel">
-          <div id="session-note" class="note">Sign in on the main portal to access your community recording feed.</div>
-          <div class="grid two">
+          <div class="group-heading">Community Group</div>
+          <div class="group-row">
             <div>
-              <label for="group-select">Community Group</label>
               <select id="group-select" disabled>
                 <option value="">Sign in to load your communities</option>
               </select>
             </div>
-            <div style="align-self:end;">
-              <div class="actions" style="margin-top:0;">
-                <button id="refresh-groups" class="secondary">Refresh Groups</button>
-              </div>
-            </div>
-          </div>
-          <div class="actions">
-            <button id="record-button">Record Reading</button>
-            <button id="stop-button" class="secondary" disabled>Stop</button>
-            <button id="refresh-audio" class="secondary">Refresh Latest Audio</button>
+            <button id="refresh-groups" class="secondary icon-button" aria-label="Refresh groups" title="Refresh groups">↻</button>
           </div>
           <div id="recording-status" class="status">No community recording loaded yet.</div>
           <div id="recording-meta" class="note"></div>
           <audio id="shared-audio" controls preload="none"></audio>
+          <div class="audio-tools">
+            <button id="record-button" class="icon-button" aria-label="Record reading" title="Record reading">●</button>
+            <button id="stop-button" class="secondary icon-button" aria-label="Stop recording" title="Stop recording" disabled>■</button>
+            <button id="refresh-audio" class="secondary icon-button" aria-label="Refresh latest audio" title="Refresh latest audio">↻</button>
+          </div>
         </div>
         <div id="status" class="quote">Loading today's reading...</div>
         <div id="reading-meta" class="note"></div>
@@ -145,8 +144,6 @@
       const recordingMetaEl = document.querySelector("#recording-meta");
       const sharedAudioEl = document.querySelector("#shared-audio");
       const refreshAudioButton = document.querySelector("#refresh-audio");
-      const sessionNoteEl = document.querySelector("#session-note");
-
       let currentReadingDate = new Date().toISOString().slice(0, 10);
       let currentGroups = [];
       let mediaRecorder = null;
@@ -243,14 +240,11 @@
       async function refreshRecordingUi() {
         const session = await getSession();
         if (!session) {
-          sessionNoteEl.textContent = "Sign in on the main portal to access your community recording feed.";
           renderGroups([]);
           setRecordingStatus("Sign in to listen to or share a community recording.");
           setNotificationBadge(0);
           return;
         }
-
-        sessionNoteEl.textContent = `Signed in as ${session.user.email}. Recordings are scoped to your selected community group.`;
 
         try {
           const notifyResponse = await authedFetch("/functions/v1/my-notifications", { method: "GET" });
