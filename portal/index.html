@@ -290,6 +290,9 @@
         els.modeSignup.classList.toggle("active", isSignup);
         els.signupNameRow.hidden = !isSignup;
         els.signupConfirmRow.hidden = !isSignup;
+        els.authFirstName.disabled = !isSignup;
+        els.authLastName.disabled = !isSignup;
+        els.authConfirmPassword.disabled = !isSignup;
         els.authSubmit.textContent = isSignup ? "Create Account" : "Log In";
         els.authSwitch.textContent = isSignup ? "Already have an account? Log In" : "Need an account? Sign Up";
         setAuthStatus(isSignup ? "Create your account to join PRayerbox." : "Welcome back. Log in to continue.");
@@ -502,7 +505,12 @@
         }
 
         if (authMode === "signup") {
+          const firstName = els.authFirstName.value.trim();
+          const lastName = els.authLastName.value.trim();
           const confirmPassword = els.authConfirmPassword.value;
+          if (!firstName || !lastName) {
+            throw new Error("First and last name are required for sign up.");
+          }
           if (password !== confirmPassword) {
             throw new Error("Passwords do not match.");
           }
