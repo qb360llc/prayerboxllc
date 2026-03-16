@@ -32,8 +32,6 @@
       .mobile-drawer nav { display:grid; gap:10px; }
       .mobile-drawer a { display:block; padding:12px 14px; border-radius:14px; text-decoration:none; background:rgba(13,107,87,.08); }
       .panel { margin-top:24px; padding:20px; border:1px solid var(--line); border-radius:18px; background:color-mix(in srgb, var(--panel) 88%, white 12%); box-shadow:0 14px 40px rgba(27,26,23,.08); }
-      .grid { display:grid; gap:12px; }
-      @media (min-width:720px) { .grid.two { grid-template-columns:1fr auto; align-items:end; } }
       label { display:block; font-size:.92rem; margin-bottom:6px; color:var(--muted); }
       select, textarea { width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:12px; font:inherit; background:#fff; color:var(--ink); }
       textarea { min-height:72px; resize:vertical; }
@@ -47,6 +45,7 @@
       .feed-shell { margin-top:18px; max-height:560px; overflow:auto; padding-right:6px; }
       .feed { display:grid; gap:14px; }
       .intention { padding:16px; border:1px solid var(--line); border-radius:16px; background:rgba(255,255,255,.55); }
+      .group-summary { display:flex; align-items:center; justify-content:space-between; gap:12px; }
       .meta { margin-top:12px; color:var(--muted); font-size:.92rem; }
       .reaction-row { display:flex; align-items:center; gap:10px; margin-top:14px; }
       .heart-button { width:42px; height:42px; padding:0; border-radius:999px; background:#fff; border:1px solid var(--line); color:#b55b5b; font-size:1.2rem; line-height:1; }
@@ -106,17 +105,11 @@
       </div>
 
       <section class="panel">
-        <h2>Choose Community</h2>
-        <div class="grid two">
-          <div>
-            <select id="group-select"></select>
-          </div>
+        <h2>Community Feed</h2>
+        <div class="group-summary">
+          <div id="active-group" class="empty">Loading your selected community...</div>
           <button id="refresh-feed" class="secondary">Refresh Feed</button>
         </div>
-      </section>
-
-      <section class="panel">
-        <h2>Community Feed</h2>
         <div id="feed-empty" class="empty">No intentions loaded yet.</div>
         <div class="feed-shell">
           <div id="feed" class="feed"></div>
@@ -153,18 +146,19 @@
       const projectUrl = config.projectUrl || "";
       const anonKey = config.anonKey || "";
       const els = {
+        activeGroup: document.querySelector("#active-group"),
         feed: document.querySelector("#feed"),
         feedEmpty: document.querySelector("#feed-empty"),
-        groupSelect: document.querySelector("#group-select"),
         intentionBody: document.querySelector("#intention-body"),
         postIntention: document.querySelector("#post-intention"),
         refreshFeed: document.querySelector("#refresh-feed"),
         sessionState: document.querySelector("#session-state"),
         status: document.querySelector("#status"),
       };
+      const SELECTED_GROUP_STORAGE_KEY = "prayerboxSelectedGroupSlug";
 
       let supabase = null;
-      let groups = [];
+      let activeGroup = null;
 
       function setStatus(message, isError = false) {
         els.status.textContent = message;
@@ -223,18 +217,24 @@
       }
 
       function selectedGroupSlug() {
-        return els.groupSelect.value || "";
+        return localStorage.getItem(SELECTED_GROUP_STORAGE_KEY) || "";
       }
 
       function renderGroups(items) {
-        groups = items || [];
-        els.groupSelect.innerHTML = groups.map((group) => `<option value="${escapeHtml(group.slug)}">${escapeHtml(group.name)}</option>`).join("");
-        els.groupSelect.disabled = !groups.length;
-        els.postIntention.disabled = !groups.length;
-        els.refreshFeed.disabled = !groups.length;
-        if (!groups.length) {
+        const groups = items || [];
+        const savedGroupSlug = selectedGroupSlug();
+        activeGroup = groups.find((group) => group.slug === savedGroupSlug) || groups[0] || null;
+        els.postIntention.disabled = !activeGroup;
+        els.refreshFeed.disabled = !activeGroup;
+        if (!activeGroup) {
+          els.activeGroup.textContent = "Choose your active community in Settings first.";
           els.feedEmpty.textContent = "Join or create a community in Settings before posting intentions.";
+          return;
         }
+        if (activeGroup.slug !== savedGroupSlug) {
+          localStorage.setItem(SELECTED_GROUP_STORAGE_KEY, activeGroup.slug);
+        }
+        els.activeGroup.textContent = `Showing ${activeGroup.name}. Change this in Settings.`;
       }
 
       function renderFeed(intentions) {
@@ -389,13 +389,6 @@
 
       els.refreshFeed.addEventListener("click", () => wrap(loadFeed, els.refreshFeed));
       els.postIntention.addEventListener("click", () => wrap(postIntention, els.postIntention));
-      els.groupSelect.addEventListener("change", async () => {
-        try {
-          await loadFeed();
-        } catch (error) {
-          setStatus(error.message || "Failed to load intentions.", true);
-        }
-      });
 
       const signedIn = await refreshSessionState();
       if (signedIn) {

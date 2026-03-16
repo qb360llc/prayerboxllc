@@ -149,6 +149,20 @@
       </section>
 
       <section class="panel">
+        <h2>Select Group</h2>
+        <p>Choose the community the rest of your portal pages should use by default.</p>
+        <div class="grid">
+          <div>
+            <label for="selected-group">Selected Group</label>
+            <select id="selected-group" disabled>
+              <option value="">Load your communities first</option>
+            </select>
+          </div>
+        </div>
+        <div id="selected-group-status" class="status">No group selected yet.</div>
+      </section>
+
+      <section class="panel">
         <h2>Device Groups</h2>
         <p>Choose which community each of your claimed devices should sync with.</p>
         <div class="actions"><button id="refresh-devices">Refresh Devices</button></div>
@@ -188,12 +202,15 @@
         refreshProfile: document.querySelector("#refresh-profile"),
         refreshGroups: document.querySelector("#refresh-groups"),
         saveProfile: document.querySelector("#save-profile"),
+        selectedGroup: document.querySelector("#selected-group"),
+        selectedGroupStatus: document.querySelector("#selected-group-status"),
         sessionState: document.querySelector("#session-state"),
         signIn: document.querySelector("#sign-in"),
         signOut: document.querySelector("#sign-out"),
         signUp: document.querySelector("#sign-up"),
         status: document.querySelector("#status"),
       };
+      const SELECTED_GROUP_STORAGE_KEY = "prayerboxSelectedGroupSlug";
       let groups = [];
       let supabase = null;
 
@@ -214,6 +231,18 @@
         await navigator.clipboard.writeText(text);
       }
 
+      function getSelectedGroupSlug() {
+        return localStorage.getItem(SELECTED_GROUP_STORAGE_KEY) || "";
+      }
+
+      function saveSelectedGroupSlug(groupSlug) {
+        if (groupSlug) {
+          localStorage.setItem(SELECTED_GROUP_STORAGE_KEY, groupSlug);
+        } else {
+          localStorage.removeItem(SELECTED_GROUP_STORAGE_KEY);
+        }
+      }
+
       function getClient() {
         if (!projectUrl || !anonKey) {
           throw new Error("Portal config is missing. Ask the admin to update portal/config.js.");
@@ -226,6 +255,36 @@
 
       function groupOptionsMarkup(selectedGroupId) {
         return groups.map((group) => `<option value="${escapeHtml(group.slug)}"${group.slug === selectedGroupId ? " selected" : ""}>${escapeHtml(group.name)}</option>`).join("");
+      }
+
+      function renderSelectedGroupPicker() {
+        const selectedGroupSlug = getSelectedGroupSlug();
+        els.selectedGroup.innerHTML = "";
+
+        if (!groups.length) {
+          els.selectedGroup.innerHTML = `<option value="">No communities available</option>`;
+          els.selectedGroup.disabled = true;
+          els.selectedGroupStatus.textContent = "Join or create a community first.";
+          return;
+        }
+
+        const resolvedSlug = groups.some((group) => group.slug === selectedGroupSlug)
+          ? selectedGroupSlug
+          : groups[0].slug;
+
+        if (resolvedSlug !== selectedGroupSlug) {
+          saveSelectedGroupSlug(resolvedSlug);
+        }
+
+        els.selectedGroup.innerHTML = groups
+          .map((group) => `<option value="${escapeHtml(group.slug)}"${group.slug === resolvedSlug ? " selected" : ""}>${escapeHtml(group.name)}</option>`)
+          .join("");
+        els.selectedGroup.disabled = false;
+
+        const selectedGroup = groups.find((group) => group.slug === resolvedSlug);
+        els.selectedGroupStatus.textContent = selectedGroup
+          ? `${selectedGroup.name} is your active community for Community and Daily Readings.`
+          : "No group selected yet.";
       }
 
       function setNotificationBadge(count) {
@@ -249,9 +308,11 @@
           const session = { user };
           els.sessionState.value = session ? `Signed in as ${session.user.email}` : "Signed out";
           await refreshNotificationBadge();
+          return true;
         } catch {
           els.sessionState.value = "Signed out";
           setNotificationBadge(0);
+          return false;
         }
       }
 
@@ -304,6 +365,7 @@
         els.groupsList.innerHTML = "";
         if (!groups.length) {
           els.groupsEmpty.textContent = "You are not a member of any communities yet.";
+          renderSelectedGroupPicker();
           return;
         }
 
@@ -333,6 +395,8 @@
             }
           });
         });
+
+        renderSelectedGroupPicker();
       }
 
       function renderDevices(devices) {
@@ -481,6 +545,8 @@
         renderDevices([]);
         els.firstName.value = "";
         els.lastName.value = "";
+        saveSelectedGroupSlug("");
+        renderSelectedGroupPicker();
         setStatus("Signed out.");
         await refreshSessionState();
       }
@@ -554,8 +620,17 @@
       els.joinGroup.addEventListener("click", () => wrap(joinGroup, els.joinGroup));
       els.refreshGroups.addEventListener("click", () => wrap(loadMyGroups, els.refreshGroups));
       els.refreshDevices.addEventListener("click", () => wrap(loadMyDevices, els.refreshDevices));
-      refreshSessionState();
-      loadProfile().catch(() => {});
+      els.selectedGroup.addEventListener("change", () => {
+        saveSelectedGroupSlug(els.selectedGroup.value);
+        renderSelectedGroupPicker();
+        setStatus("Saved your active community.");
+      });
+      const signedIn = await refreshSessionState();
+      if (signedIn) {
+        await loadProfile().catch(() => {});
+        await loadMyGroups().catch(() => {});
+        await loadMyDevices().catch(() => {});
+      }
     </script>
   </body>
 </html>

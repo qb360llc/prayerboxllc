@@ -46,11 +46,9 @@
       @media (min-width:640px) { .grid.two { grid-template-columns:1fr 1fr; } }
       label { display:block; font-size:.92rem; margin-bottom:6px; color:var(--muted); }
       .group-heading { font-size:1.08rem; font-weight:700; color:var(--ink); margin-bottom:10px; }
-      select { width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:12px; font:inherit; background:#fff; color:var(--ink); }
       .status { margin-top:14px; padding:12px 14px; border-radius:12px; background:rgba(13,107,87,.08); color:var(--ink); white-space:pre-wrap; }
       .status.error { background:rgba(161,40,40,.1); color:#a12828; }
       audio { width:100%; margin-top:14px; }
-      .group-row { display:grid; grid-template-columns:1fr auto; gap:10px; align-items:end; }
       .icon-button { width:46px; height:46px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:14px; font-size:1.15rem; line-height:1; }
       .audio-tools { display:flex; gap:10px; margin-top:12px; }
       .audio-tools .icon-button { border-radius:999px; }
@@ -101,14 +99,7 @@
       <section class="panel">
         <div class="recording-panel">
           <div class="group-heading">Community Group</div>
-          <div class="group-row">
-            <div>
-              <select id="group-select" disabled>
-                <option value="">Sign in to load your communities</option>
-              </select>
-            </div>
-            <button id="refresh-groups" class="secondary icon-button" aria-label="Refresh groups" title="Refresh groups">↻</button>
-          </div>
+          <div id="active-group" class="note">Loading your selected community...</div>
           <div id="recording-status" class="status">No community recording loaded yet.</div>
           <div id="recording-meta" class="note"></div>
           <audio id="shared-audio" controls preload="none"></audio>
@@ -131,13 +122,13 @@
       const config = window.PRAYERBOX_PORTAL_CONFIG || {};
       const projectUrl = config.projectUrl || "";
       const anonKey = config.anonKey || "";
+      const SELECTED_GROUP_STORAGE_KEY = "prayerboxSelectedGroupSlug";
       const supabase = projectUrl && anonKey ? createClient(projectUrl, anonKey) : null;
+      const activeGroupEl = document.querySelector("#active-group");
       const statusEl = document.querySelector("#status");
       const metaEl = document.querySelector("#reading-meta");
       const contentEl = document.querySelector("#reading-content");
       const officialLinkEl = document.querySelector("#official-link");
-      const groupSelectEl = document.querySelector("#group-select");
-      const refreshGroupsButton = document.querySelector("#refresh-groups");
       const recordButton = document.querySelector("#record-button");
       const stopButton = document.querySelector("#stop-button");
       const recordingStatusEl = document.querySelector("#recording-status");
@@ -204,7 +195,7 @@
       }
 
       function selectedGroupSlug() {
-        return groupSelectEl.value.trim();
+        return localStorage.getItem(SELECTED_GROUP_STORAGE_KEY) || "";
       }
 
       function updateRecordingButtons() {
@@ -217,23 +208,19 @@
 
       function renderGroups(groups) {
         currentGroups = groups || [];
-        groupSelectEl.innerHTML = "";
-
         if (!currentGroups.length) {
-          groupSelectEl.innerHTML = `<option value="">No communities available</option>`;
-          groupSelectEl.disabled = true;
+          activeGroupEl.textContent = "Choose your active community in Settings first.";
           updateRecordingButtons();
           return;
         }
-
-        currentGroups.forEach((group) => {
-          const option = document.createElement("option");
-          option.value = group.slug;
-          option.textContent = `${group.name} (${group.slug})`;
-          groupSelectEl.appendChild(option);
-        });
-
-        groupSelectEl.disabled = false;
+        const savedGroupSlug = selectedGroupSlug();
+        const activeGroup = currentGroups.find((group) => group.slug === savedGroupSlug) || currentGroups[0];
+        if (activeGroup && activeGroup.slug !== savedGroupSlug) {
+          localStorage.setItem(SELECTED_GROUP_STORAGE_KEY, activeGroup.slug);
+        }
+        activeGroupEl.textContent = activeGroup
+          ? `${activeGroup.name} is active here. Change this in Settings.`
+          : "Choose your active community in Settings first.";
         updateRecordingButtons();
       }
 
@@ -431,11 +418,6 @@
         }
       }
 
-      groupSelectEl.addEventListener("change", () => {
-        updateRecordingButtons();
-        loadLatestRecording();
-      });
-
       recordButton.addEventListener("click", async () => {
         try {
           await startRecording();
@@ -446,7 +428,6 @@
 
       stopButton.addEventListener("click", stopRecording);
       refreshAudioButton.addEventListener("click", loadLatestRecording);
-      refreshGroupsButton.addEventListener("click", refreshRecordingUi);
 
       await loadReading();
       await refreshRecordingUi();
