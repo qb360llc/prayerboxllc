@@ -1,4 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { sendPushToUsers } from "../_shared/web-push.ts";
 
 const BUCKET = "community-chat-audio";
 
@@ -59,6 +60,26 @@ async function getProfile(supabase: ReturnType<typeof createClient>, userId: str
 
   if (error) throw error;
   return data;
+}
+
+async function getActorName(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+) {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("first_name, last_name, display_name, email")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  const fullName = [data?.first_name, data?.last_name]
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .filter(Boolean)
+    .join(" ");
+
+  return fullName || data?.display_name || data?.email || "Someone";
 }
 
 async function getGroupForUser(
@@ -176,6 +197,51 @@ async function fetchMessages(
   });
 }
 
+async function notifyGroupMembers(
+  supabase: ReturnType<typeof createClient>,
+  groupId: string,
+  actorUserId: string,
+  title: string,
+  body: string,
+  metadata: Record<string, unknown>,
+) {
+  const { data: members, error } = await supabase
+    .from("group_memberships")
+    .select("user_id")
+    .eq("group_id", groupId)
+    .neq("user_id", actorUserId);
+
+  if (error) throw error;
+
+  const recipientUserIds = (members ?? []).map((member: Record<string, unknown>) => String(member.user_id));
+  if (!recipientUserIds.length) return;
+
+  const rows = recipientUserIds.map((recipientUserId) => ({
+    actor_user_id: actorUserId,
+    body,
+    group_id: groupId,
+    metadata,
+    notification_type: "chat_message",
+    recipient_user_id: recipientUserId,
+    title,
+  }));
+
+  const { error: insertError } = await supabase.from("notifications").insert(rows);
+  if (insertError) throw insertError;
+
+  await sendPushToUsers(supabase, recipientUserIds, {
+    body,
+    data: {
+      groupId,
+      type: "chat_message",
+      url: "/chat.html",
+      ...metadata,
+    },
+    tag: `chat-${groupId}`,
+    title,
+  });
+}
+
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders(request) });
@@ -253,6 +319,20 @@ Deno.serve(async (request) => {
 
       if (insertError) throw insertError;
 
+      const actorName = await getActorName(supabase, user.id);
+      await notifyGroupMembers(
+        supabase,
+        group.id,
+        user.id,
+        "New voice message",
+        `${actorName} sent a voice message in ${group.name}.`,
+        {
+          groupName: group.name,
+          groupSlug: group.slug,
+          messageType: "audio",
+        },
+      );
+
       const messages = await fetchMessages(supabase, user.id, group);
       return json(request, 200, {
         group: {
@@ -287,6 +367,22 @@ Deno.serve(async (request) => {
       });
 
     if (insertError) throw insertError;
+
+    const actorName = await getActorName(supabase, user.id);
+    const preview = messageBody.length > 120 ? `${messageBody.slice(0, 117)}...` : messageBody;
+    await notifyGroupMembers(
+      supabase,
+      group.id,
+      user.id,
+      "New chat message",
+      `${actorName} in ${group.name}: "${preview}"`,
+      {
+        groupName: group.name,
+        groupSlug: group.slug,
+        messageType: "text",
+        preview,
+      },
+    );
 
     const messages = await fetchMessages(supabase, user.id, group);
     return json(request, 200, {

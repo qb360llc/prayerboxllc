@@ -4,7 +4,12 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>PRayerbox Settings</title>
+    <meta name="theme-color" content="#0d6b57">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="./site.webmanifest">
+    <link rel="icon" href="./icon.svg" type="image/svg+xml">
     <script src="./config.js"></script>
+    <script type="module" src="./pwa.js"></script>
     <style>
       :root { --bg:#f3efe4; --panel:#fffaf0; --ink:#1b1a17; --muted:#6f675d; --accent:#0d6b57; --accent-strong:#084c3e; --line:#d8cfbf; --danger:#a12828; }
       * { box-sizing:border-box; }
@@ -127,6 +132,18 @@
       </section>
 
       <section class="panel">
+        <h2>App & Notifications</h2>
+        <p>Install PRayerbox on your phone and enable push notifications for new activity.</p>
+        <div id="install-status" class="status">Checking app install support...</div>
+        <div id="push-status" class="status">Checking push notification support...</div>
+        <div class="actions">
+          <button id="install-app">Install App</button>
+          <button id="enable-push" class="secondary">Enable Push</button>
+          <button id="disable-push" class="secondary">Disable Push</button>
+        </div>
+      </section>
+
+      <section class="panel">
         <h2>Claim Device</h2>
         <div class="grid">
           <div><label for="claim-code">Claim Code</label><input id="claim-code" placeholder="PBX-XXXXXXXXXXXX"></div>
@@ -193,14 +210,19 @@
         devicesEmpty: document.querySelector("#devices-empty"),
         devicesList: document.querySelector("#devices-list"),
         email: document.querySelector("#email"),
+        enablePush: document.querySelector("#enable-push"),
         firstName: document.querySelector("#first-name"),
         groupInviteCode: document.querySelector("#group-invite-code"),
         groupName: document.querySelector("#group-name"),
+        installApp: document.querySelector("#install-app"),
+        installStatus: document.querySelector("#install-status"),
         groupsEmpty: document.querySelector("#groups-empty"),
         groupsList: document.querySelector("#groups-list"),
         joinGroup: document.querySelector("#join-group"),
         lastName: document.querySelector("#last-name"),
         password: document.querySelector("#password"),
+        disablePush: document.querySelector("#disable-push"),
+        pushStatus: document.querySelector("#push-status"),
         refreshDevices: document.querySelector("#refresh-devices"),
         refreshProfile: document.querySelector("#refresh-profile"),
         refreshGroups: document.querySelector("#refresh-groups"),
@@ -232,6 +254,14 @@
 
       async function copyText(text) {
         await navigator.clipboard.writeText(text);
+      }
+
+      async function getAccessToken() {
+        const client = getClient();
+        const { data: sessionData } = await client.auth.getSession();
+        const accessToken = sessionData.session?.access_token;
+        if (!accessToken) throw new Error("Sign in first.");
+        return accessToken;
       }
 
       function getSelectedGroupSlug() {
@@ -319,6 +349,47 @@
         }
       }
 
+      async function refreshPwaStatus() {
+        const pwa = window.PRayerboxPWA;
+        if (!pwa) {
+          els.installStatus.textContent = "PWA support script is not loaded.";
+          els.pushStatus.textContent = "Push support script is not loaded.";
+          els.installApp.disabled = true;
+          els.enablePush.disabled = true;
+          els.disablePush.disabled = true;
+          return;
+        }
+
+        const state = await pwa.getPushState();
+        if (state.isInstalled) {
+          els.installStatus.textContent = "PRayerbox is already installed on this device.";
+        } else if (state.canInstall) {
+          els.installStatus.textContent = "This device can install PRayerbox as an app.";
+        } else {
+          els.installStatus.textContent = "Use your browser's Add to Home Screen or install menu to add PRayerbox as an app.";
+        }
+
+        els.installApp.disabled = state.isInstalled || !state.canInstall;
+
+        if (!state.supported) {
+          els.pushStatus.textContent = "Push notifications are not supported in this browser or context.";
+          els.enablePush.disabled = true;
+          els.disablePush.disabled = true;
+          return;
+        }
+
+        if (state.subscribed) {
+          els.pushStatus.textContent = "Push notifications are enabled for this browser.";
+        } else if (state.permission === "denied") {
+          els.pushStatus.textContent = "Notifications are blocked in this browser. Change browser settings to enable them.";
+        } else {
+          els.pushStatus.textContent = "Push notifications are available but not enabled yet.";
+        }
+
+        els.enablePush.disabled = state.subscribed || state.permission === "denied";
+        els.disablePush.disabled = !state.subscribed;
+      }
+
       async function loadProfile() {
         const client = getClient();
         const user = await getSignedInUser();
@@ -351,6 +422,32 @@
 
         if (error) throw error;
         setStatus(`Saved profile name as ${displayName}.`);
+      }
+
+      async function installApp() {
+        const pwa = window.PRayerboxPWA;
+        if (!pwa) throw new Error("PWA support is not available.");
+        await pwa.installApp();
+        await refreshPwaStatus();
+        setStatus("Install prompt opened.");
+      }
+
+      async function enablePush() {
+        const pwa = window.PRayerboxPWA;
+        if (!pwa) throw new Error("Push support is not available.");
+        await getSignedInUser();
+        await pwa.subscribeToPush({ getAccessToken });
+        await refreshPwaStatus();
+        setStatus("Push notifications enabled for this browser.");
+      }
+
+      async function disablePush() {
+        const pwa = window.PRayerboxPWA;
+        if (!pwa) throw new Error("Push support is not available.");
+        await getSignedInUser();
+        await pwa.unsubscribeFromPush({ getAccessToken });
+        await refreshPwaStatus();
+        setStatus("Push notifications disabled for this browser.");
       }
 
       function renderClaimResult(device) {
@@ -619,6 +716,9 @@
       els.claimButton.addEventListener("click", () => wrap(claimDevice, els.claimButton));
       els.saveProfile.addEventListener("click", () => wrap(saveProfile, els.saveProfile));
       els.refreshProfile.addEventListener("click", () => wrap(loadProfile, els.refreshProfile));
+      els.installApp.addEventListener("click", () => wrap(installApp, els.installApp));
+      els.enablePush.addEventListener("click", () => wrap(enablePush, els.enablePush));
+      els.disablePush.addEventListener("click", () => wrap(disablePush, els.disablePush));
       els.createGroup.addEventListener("click", () => wrap(createGroup, els.createGroup));
       els.joinGroup.addEventListener("click", () => wrap(joinGroup, els.joinGroup));
       els.refreshGroups.addEventListener("click", () => wrap(loadMyGroups, els.refreshGroups));
@@ -629,6 +729,7 @@
         setStatus("Saved your active community.");
       });
       const signedIn = await refreshSessionState();
+      await refreshPwaStatus().catch(() => {});
       if (signedIn) {
         await loadProfile().catch(() => {});
         await loadMyGroups().catch(() => {});

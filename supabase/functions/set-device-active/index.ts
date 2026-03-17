@@ -1,4 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { sendPushToUsers } from "../_shared/web-push.ts";
 
 type SetDeviceActiveRequest = {
   active?: boolean;
@@ -104,20 +105,33 @@ async function notifyGroupMembers(
 
   if (error) throw error;
 
-  if (!(members ?? []).length) return;
+  const recipientUserIds = (members ?? []).map((member: Record<string, unknown>) => String(member.user_id));
+  if (!recipientUserIds.length) return;
 
-  const rows = (members ?? []).map((member: Record<string, unknown>) => ({
+  const rows = recipientUserIds.map((recipientUserId) => ({
     actor_user_id: actorUserId,
     body,
     group_id: groupId,
     metadata,
     notification_type: "lights_activated",
-    recipient_user_id: member.user_id,
+    recipient_user_id: recipientUserId,
     title,
   }));
 
   const { error: insertError } = await supabase.from("notifications").insert(rows);
   if (insertError) throw insertError;
+
+  await sendPushToUsers(supabase, recipientUserIds, {
+    body,
+    data: {
+      groupId,
+      type: "lights_activated",
+      url: "/controls.html",
+      ...metadata,
+    },
+    tag: `lights-${groupId}`,
+    title,
+  });
 }
 
 Deno.serve(async (request) => {
