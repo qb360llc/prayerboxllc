@@ -88,7 +88,14 @@ async function notifyGroupMembers(
   if (error) throw error;
 
   const recipientUserIds = (members ?? []).map((member: Record<string, unknown>) => String(member.user_id));
-  if (!recipientUserIds.length) return;
+  if (!recipientUserIds.length) {
+    return {
+      attempted: 0,
+      failed: 0,
+      failures: [],
+      sent: 0,
+    };
+  }
 
   const rows = recipientUserIds.map((recipientUserId) => ({
     actor_user_id: actorUserId,
@@ -103,7 +110,7 @@ async function notifyGroupMembers(
   const { error: insertError } = await supabase.from("notifications").insert(rows);
   if (insertError) throw insertError;
 
-  await sendPushToUsers(supabase, recipientUserIds, {
+  return await sendPushToUsers(supabase, recipientUserIds, {
     body,
     data: {
       groupId,
@@ -126,7 +133,14 @@ async function notifyRecipient(
   body: string,
   metadata: Record<string, unknown>,
 ) {
-  if (recipientUserId === actorUserId) return;
+  if (recipientUserId === actorUserId) {
+    return {
+      attempted: 0,
+      failed: 0,
+      failures: [],
+      sent: 0,
+    };
+  }
 
   const { error } = await supabase.from("notifications").insert({
     actor_user_id: actorUserId,
@@ -140,7 +154,7 @@ async function notifyRecipient(
 
   if (error) throw error;
 
-  await sendPushToUsers(supabase, [recipientUserId], {
+  return await sendPushToUsers(supabase, [recipientUserId], {
     body,
     data: {
       groupId,
@@ -413,7 +427,7 @@ Deno.serve(async (request) => {
         .replace(/\s+/g, " ")
         .trim()
         .slice(0, 120);
-      await notifyGroupMembers(
+      const pushResult = await notifyGroupMembers(
         supabase,
         group.id,
         user.id,
@@ -426,6 +440,18 @@ Deno.serve(async (request) => {
           preview: intentionPreview,
         },
       );
+
+      const intentions = await fetchIntentions(supabase, user.id, group);
+      return json(request, 200, {
+        group: {
+          groupId: group.id,
+          name: group.name,
+          slug: group.slug,
+        },
+        intentions,
+        ok: true,
+        pushResult,
+      });
     } else if (action === "edit") {
       const intentionId = body.intentionId?.trim();
       const intentionBody = body.body?.trim();
@@ -541,7 +567,7 @@ Deno.serve(async (request) => {
           .trim()
           .slice(0, 120);
 
-        await notifyRecipient(
+        const pushResult = await notifyRecipient(
           supabase,
           targetIntention.created_by_user_id,
           user.id,
@@ -555,6 +581,18 @@ Deno.serve(async (request) => {
             preview: intentionPreview,
           },
         );
+
+        const intentions = await fetchIntentions(supabase, user.id, group);
+        return json(request, 200, {
+          group: {
+            groupId: group.id,
+            name: group.name,
+            slug: group.slug,
+          },
+          intentions,
+          ok: true,
+          pushResult,
+        });
       }
     } else {
       return json(request, 400, { error: "Unknown action.", ok: false });

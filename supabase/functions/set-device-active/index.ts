@@ -106,7 +106,14 @@ async function notifyGroupMembers(
   if (error) throw error;
 
   const recipientUserIds = (members ?? []).map((member: Record<string, unknown>) => String(member.user_id));
-  if (!recipientUserIds.length) return;
+  if (!recipientUserIds.length) {
+    return {
+      attempted: 0,
+      failed: 0,
+      failures: [],
+      sent: 0,
+    };
+  }
 
   const rows = recipientUserIds.map((recipientUserId) => ({
     actor_user_id: actorUserId,
@@ -121,7 +128,7 @@ async function notifyGroupMembers(
   const { error: insertError } = await supabase.from("notifications").insert(rows);
   if (insertError) throw insertError;
 
-  await sendPushToUsers(supabase, recipientUserIds, {
+  return await sendPushToUsers(supabase, recipientUserIds, {
     body,
     data: {
       groupId,
@@ -261,9 +268,16 @@ Deno.serve(async (request) => {
     const groupActivity = groupActivityData as GroupActivityRow;
     await publishLightingMode(groupActivity.lighting_mode, groupActivity.slug);
 
+    let pushResult = {
+      attempted: 0,
+      failed: 0,
+      failures: [],
+      sent: 0,
+    };
+
     if (body.active) {
       const actorName = await getActorName(supabase, user.id);
-      await notifyGroupMembers(
+      pushResult = await notifyGroupMembers(
         supabase,
         device.group_id,
         user.id,
@@ -290,6 +304,7 @@ Deno.serve(async (request) => {
         activeCount: groupActivity.active_count,
         lightingMode: groupActivity.lighting_mode,
       },
+      pushResult,
     });
   } catch (error) {
     return json(request, 400, {

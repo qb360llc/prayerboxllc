@@ -281,7 +281,16 @@
         });
         const payload = await response.json();
         if (!response.ok || !payload.ok) throw new Error(payload.error || payload.message || "Failed to update device state.");
-        setStatus(`${active ? "Turned on" : "Turned off"} ${payload.device.deviceId}. Group mode is now ${payload.groupState.lightingMode}.`);
+        if (active) {
+          const pushResult = payload.pushResult || {};
+          if (pushResult.attempted === 0) {
+            setStatus(`Turned on ${payload.device.deviceId}. Group mode is now ${payload.groupState.lightingMode}. Push attempted 0 subscriptions for recipients.`, true);
+          } else {
+            setStatus(`Turned on ${payload.device.deviceId}. Group mode is now ${payload.groupState.lightingMode}. Push sent ${pushResult.sent || 0} of ${pushResult.attempted || 0} attempted subscriptions.`);
+          }
+        } else {
+          setStatus(`${active ? "Turned on" : "Turned off"} ${payload.device.deviceId}. Group mode is now ${payload.groupState.lightingMode}.`);
+        }
         await loadMyDevices();
       }
 

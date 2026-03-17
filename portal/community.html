@@ -333,7 +333,12 @@
         if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to post intention.");
         els.intentionBody.value = "";
         renderFeed(payload.intentions || []);
-        setStatus("Posted your intention to the community feed.");
+        const pushResult = payload.pushResult || {};
+        if (pushResult.attempted === 0) {
+          setStatus("Posted your intention. Push attempted 0 subscriptions for recipients.", true);
+        } else {
+          setStatus(`Posted your intention. Push sent ${pushResult.sent || 0} of ${pushResult.attempted || 0} attempted subscriptions.`);
+        }
       }
 
       async function editIntention(intentionId, body) {
@@ -367,7 +372,16 @@
         const payload = await response.json();
         if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to react to intention.");
         renderFeed(payload.intentions || []);
-        setStatus("Updated your love reaction.");
+        if (reactionType === "love") {
+          const pushResult = payload.pushResult || {};
+          if (pushResult.attempted === 0) {
+            setStatus("Updated your love reaction. Push attempted 0 subscriptions for recipients.", true);
+          } else {
+            setStatus(`Updated your love reaction. Push sent ${pushResult.sent || 0} of ${pushResult.attempted || 0} attempted subscriptions.`);
+          }
+        } else {
+          setStatus("Updated your love reaction.");
+        }
       }
 
       async function signOut() {
