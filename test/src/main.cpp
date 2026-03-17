@@ -46,6 +46,10 @@ constexpr unsigned long kBootstrapRetryIntervalMs = 30000;
 constexpr unsigned long kWiFiConnectTimeoutMs = 20000;
 constexpr unsigned long kProvisioningHoldMs = 5000;
 constexpr unsigned long kProvisioningBlinkIntervalMs = 200;
+constexpr unsigned long kWiFiConnectingBlinkIntervalMs = 700;
+constexpr unsigned long kWiFiFailureBlinkIntervalMs = 180;
+constexpr unsigned long kSuccessBlinkIntervalMs = 120;
+constexpr uint8_t kSuccessBlinkCount = 3;
 constexpr const char* kPreferencesNamespace = "prayerbox";
 constexpr const char* kDeviceKeyPref = "device_key";
 constexpr const char* kGroupIdPref = "group_id";
@@ -80,6 +84,8 @@ bool provisioningMode = false;
 bool provisioningServerInitialized = false;
 bool longPressHandled = false;
 bool provisioningLedState = false;
+bool wifiConnectingLedState = false;
+bool wifiFailureLedState = false;
 
 unsigned long lastHeartbeatMs = 0;
 unsigned long lastReconnectAttemptMs = 0;
@@ -89,6 +95,7 @@ unsigned long lastManifestAttemptMs = 0;
 unsigned long lastBootstrapAttemptMs = 0;
 unsigned long buttonPressedMs = 0;
 unsigned long lastProvisioningBlinkMs = 0;
+unsigned long lastWiFiConnectingBlinkMs = 0;
 
 char commandTopic[96];
 char activationTopic[96];
@@ -108,6 +115,7 @@ void flushPendingActivation();
 void refreshTopicsForGroupChange(const String& nextGroupId);
 void startProvisioningPortal(const char* reason);
 void serviceProvisioningPortal();
+void blinkLedPattern(unsigned long intervalMs, uint8_t flashes);
 
 const char* deviceId() {
   return runtimeDeviceId;
@@ -322,6 +330,15 @@ void setOutput(bool on) {
   digitalWrite(LED_PIN, on ? ledOnSignal() : ledOffSignal());
 }
 
+void blinkLedPattern(unsigned long intervalMs, uint8_t flashes) {
+  for (uint8_t i = 0; i < flashes; ++i) {
+    setOutput(true);
+    delay(intervalMs);
+    setOutput(false);
+    delay(intervalMs);
+  }
+}
+
 void updateOutput() {
   const unsigned long now = millis();
 
@@ -444,7 +461,14 @@ void handleProvisioningSave() {
   const String password = provisioningServer.arg("password");
 
   if (!saveWiFiCredentials(ssid, password)) {
-    provisioningServer.send(400, "text/plain", "Failed to save Wi-Fi credentials.");
+    provisioningServer.send(400, "text/html",
+      "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'></head>"
+      "<body style='font-family:Arial,sans-serif;background:#f3efe4;padding:24px;color:#1b1a17;'>"
+      "<div style='max-width:520px;margin:0 auto;background:#fffaf0;padding:24px;border-radius:18px;'>"
+      "<h1 style='margin-top:0;'>Could not save</h1>"
+      "<p>Check the Wi-Fi name and try again. The PRayerbox setup network will stay available.</p>"
+      "</div></body></html>");
+    blinkLedPattern(kWiFiFailureBlinkIntervalMs, 2);
     return;
   }
 
@@ -453,8 +477,9 @@ void handleProvisioningSave() {
     "<body style='font-family:Arial,sans-serif;background:#f3efe4;padding:24px;color:#1b1a17;'>"
     "<div style='max-width:520px;margin:0 auto;background:#fffaf0;padding:24px;border-radius:18px;'>"
     "<h1 style='margin-top:0;'>Saved</h1>"
-    "<p>Your Wi-Fi settings were saved. This PRayerbox is restarting now.</p>"
+    "<p>Your Wi-Fi settings were saved. This PRayerbox will blink three times, then restart and reconnect.</p>"
     "</div></body></html>");
+  blinkLedPattern(kSuccessBlinkIntervalMs, kSuccessBlinkCount);
   delay(1200);
   ESP.restart();
 }
@@ -1036,12 +1061,24 @@ bool ensureWiFi() {
 
   const unsigned long connectStartedMs = millis();
   while (WiFi.status() != WL_CONNECTED && millis() - connectStartedMs < kWiFiConnectTimeoutMs) {
-    delay(500);
+    const unsigned long now = millis();
+    if (now - lastWiFiConnectingBlinkMs >= kWiFiConnectingBlinkIntervalMs) {
+      lastWiFiConnectingBlinkMs = now;
+      wifiConnectingLedState = !wifiConnectingLedState;
+      setOutput(wifiConnectingLedState);
+    }
+    delay(120);
     Serial.print(".");
   }
 
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println();
+    for (uint8_t i = 0; i < 4; ++i) {
+      wifiFailureLedState = !wifiFailureLedState;
+      setOutput(wifiFailureLedState);
+      delay(kWiFiFailureBlinkIntervalMs);
+    }
+    setOutput(false);
     startProvisioningPortal("wifi connect timeout");
     return false;
   }
@@ -1051,6 +1088,9 @@ bool ensureWiFi() {
   Serial.println(WiFi.localIP());
   Serial.print("Connected SSID: ");
   Serial.println(WiFi.SSID());
+  setOutput(true);
+  delay(250);
+  setOutput(false);
   return true;
 }
 
