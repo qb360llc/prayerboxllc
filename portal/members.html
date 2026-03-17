@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PRayerbox Members</title>
+    <meta name="theme-color" content="#0d6b57">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="./site.webmanifest">
+    <link rel="icon" href="./icon.svg" type="image/svg+xml">
+    <script src="./config.js"></script>
+    <script type="module" src="./pwa.js"></script>
+    <style>
+      :root { --bg:#f3efe4; --panel:#fffaf0; --ink:#1b1a17; --muted:#6f675d; --accent:#0d6b57; --accent-strong:#084c3e; --line:#d8cfbf; --danger:#a12828; }
+      * { box-sizing:border-box; }
+      body { margin:0; min-height:100vh; font-family:Georgia,"Times New Roman",serif; color:var(--ink); background:radial-gradient(circle at top left, rgba(13,107,87,.12), transparent 30%), linear-gradient(180deg, #efe7d6 0%, var(--bg) 100%); }
+      main { max-width:760px; margin:0 auto; padding:20px 20px 64px; }
+      h2, h3 { margin:0; }
+      p { color:var(--muted); line-height:1.5; }
+      .topbar-wrap { position:sticky; top:0; z-index:40; margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw); padding:0 0 14px; background:linear-gradient(180deg, rgba(243,239,228,.96) 0%, rgba(243,239,228,.86) 74%, rgba(243,239,228,0) 100%); backdrop-filter:blur(14px); }
+      .topbar { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 20px; border-bottom:1px solid var(--line); background:color-mix(in srgb, var(--panel) 92%, white 8%); box-shadow:0 10px 24px rgba(27,26,23,.08); }
+      .topnav { display:flex; flex-wrap:wrap; gap:10px; }
+      .topnav a { display:inline-block; padding:10px 14px; border-radius:999px; text-decoration:none; background:rgba(13,107,87,.08); color:var(--accent-strong); }
+      .notify-link { display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:999px; text-decoration:none; background:rgba(13,107,87,.16); color:var(--accent-strong); font-weight:600; }
+      .notify-count { min-width:1.45rem; padding:2px 6px; border-radius:999px; background:var(--accent-strong); color:#fff; font-size:.78rem; line-height:1.2; text-align:center; }
+      .mobile-top-title { display:block; font-size:1.2rem; font-weight:700; align-self:center; color:var(--ink); }
+      .nav-toggle { position:absolute; opacity:0; pointer-events:none; }
+      .mobile-nav-button { display:none; width:48px; height:48px; border-radius:14px; background:var(--accent); cursor:pointer; align-items:center; justify-content:center; box-shadow:0 10px 24px rgba(27,26,23,.12); }
+      .mobile-nav-button span { display:block; width:20px; height:2px; background:#fff; position:relative; }
+      .mobile-nav-button span::before, .mobile-nav-button span::after { content:""; position:absolute; left:0; width:20px; height:2px; background:#fff; }
+      .mobile-nav-button span::before { top:-6px; }
+      .mobile-nav-button span::after { top:6px; }
+      .mobile-overlay { display:none; }
+      .mobile-drawer { position:fixed; top:0; left:0; height:100vh; width:min(280px, 82vw); padding:88px 18px 24px; background:var(--panel); border-right:1px solid var(--line); box-shadow:0 18px 40px rgba(27,26,23,.18); transform:translateX(-100%); transition:transform .22s ease; z-index:60; }
+      .mobile-drawer nav { display:grid; gap:10px; }
+      .mobile-drawer a { display:block; padding:12px 14px; border-radius:14px; text-decoration:none; background:rgba(13,107,87,.08); color:var(--accent-strong); }
+      .panel { margin-top:12px; padding:20px; border:1px solid var(--line); border-radius:18px; background:color-mix(in srgb, var(--panel) 88%, white 12%); box-shadow:0 14px 40px rgba(27,26,23,.08); }
+      label { display:block; font-size:.92rem; margin-bottom:6px; color:var(--muted); }
+      select { width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:12px; font:inherit; background:#fff; color:var(--ink); }
+      .status { margin-top:16px; padding:12px 14px; border-radius:12px; background:rgba(13,107,87,.08); color:var(--ink); white-space:pre-wrap; }
+      .status.error { background:rgba(161,40,40,.1); color:var(--danger); }
+      .member-list { display:grid; gap:12px; margin-top:16px; }
+      .member-card { padding:16px; border:1px solid var(--line); border-radius:16px; background:rgba(255,255,255,.55); }
+      .member-name { font-size:1.08rem; font-weight:700; }
+      .member-meta { margin-top:6px; font-size:.92rem; color:var(--muted); }
+      .empty { color:var(--muted); margin-top:16px; }
+      @media (max-width:720px) {
+        .topnav { display:none; }
+        .mobile-nav-button { display:flex; }
+        .notify-link { margin-left:auto; }
+        .nav-toggle:checked ~ .mobile-overlay { display:block; position:fixed; inset:0; background:rgba(27,26,23,.36); z-index:55; }
+        .nav-toggle:checked ~ .mobile-drawer { transform:translateX(0); }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <input id="nav-toggle" class="nav-toggle" type="checkbox">
+      <div class="topbar-wrap">
+        <div class="topbar">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <label for="nav-toggle" class="mobile-nav-button" aria-label="Open navigation menu"><span></span></label>
+            <div class="mobile-top-title">Members</div>
+            <nav class="topnav" aria-label="Primary">
+              <a href="./community.html">Community</a>
+              <a href="./members.html">Members</a>
+              <a href="./chat.html">Chat</a>
+              <a href="./readings.html">Daily Readings</a>
+              <a href="./controls.html">Controls</a>
+              <a href="./notifications.html">Notifications</a>
+              <a href="./settings.html">Settings</a>
+            </nav>
+          </div>
+          <a class="notify-link" href="./notifications.html">Alerts <span class="notify-count" data-notify-count hidden>0</span></a>
+        </div>
+      </div>
+      <label for="nav-toggle" class="mobile-overlay" aria-hidden="true"></label>
+      <aside class="mobile-drawer" aria-label="Mobile navigation">
+        <nav>
+          <a href="./community.html">Community</a>
+          <a href="./members.html">Members</a>
+          <a href="./chat.html">Chat</a>
+          <a href="./readings.html">Daily Readings</a>
+          <a href="./controls.html">Controls</a>
+          <a href="./notifications.html">Notifications</a>
+          <a href="./settings.html">Settings</a>
+        </nav>
+      </aside>
+
+      <section class="panel">
+        <h2>Members</h2>
+        <p>Choose a community and see everyone currently in that group.</p>
+        <div style="margin-top:16px;">
+          <label for="group-select">Group</label>
+          <select id="group-select" disabled>
+            <option value="">Loading your communities...</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2 id="members-title">Group Members</h2>
+        <div id="members-empty" class="empty">Choose a group to see its members.</div>
+        <div id="members-list" class="member-list"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Status</h2>
+        <div id="status" class="status">Idle.</div>
+      </section>
+    </main>
+
+    <script type="module">
+      import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+      const config = window.PRAYERBOX_PORTAL_CONFIG || {};
+      const projectUrl = config.projectUrl || "";
+      const anonKey = config.anonKey || "";
+      const HOME_URL = "./index.html";
+      const SELECTED_GROUP_STORAGE_KEY = "prayerboxSelectedGroupSlug";
+      const els = {
+        groupSelect: document.querySelector("#group-select"),
+        membersEmpty: document.querySelector("#members-empty"),
+        membersList: document.querySelector("#members-list"),
+        membersTitle: document.querySelector("#members-title"),
+        status: document.querySelector("#status"),
+      };
+
+      let supabase = null;
+
+      function setStatus(message, isError = false) {
+        els.status.textContent = message;
+        els.status.classList.toggle("error", isError);
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;");
+      }
+
+      function getClient() {
+        if (!projectUrl || !anonKey) {
+          throw new Error("Portal config is missing. Ask the admin to update portal/config.js.");
+        }
+        if (!supabase) {
+          supabase = createClient(projectUrl, anonKey);
+        }
+        return supabase;
+      }
+
+      function setNotificationBadge(count) {
+        document.querySelectorAll("[data-notify-count]").forEach((badge) => {
+          badge.hidden = !count;
+          badge.textContent = count > 99 ? "99+" : String(count || 0);
+        });
+      }
+
+      function selectedGroupSlug() {
+        return localStorage.getItem(SELECTED_GROUP_STORAGE_KEY) || "";
+      }
+
+      function saveSelectedGroupSlug(groupSlug) {
+        if (groupSlug) {
+          localStorage.setItem(SELECTED_GROUP_STORAGE_KEY, groupSlug);
+        } else {
+          localStorage.removeItem(SELECTED_GROUP_STORAGE_KEY);
+        }
+      }
+
+      async function authedFetch(path, options = {}) {
+        const client = getClient();
+        const { data: sessionData } = await client.auth.getSession();
+        const accessToken = sessionData.session?.access_token;
+        if (!accessToken) throw new Error("Sign in on the home page first.");
+        return fetch(`${projectUrl}${path}`, {
+          ...options,
+          headers: {
+            apikey: anonKey,
+            Authorization: `Bearer ${accessToken}`,
+            ...(options.headers || {}),
+          },
+        });
+      }
+
+      async function refreshNotificationBadge() {
+        try {
+          const response = await authedFetch("/functions/v1/my-notifications", { method: "GET" });
+          const payload = await response.json();
+          if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to load notifications.");
+          setNotificationBadge(payload.unreadCount || 0);
+        } catch {
+          setNotificationBadge(0);
+        }
+      }
+
+      function renderGroups(groups) {
+        els.groupSelect.innerHTML = "";
+
+        if (!groups.length) {
+          els.groupSelect.innerHTML = `<option value="">No communities available</option>`;
+          els.groupSelect.disabled = true;
+          els.membersTitle.textContent = "Group Members";
+          els.membersEmpty.textContent = "Join or create a community in Settings first.";
+          els.membersList.innerHTML = "";
+          return;
+        }
+
+        const savedGroupSlug = selectedGroupSlug();
+        const activeGroupSlug = groups.some((group) => group.slug === savedGroupSlug)
+          ? savedGroupSlug
+          : groups[0].slug;
+
+        saveSelectedGroupSlug(activeGroupSlug);
+        els.groupSelect.innerHTML = groups
+          .map((group) => `<option value="${escapeHtml(group.slug)}"${group.slug === activeGroupSlug ? " selected" : ""}>${escapeHtml(group.name)}</option>`)
+          .join("");
+        els.groupSelect.disabled = false;
+      }
+
+      function renderMembers(groupName, members) {
+        els.membersTitle.textContent = groupName ? `${groupName} Members` : "Group Members";
+        els.membersList.innerHTML = "";
+
+        if (!members.length) {
+          els.membersEmpty.textContent = "No members found for this group.";
+          return;
+        }
+
+        els.membersEmpty.textContent = "";
+        members.forEach((member) => {
+          const card = document.createElement("article");
+          card.className = "member-card";
+          card.innerHTML = `
+            <div class="member-name">${escapeHtml(member.name)}</div>
+            <div class="member-meta">${escapeHtml(member.role === "owner" ? "Owner" : member.role === "admin" ? "Admin" : "Member")}</div>
+          `;
+          els.membersList.appendChild(card);
+        });
+      }
+
+      async function loadGroups() {
+        const response = await authedFetch("/functions/v1/my-groups", { method: "GET" });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to load communities.");
+        const groups = payload.groups || [];
+        renderGroups(groups);
+        if (groups.length) {
+          await loadMembers(groups[0].slug);
+        }
+      }
+
+      async function loadMembers(groupSlug = els.groupSelect.value) {
+        if (!groupSlug) {
+          renderMembers("", []);
+          return;
+        }
+
+        const response = await authedFetch(`/functions/v1/group-members?groupSlug=${encodeURIComponent(groupSlug)}`, { method: "GET" });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to load group members.");
+        renderMembers(payload.group?.name || groupSlug, payload.members || []);
+        setStatus(`Loaded members for ${payload.group?.name || groupSlug}.`);
+      }
+
+      async function boot() {
+        try {
+          const client = getClient();
+          const { data } = await client.auth.getSession();
+          if (!data.session) {
+            window.location.replace(HOME_URL);
+            return;
+          }
+
+          await refreshNotificationBadge();
+          await loadGroups();
+        } catch (error) {
+          setStatus(error.message || "Unable to load the portal.", true);
+        }
+      }
+
+      els.groupSelect.addEventListener("change", () => {
+        saveSelectedGroupSlug(els.groupSelect.value);
+        loadMembers().catch((error) => setStatus(error.message || "Failed to load group members.", true));
+      });
+
+      boot();
+    </script>
+  </body>
+</html>
