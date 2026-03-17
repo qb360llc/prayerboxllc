@@ -61,6 +61,9 @@
       .empty { color:var(--muted); }
       .composer { display:grid; gap:12px; }
       .edit-bar { display:grid; gap:10px; margin-top:12px; }
+      .edit-link { margin-top:10px; padding:0; border:0; background:transparent; color:var(--accent-strong); font-size:.92rem; font-weight:600; text-decoration:underline; min-width:auto; box-shadow:none; }
+      .edit-link:hover { background:transparent; color:var(--accent); }
+      .edit-actions { display:flex; gap:10px; margin-top:0; }
       .composer-bar { display:flex; gap:12px; align-items:flex-end; }
       .composer-bar textarea { flex:1; margin:0; }
       .composer-bar button { white-space:nowrap; }
@@ -156,6 +159,7 @@
       };
 
       let supabase = null;
+      let editingIntentionId = null;
 
       function setStatus(message, isError = false) {
         els.status.textContent = message;
@@ -231,7 +235,7 @@
         if (activeGroup.slug !== savedGroupSlug) {
           localStorage.setItem(SELECTED_GROUP_STORAGE_KEY, activeGroup.slug);
         }
-        els.activeGroup.textContent = `Showing ${activeGroup.name}. Change this in Settings.`;
+        els.activeGroup.textContent = "";
       }
 
       function renderFeed(intentions) {
@@ -248,18 +252,36 @@
           card.innerHTML = `
             <h3>${escapeHtml(item.body)}</h3>
             <div class="meta">Shared by ${escapeHtml(item.createdBy)} on ${new Date(item.createdAt).toLocaleString()}</div>
-            ${item.isOwn ? `
+            ${item.isOwn ? (editingIntentionId === item.id ? `
               <div class="edit-bar">
                 <textarea class="edit-intention-body" data-intention-id="${item.id}">${escapeHtml(item.body)}</textarea>
-                <div class="actions" style="margin-top:0;">
+                <div class="edit-actions">
                   <button class="save-intention secondary" data-intention-id="${item.id}">Save Edit</button>
+                  <button class="cancel-intention-edit refresh-link" data-intention-id="${item.id}">Cancel</button>
                 </div>
-              </div>` : ""}
+              </div>` : `
+              <button class="edit-link start-intention-edit" data-intention-id="${item.id}">Edit</button>` ) : ""}
             <div class="reaction-row">
               <button class="heart-button react ${(item.loveCount > 0 || item.userReaction === "love") ? "active" : ""}" aria-label="Love this intention" data-intention-id="${item.id}" data-reaction="love">${(item.loveCount > 0 || item.userReaction === "love") ? "&#9829;" : "&#9825;"}</button>
               <span class="heart-count">${item.loveCount} ${item.loveCount === 1 ? "person loves" : "people love"} this</span>
             </div>`;
           els.feed.appendChild(card);
+        });
+
+        els.feed.querySelectorAll(".start-intention-edit").forEach((button) => {
+          button.addEventListener("click", () => {
+            editingIntentionId = button.dataset.intentionId || null;
+            renderFeed(intentions);
+          });
+        });
+
+        els.feed.querySelectorAll(".cancel-intention-edit").forEach((button) => {
+          button.addEventListener("click", () => {
+            if (editingIntentionId === (button.dataset.intentionId || null)) {
+              editingIntentionId = null;
+            }
+            renderFeed(intentions);
+          });
         });
 
         els.feed.querySelectorAll(".save-intention").forEach((button) => {
@@ -338,6 +360,7 @@
         });
         const payload = await response.json();
         if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to update intention.");
+        editingIntentionId = null;
         renderFeed(payload.intentions || []);
         setStatus("Updated your intention.");
       }
