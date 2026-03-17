@@ -1,10 +1,12 @@
 #include <Arduino.h>
+#include <DNSServer.h>
 #include <ESP.h>
 #include <HTTPClient.h>
 #include <Preferences.h>
 #include <Update.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
+#include <WebServer.h>
 #include <mbedtls/sha256.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
@@ -41,12 +43,22 @@ constexpr unsigned long kFlashIntervalMs = 400;
 constexpr unsigned long kDebounceMs = 40;
 constexpr unsigned long kManifestRetryIntervalMs = 60000;
 constexpr unsigned long kBootstrapRetryIntervalMs = 30000;
+constexpr unsigned long kWiFiConnectTimeoutMs = 20000;
+constexpr unsigned long kProvisioningHoldMs = 5000;
+constexpr unsigned long kProvisioningBlinkIntervalMs = 200;
+constexpr const char* kPreferencesNamespace = "prayerbox";
+constexpr const char* kDeviceKeyPref = "device_key";
+constexpr const char* kGroupIdPref = "group_id";
+constexpr const char* kWifiSsidPref = "wifi_ssid";
+constexpr const char* kWifiPassPref = "wifi_pass";
 #ifdef APP_VERSION
 constexpr const char* kAppVersion = APP_VERSION;
 #else
 constexpr const char* kAppVersion = "0.0.0";
 #endif
 
+DNSServer dnsServer;
+WebServer provisioningServer(80);
 WiFiClientSecure secureClient;
 PubSubClient mqttClient(secureClient);
 WiFiClientSecure manifestClient;
@@ -64,6 +76,10 @@ bool manifestChecked = false;
 bool otaAttempted = false;
 bool bootstrapComplete = false;
 bool hasStoredDeviceApiKey = false;
+bool provisioningMode = false;
+bool provisioningServerInitialized = false;
+bool longPressHandled = false;
+bool provisioningLedState = false;
 
 unsigned long lastHeartbeatMs = 0;
 unsigned long lastReconnectAttemptMs = 0;
@@ -71,32 +87,47 @@ unsigned long lastFlashToggleMs = 0;
 unsigned long lastDebounceMs = 0;
 unsigned long lastManifestAttemptMs = 0;
 unsigned long lastBootstrapAttemptMs = 0;
+unsigned long buttonPressedMs = 0;
+unsigned long lastProvisioningBlinkMs = 0;
 
-  char commandTopic[96];
-  char activationTopic[96];
-  char heartbeatTopic[96];
-  char statusTopic[96];
-  char runtimeDeviceId[32];
-  char runtimeDeviceApiKey[80];
-  char runtimeGroupId[64];
+char commandTopic[96];
+char activationTopic[96];
+char heartbeatTopic[96];
+char statusTopic[96];
+char runtimeDeviceId[32];
+char runtimeDeviceApiKey[80];
+char runtimeGroupId[64];
+char runtimeWifiSsid[64];
+char runtimeWifiPassword[80];
+char provisioningApSsid[48];
 
-  void buildTopics();
-  void publishHeartbeat();
-  void publishOnlineStatus();
-  void flushPendingActivation();
-  void refreshTopicsForGroupChange(const String& nextGroupId);
+void buildTopics();
+void publishHeartbeat();
+void publishOnlineStatus();
+void flushPendingActivation();
+void refreshTopicsForGroupChange(const String& nextGroupId);
+void startProvisioningPortal(const char* reason);
+void serviceProvisioningPortal();
 
 const char* deviceId() {
   return runtimeDeviceId;
 }
 
-  const char* activeDeviceApiKey() {
-    return hasStoredDeviceApiKey ? runtimeDeviceApiKey : DEVICE_API_KEY;
-  }
+const char* activeDeviceApiKey() {
+  return hasStoredDeviceApiKey ? runtimeDeviceApiKey : DEVICE_API_KEY;
+}
 
-  const char* activeGroupId() {
-    return runtimeGroupId[0] != '\0' ? runtimeGroupId : DEVICE_GROUP_ID;
-  }
+const char* activeGroupId() {
+  return runtimeGroupId[0] != '\0' ? runtimeGroupId : DEVICE_GROUP_ID;
+}
+
+const char* activeWiFiSsid() {
+  return runtimeWifiSsid[0] != '\0' ? runtimeWifiSsid : WIFI_SSID;
+}
+
+const char* activeWiFiPassword() {
+  return runtimeWifiPassword[0] != '\0' ? runtimeWifiPassword : WIFI_PASSWORD;
+}
 
 String summarizeDeviceApiKey() {
   const char* apiKey = activeDeviceApiKey();
@@ -156,8 +187,8 @@ bool saveDeviceApiKey(const String& apiKey) {
     return false;
   }
 
-  preferences.begin("prayerbox", false);
-  const size_t written = preferences.putString("device_key", apiKey);
+  preferences.begin(kPreferencesNamespace, false);
+  const size_t written = preferences.putString(kDeviceKeyPref, apiKey);
   preferences.end();
   if (written == 0) {
     return false;
@@ -168,10 +199,10 @@ bool saveDeviceApiKey(const String& apiKey) {
   return true;
 }
 
-  void loadDeviceApiKey() {
+void loadDeviceApiKey() {
   runtimeDeviceApiKey[0] = '\0';
-  preferences.begin("prayerbox", true);
-  const String storedKey = preferences.getString("device_key", "");
+  preferences.begin(kPreferencesNamespace, true);
+  const String storedKey = preferences.getString(kDeviceKeyPref, "");
   preferences.end();
 
   if (storedKey.length() == 0 || storedKey.length() >= sizeof(runtimeDeviceApiKey)) {
@@ -179,38 +210,74 @@ bool saveDeviceApiKey(const String& apiKey) {
     return;
   }
 
-    snprintf(runtimeDeviceApiKey, sizeof(runtimeDeviceApiKey), "%s", storedKey.c_str());
-    hasStoredDeviceApiKey = true;
+  snprintf(runtimeDeviceApiKey, sizeof(runtimeDeviceApiKey), "%s", storedKey.c_str());
+  hasStoredDeviceApiKey = true;
+}
+
+bool saveGroupId(const String& groupId) {
+  if (groupId.length() == 0 || groupId.length() >= sizeof(runtimeGroupId)) {
+    return false;
   }
 
-  bool saveGroupId(const String& groupId) {
-    if (groupId.length() == 0 || groupId.length() >= sizeof(runtimeGroupId)) {
-      return false;
-    }
-
-    preferences.begin("prayerbox", false);
-    const size_t written = preferences.putString("group_id", groupId);
-    preferences.end();
-    if (written == 0) {
-      return false;
-    }
-
-    snprintf(runtimeGroupId, sizeof(runtimeGroupId), "%s", groupId.c_str());
-    return true;
+  preferences.begin(kPreferencesNamespace, false);
+  const size_t written = preferences.putString(kGroupIdPref, groupId);
+  preferences.end();
+  if (written == 0) {
+    return false;
   }
 
-  void loadGroupId() {
-    snprintf(runtimeGroupId, sizeof(runtimeGroupId), "%s", DEVICE_GROUP_ID);
-    preferences.begin("prayerbox", true);
-    const String storedGroup = preferences.getString("group_id", DEVICE_GROUP_ID);
-    preferences.end();
+  snprintf(runtimeGroupId, sizeof(runtimeGroupId), "%s", groupId.c_str());
+  return true;
+}
 
-    if (storedGroup.length() == 0 || storedGroup.length() >= sizeof(runtimeGroupId)) {
-      return;
-    }
+void loadGroupId() {
+  snprintf(runtimeGroupId, sizeof(runtimeGroupId), "%s", DEVICE_GROUP_ID);
+  preferences.begin(kPreferencesNamespace, true);
+  const String storedGroup = preferences.getString(kGroupIdPref, DEVICE_GROUP_ID);
+  preferences.end();
 
-    snprintf(runtimeGroupId, sizeof(runtimeGroupId), "%s", storedGroup.c_str());
+  if (storedGroup.length() == 0 || storedGroup.length() >= sizeof(runtimeGroupId)) {
+    return;
   }
+
+  snprintf(runtimeGroupId, sizeof(runtimeGroupId), "%s", storedGroup.c_str());
+}
+
+bool saveWiFiCredentials(const String& ssid, const String& password) {
+  if (ssid.length() == 0 || ssid.length() >= sizeof(runtimeWifiSsid) || password.length() >= sizeof(runtimeWifiPassword)) {
+    return false;
+  }
+
+  preferences.begin(kPreferencesNamespace, false);
+  const size_t ssidWritten = preferences.putString(kWifiSsidPref, ssid);
+  const size_t passwordWritten = preferences.putString(kWifiPassPref, password);
+  preferences.end();
+
+  if (ssidWritten == 0 || (password.length() > 0 && passwordWritten == 0)) {
+    return false;
+  }
+
+  snprintf(runtimeWifiSsid, sizeof(runtimeWifiSsid), "%s", ssid.c_str());
+  snprintf(runtimeWifiPassword, sizeof(runtimeWifiPassword), "%s", password.c_str());
+  return true;
+}
+
+void loadWiFiCredentials() {
+  runtimeWifiSsid[0] = '\0';
+  runtimeWifiPassword[0] = '\0';
+
+  preferences.begin(kPreferencesNamespace, true);
+  const String storedSsid = preferences.getString(kWifiSsidPref, "");
+  const String storedPassword = preferences.getString(kWifiPassPref, "");
+  preferences.end();
+
+  if (storedSsid.length() == 0 || storedSsid.length() >= sizeof(runtimeWifiSsid) || storedPassword.length() >= sizeof(runtimeWifiPassword)) {
+    return;
+  }
+
+  snprintf(runtimeWifiSsid, sizeof(runtimeWifiSsid), "%s", storedSsid.c_str());
+  snprintf(runtimeWifiPassword, sizeof(runtimeWifiPassword), "%s", storedPassword.c_str());
+}
 
 bool ledOnSignal() {
 #if LED_ACTIVE_HIGH
@@ -284,17 +351,192 @@ void publishJson(const char* topic, JsonDocument& doc, bool retained = false) {
   mqttClient.publish(topic, buffer, retained);
 }
 
-  void logManifestResponse(const JsonDocument& doc) {
-    JsonVariantConst device = doc["device"];
-    if (!device.isNull()) {
-      Serial.print("Manifest device: ");
-      Serial.println(device["deviceId"] | "unknown");
-      Serial.print("Manifest group: ");
-      Serial.println(device["groupId"] | "unknown");
-    }
+String htmlEscape(const String& input) {
+  String output;
+  output.reserve(input.length() + 16);
 
-    JsonVariantConst firmware = doc["firmware"];
-    if (!firmware.isNull()) {
+  for (size_t i = 0; i < input.length(); ++i) {
+    const char ch = input[i];
+    switch (ch) {
+      case '&':
+        output += "&amp;";
+        break;
+      case '<':
+        output += "&lt;";
+        break;
+      case '>':
+        output += "&gt;";
+        break;
+      case '"':
+        output += "&quot;";
+        break;
+      case '\'':
+        output += "&#39;";
+        break;
+      default:
+        output += ch;
+        break;
+    }
+  }
+
+  return output;
+}
+
+String provisioningPage() {
+  String options;
+  const int networkCount = WiFi.scanNetworks(false, true);
+  for (int i = 0; i < networkCount; ++i) {
+    const String ssid = WiFi.SSID(i);
+    if (ssid.length() == 0) {
+      continue;
+    }
+    options += "<option value=\"";
+    options += htmlEscape(ssid);
+    options += "\"></option>";
+  }
+  WiFi.scanDelete();
+
+  String page;
+  page.reserve(4096);
+  page += F(
+    "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
+    "<title>PRayerbox Wi-Fi Setup</title>"
+    "<style>"
+    "body{font-family:Arial,sans-serif;background:#f3efe4;color:#1b1a17;margin:0;padding:24px;}"
+    ".card{max-width:560px;margin:0 auto;background:#fffaf0;padding:24px;border-radius:18px;box-shadow:0 14px 40px rgba(27,26,23,.08);}"
+    "h1{margin:0 0 10px;font-size:2rem;}p{line-height:1.5;color:#6f675d;}label{display:block;margin:16px 0 6px;font-weight:600;}"
+    "input{width:100%;padding:14px;border:1px solid #d8cfbf;border-radius:12px;font-size:1rem;box-sizing:border-box;}"
+    "button{margin-top:18px;padding:14px 18px;border:0;border-radius:999px;background:#0d6b57;color:#fff;font-size:1rem;font-weight:700;cursor:pointer;width:100%;}"
+    ".meta{margin-top:18px;font-size:.95rem;color:#6f675d;}.chip{display:inline-block;padding:6px 10px;border-radius:999px;background:#e4f0ec;color:#084c3e;font-weight:700;margin-top:8px;}"
+    "</style></head><body><div class='card'>"
+  );
+  page += "<h1>PRayerbox Wi-Fi Setup</h1>";
+  page += "<p>Connect this device to your home's Wi-Fi. After saving, the box will restart and reconnect on its own.</p>";
+  page += "<div class='chip'>";
+  page += htmlEscape(deviceId());
+  page += "</div>";
+  page += "<div class='meta'>Setup network: <strong>";
+  page += htmlEscape(provisioningApSsid);
+  page += "</strong><br>Open <strong>http://192.168.4.1</strong> if this page does not appear automatically.</div>";
+  page += "<form method='post' action='/save'>";
+  page += "<label for='ssid'>Wi-Fi name</label>";
+  page += "<input id='ssid' name='ssid' list='ssid-list' value='";
+  page += htmlEscape(activeWiFiSsid());
+  page += "' placeholder='Your Wi-Fi network' required>";
+  page += "<datalist id='ssid-list'>";
+  page += options;
+  page += "</datalist>";
+  page += "<label for='password'>Wi-Fi password</label>";
+  page += "<input id='password' name='password' type='password' value='";
+  page += htmlEscape(activeWiFiPassword());
+  page += "' placeholder='Wi-Fi password'>";
+  page += "<button type='submit'>Save and Restart</button>";
+  page += "</form></div></body></html>";
+  return page;
+}
+
+void handleProvisioningRoot() {
+  provisioningServer.send(200, "text/html", provisioningPage());
+}
+
+void handleProvisioningSave() {
+  const String ssid = provisioningServer.arg("ssid");
+  const String password = provisioningServer.arg("password");
+
+  if (!saveWiFiCredentials(ssid, password)) {
+    provisioningServer.send(400, "text/plain", "Failed to save Wi-Fi credentials.");
+    return;
+  }
+
+  provisioningServer.send(200, "text/html",
+    "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'></head>"
+    "<body style='font-family:Arial,sans-serif;background:#f3efe4;padding:24px;color:#1b1a17;'>"
+    "<div style='max-width:520px;margin:0 auto;background:#fffaf0;padding:24px;border-radius:18px;'>"
+    "<h1 style='margin-top:0;'>Saved</h1>"
+    "<p>Your Wi-Fi settings were saved. This PRayerbox is restarting now.</p>"
+    "</div></body></html>");
+  delay(1200);
+  ESP.restart();
+}
+
+void initializeProvisioningServer() {
+  if (provisioningServerInitialized) {
+    return;
+  }
+
+  provisioningServer.on("/", HTTP_GET, handleProvisioningRoot);
+  provisioningServer.on("/generate_204", HTTP_GET, handleProvisioningRoot);
+  provisioningServer.on("/hotspot-detect.html", HTTP_GET, handleProvisioningRoot);
+  provisioningServer.on("/save", HTTP_POST, handleProvisioningSave);
+  provisioningServer.onNotFound(handleProvisioningRoot);
+  provisioningServer.begin();
+  provisioningServerInitialized = true;
+}
+
+void startProvisioningPortal(const char* reason) {
+  if (provisioningMode) {
+    return;
+  }
+
+  snprintf(
+    provisioningApSsid,
+    sizeof(provisioningApSsid),
+    "%s-%s",
+    WIFI_SETUP_AP_PREFIX,
+    strlen(deviceId()) >= 4 ? deviceId() + strlen(deviceId()) - 4 : deviceId()
+  );
+
+  WiFi.disconnect(true, false);
+  WiFi.mode(WIFI_AP_STA);
+  const bool apStarted =
+    strlen(WIFI_SETUP_AP_PASSWORD) >= 8
+      ? WiFi.softAP(provisioningApSsid, WIFI_SETUP_AP_PASSWORD)
+      : WiFi.softAP(provisioningApSsid);
+
+  if (!apStarted) {
+    Serial.println("Failed to start provisioning access point.");
+    return;
+  }
+
+  dnsServer.start(53, "*", WiFi.softAPIP());
+  initializeProvisioningServer();
+  provisioningMode = true;
+  provisioningLedState = false;
+  lastProvisioningBlinkMs = 0;
+
+  Serial.println();
+  Serial.println("Entering Wi-Fi provisioning mode.");
+  Serial.print("Reason: ");
+  Serial.println(reason);
+  Serial.print("Setup SSID: ");
+  Serial.println(provisioningApSsid);
+  Serial.print("Portal IP: ");
+  Serial.println(WiFi.softAPIP());
+}
+
+void serviceProvisioningPortal() {
+  dnsServer.processNextRequest();
+  provisioningServer.handleClient();
+
+  const unsigned long now = millis();
+  if (now - lastProvisioningBlinkMs >= kProvisioningBlinkIntervalMs) {
+    lastProvisioningBlinkMs = now;
+    provisioningLedState = !provisioningLedState;
+    setOutput(provisioningLedState);
+  }
+}
+
+void logManifestResponse(const JsonDocument& doc) {
+  JsonVariantConst device = doc["device"];
+  if (!device.isNull()) {
+    Serial.print("Manifest device: ");
+    Serial.println(device["deviceId"] | "unknown");
+    Serial.print("Manifest group: ");
+    Serial.println(device["groupId"] | "unknown");
+  }
+
+  JsonVariantConst firmware = doc["firmware"];
+  if (!firmware.isNull()) {
     const char* latestVersion = firmware["version"] | "unknown";
     Serial.print("Manifest firmware version: ");
     Serial.println(latestVersion);
@@ -306,10 +548,10 @@ void publishJson(const char* topic, JsonDocument& doc, bool retained = false) {
     } else {
       Serial.println("Firmware is up to date.");
     }
-    } else {
-      Serial.println("No active firmware release in manifest.");
-    }
+  } else {
+    Serial.println("No active firmware release in manifest.");
   }
+}
 
   void refreshTopicsForGroupChange(const String& nextGroupId) {
     if (
@@ -779,23 +1021,37 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   Serial.println(lightingModeToString(currentMode));
 }
 
-void ensureWiFi() {
+bool ensureWiFi() {
+  if (provisioningMode) {
+    return false;
+  }
+
   if (WiFi.status() == WL_CONNECTED) {
-    return;
+    return true;
   }
 
   Serial.print("Connecting to Wi-Fi");
   WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  WiFi.begin(activeWiFiSsid(), activeWiFiPassword());
 
-  while (WiFi.status() != WL_CONNECTED) {
+  const unsigned long connectStartedMs = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - connectStartedMs < kWiFiConnectTimeoutMs) {
     delay(500);
     Serial.print(".");
+  }
+
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println();
+    startProvisioningPortal("wifi connect timeout");
+    return false;
   }
 
   Serial.println();
   Serial.print("Wi-Fi connected, IP: ");
   Serial.println(WiFi.localIP());
+  Serial.print("Connected SSID: ");
+  Serial.println(WiFi.SSID());
+  return true;
 }
 
 bool connectMqtt() {
@@ -865,11 +1121,17 @@ void ensureMqtt() {
   }
 
   lastReconnectAttemptMs = now;
-  ensureWiFi();
+  if (!ensureWiFi()) {
+    return;
+  }
   connectMqtt();
 }
 
 void handleButton() {
+  if (provisioningMode) {
+    return;
+  }
+
   const unsigned long now = millis();
   const bool reading = digitalRead(BUTTON_PIN);
 
@@ -881,15 +1143,31 @@ void handleButton() {
     stableButtonReading = reading;
 
     if (stableButtonReading == BUTTON_ACTIVE_STATE) {
-      localActive = !localActive;
-      activationNeedsPublish = true;
-      Serial.print("Local active changed to ");
-      Serial.println(localActive ? "true" : "false");
+      buttonPressedMs = now;
+      longPressHandled = false;
+    } else {
+      if (!longPressHandled) {
+        localActive = !localActive;
+        activationNeedsPublish = true;
+        Serial.print("Local active changed to ");
+        Serial.println(localActive ? "true" : "false");
 
-      if (mqttClient.connected()) {
-        flushPendingActivation();
+        if (mqttClient.connected()) {
+          flushPendingActivation();
+        }
       }
+      buttonPressedMs = 0;
     }
+  }
+
+  if (
+    stableButtonReading == BUTTON_ACTIVE_STATE &&
+    buttonPressedMs != 0 &&
+    !longPressHandled &&
+    now - buttonPressedMs >= kProvisioningHoldMs
+  ) {
+    longPressHandled = true;
+    startProvisioningPortal("button hold");
   }
 
   lastButtonReading = reading;
@@ -933,25 +1211,50 @@ void setup() {
 #endif
   setOutput(false);
 
-    buildDeviceIdentity();
-    loadDeviceApiKey();
-    loadGroupId();
-    buildTopics();
-    Serial.print("Device ID: ");
-    Serial.println(deviceId());
-    Serial.print("Device API key source: ");
-    Serial.println(hasStoredDeviceApiKey ? "stored" : "bootstrap");
-    Serial.print("Initial group: ");
-    Serial.println(activeGroupId());
+  buildDeviceIdentity();
+  loadDeviceApiKey();
+  loadGroupId();
+  loadWiFiCredentials();
+  buildTopics();
+  Serial.print("Device ID: ");
+  Serial.println(deviceId());
+  Serial.print("Device API key source: ");
+  Serial.println(hasStoredDeviceApiKey ? "stored" : "bootstrap");
+  Serial.print("Initial group: ");
+  Serial.println(activeGroupId());
+  Serial.print("Wi-Fi credential source: ");
+  Serial.println(runtimeWifiSsid[0] != '\0' ? "stored" : "default");
+  Serial.print("Active Wi-Fi SSID: ");
+  Serial.println(activeWiFiSsid());
   lastButtonReading = digitalRead(BUTTON_PIN);
   stableButtonReading = lastButtonReading;
+
+  if (stableButtonReading == BUTTON_ACTIVE_STATE) {
+    const unsigned long holdStartedMs = millis();
+    while (digitalRead(BUTTON_PIN) == BUTTON_ACTIVE_STATE && millis() - holdStartedMs < kProvisioningHoldMs) {
+      delay(20);
+    }
+
+    if (digitalRead(BUTTON_PIN) == BUTTON_ACTIVE_STATE) {
+      startProvisioningPortal("startup button hold");
+      return;
+    }
+  }
 
   ensureWiFi();
   connectMqtt();
 }
 
 void loop() {
+  if (provisioningMode) {
+    serviceProvisioningPortal();
+    return;
+  }
+
   ensureWiFi();
+  if (provisioningMode) {
+    return;
+  }
   checkDeviceBootstrap();
   checkDeviceManifest();
   ensureMqtt();
