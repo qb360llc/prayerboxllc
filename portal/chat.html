@@ -33,7 +33,7 @@
       .notify-link { display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:999px; text-decoration:none; background:rgba(13,107,87,.16); font-weight:600; }
       .notify-count { min-width:1.45rem; padding:2px 6px; border-radius:999px; background:var(--accent-strong); color:#fff; font-size:.78rem; line-height:1.2; text-align:center; }
       .mobile-top-title { display:block; font-size:1.2rem; font-weight:700; align-self:center; color:var(--ink); }
-      .hero { margin-top:18px; }
+      .hero { margin-top:6px; }
       .nav-toggle { position:absolute; opacity:0; pointer-events:none; }
       .mobile-nav-button { display:none; width:48px; height:48px; border-radius:14px; background:var(--accent); cursor:pointer; align-items:center; justify-content:center; box-shadow:0 10px 24px rgba(27,26,23,.12); }
       .mobile-nav-button span { display:block; width:20px; height:2px; background:#fff; position:relative; }
@@ -44,7 +44,7 @@
       .mobile-drawer { position:fixed; top:0; left:0; height:100vh; width:min(280px, 82vw); padding:88px 18px 24px; background:var(--panel); border-right:1px solid var(--line); box-shadow:0 18px 40px rgba(27,26,23,.18); transform:translateX(-100%); transition:transform .22s ease; z-index:60; }
       .mobile-drawer nav { display:grid; gap:10px; }
       .mobile-drawer a { display:block; padding:12px 14px; border-radius:14px; text-decoration:none; background:rgba(13,107,87,.08); }
-      .panel { margin-top:24px; padding:20px; border:1px solid var(--line); border-radius:18px; background:color-mix(in srgb, var(--panel) 88%, white 12%); box-shadow:0 14px 40px rgba(27,26,23,.08); }
+      .panel { margin-top:14px; padding:18px 20px; border:1px solid var(--line); border-radius:18px; background:color-mix(in srgb, var(--panel) 88%, white 12%); box-shadow:0 14px 40px rgba(27,26,23,.08); }
       .chat-shell { margin-top:18px; height:560px; overflow-y:auto; padding-right:6px; border-top:1px solid rgba(216,207,191,.8); border-bottom:1px solid rgba(216,207,191,.8); }
       .chat-list { display:grid; gap:12px; }
       .chat-row { display:flex; }
@@ -57,7 +57,8 @@
       .chat-meta { margin-top:8px; color:var(--muted); font-size:.82rem; }
       .section-title { display:flex; align-items:center; gap:10px; }
       .group-summary { display:flex; align-items:center; justify-content:space-between; gap:12px; }
-      .icon-button { width:42px; height:42px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:999px; }
+      .refresh-link { padding:0; border:0; background:transparent; color:var(--accent-strong); font-size:1.7rem; line-height:1; display:inline-flex; align-items:center; justify-content:center; box-shadow:none; min-width:auto; }
+      .refresh-link:hover { background:transparent; color:var(--accent); }
       .empty { color:var(--muted); }
       .chat-composer { display:grid; gap:12px; margin-top:16px; }
       .chat-composer-row { display:flex; gap:12px; align-items:flex-end; }
@@ -67,7 +68,7 @@
       @media (max-width:720px) {
         .topnav { display:none; }
         .mobile-nav-button { display:flex; }
-        .hero { margin-top:14px; }
+        .hero { margin-top:6px; }
         .notify-link { margin-left:auto; }
         .nav-toggle:checked ~ .mobile-overlay { display:block; position:fixed; inset:0; background:rgba(27,26,23,.36); z-index:55; }
         .nav-toggle:checked ~ .mobile-drawer { transform:translateX(0); }
@@ -109,15 +110,10 @@
           <a href="./settings.html">Settings</a>
         </nav>
       </aside>
-      <div class="hero">
-        <h1>Community Chat</h1>
-        <p>Send quick text updates or voice messages to the active group selected in Settings.</p>
-      </div>
-
       <section class="panel">
         <div class="section-title">
-          <h2>Chat</h2>
-          <button id="refresh-chat" class="secondary icon-button" aria-label="Refresh chat" title="Refresh chat">&#x21bb;</button>
+          <h2>Community Chat</h2>
+          <button id="refresh-chat" class="refresh-link" aria-label="Refresh chat" title="Refresh chat">&#x21bb;</button>
         </div>
         <div class="group-summary">
           <div id="active-group" class="empty">Loading your selected community...</div>
@@ -265,7 +261,7 @@
         if (activeGroup.slug !== savedGroupSlug) {
           localStorage.setItem(SELECTED_GROUP_STORAGE_KEY, activeGroup.slug);
         }
-        els.activeGroup.textContent = `Chatting in ${activeGroup.name}. Change this in Settings.`;
+        els.activeGroup.textContent = "";
         updateChatRecorderButtons();
       }
 
