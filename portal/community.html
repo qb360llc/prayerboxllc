@@ -27,12 +27,12 @@
       .status { margin-top:16px; padding:12px 14px; border-radius:12px; background:rgba(13,107,87,.08); color:var(--ink); white-space:pre-wrap; }
       .status.error { background:rgba(161,40,40,.1); color:var(--danger); }
       .actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:16px; }
-      .topbar { display:flex; justify-content:flex-end; gap:10px; }
+      .topbar { position:sticky; top:12px; z-index:40; display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 14px; border:1px solid var(--line); border-radius:18px; background:color-mix(in srgb, var(--panel) 90%, white 10%); box-shadow:0 14px 40px rgba(27,26,23,.12); backdrop-filter:blur(14px); }
       .topnav { display:flex; flex-wrap:wrap; gap:10px; }
       .topnav a { display:inline-block; padding:10px 14px; border-radius:999px; text-decoration:none; background:rgba(13,107,87,.08); }
       .notify-link { display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:999px; text-decoration:none; background:rgba(13,107,87,.16); font-weight:600; }
       .notify-count { min-width:1.45rem; padding:2px 6px; border-radius:999px; background:var(--accent-strong); color:#fff; font-size:.78rem; line-height:1.2; text-align:center; }
-      .mobile-top-title { display:none; font-size:1.2rem; font-weight:700; align-self:center; color:var(--ink); }
+      .mobile-top-title { display:block; font-size:1.2rem; font-weight:700; align-self:center; color:var(--ink); }
       .hero { margin-top:18px; }
       .nav-toggle { position:absolute; opacity:0; pointer-events:none; }
       .mobile-nav-button { display:none; width:48px; height:48px; border-radius:14px; background:var(--accent); cursor:pointer; align-items:center; justify-content:center; box-shadow:0 10px 24px rgba(27,26,23,.12); }
@@ -63,12 +63,9 @@
       .composer-bar textarea { flex:1; margin:0; }
       .composer-bar button { white-space:nowrap; }
       @media (max-width:720px) {
-        .topbar { justify-content:space-between; align-items:center; }
         .topnav { display:none; }
         .mobile-nav-button { display:flex; }
-        .mobile-top-title { display:block; }
         .hero { margin-top:14px; }
-        .hero h1 { display:none; }
         .notify-link { margin-left:auto; }
         .nav-toggle:checked ~ .mobile-overlay { display:block; position:fixed; inset:0; background:rgba(27,26,23,.36); z-index:25; }
         .nav-toggle:checked ~ .mobile-drawer { transform:translateX(0); }
@@ -138,15 +135,6 @@
       </section>
 
       <section class="panel">
-        <h2>Session</h2>
-        <div id="session-state" class="status">Checking sign-in...</div>
-        <div class="actions">
-          <a href="./settings.html">Open Settings</a>
-          <button id="sign-out-app" class="secondary" type="button">Sign Out</button>
-        </div>
-      </section>
-
-      <section class="panel">
         <h2>Status</h2>
         <div id="status" class="status">Idle.</div>
       </section>
@@ -167,8 +155,6 @@
         intentionBody: document.querySelector("#intention-body"),
         postIntention: document.querySelector("#post-intention"),
         refreshFeed: document.querySelector("#refresh-feed"),
-        sessionState: document.querySelector("#session-state"),
-        signOutApp: document.querySelector("#sign-out-app"),
         status: document.querySelector("#status"),
       };
 
@@ -384,13 +370,6 @@
         }
       }
 
-      async function signOut() {
-        const client = getClient();
-        const { error } = await client.auth.signOut();
-        if (error) throw error;
-        window.location.replace(HOME_URL);
-      }
-
       async function boot() {
         try {
           const client = getClient();
@@ -400,7 +379,6 @@
             window.location.replace(HOME_URL);
             return;
           }
-          els.sessionState.textContent = `Signed in as ${session.user.email || "your account"}`;
           await refreshNotificationBadge();
           await loadGroups();
           await loadFeed();
@@ -422,7 +400,6 @@
 
       els.refreshFeed.addEventListener("click", () => wrap(loadFeed, els.refreshFeed));
       els.postIntention.addEventListener("click", () => wrap(postIntention, els.postIntention));
-      els.signOutApp.addEventListener("click", () => wrap(signOut, els.signOutApp));
 
       boot();
     </script>

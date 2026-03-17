@@ -28,6 +28,21 @@ function json(request: Request, status: number, body: unknown) {
   });
 }
 
+function errorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) {
+      return message;
+    }
+  }
+
+  return "Unknown error";
+}
+
 function normalizeReadingDate(input?: string | null) {
   const value = input?.trim();
   if (!value) {
@@ -351,7 +366,7 @@ Deno.serve(async (request) => {
     });
   } catch (error) {
     return json(request, 400, {
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: errorMessage(error),
       ok: false,
     });
   }
