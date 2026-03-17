@@ -61,10 +61,20 @@
       .refresh-link:hover { background:transparent; color:var(--accent); }
       .empty { color:var(--muted); }
       .chat-composer { display:grid; gap:12px; margin-top:16px; }
-      .chat-composer-row { display:flex; gap:12px; align-items:flex-end; }
+      .chat-composer-row { display:flex; gap:10px; align-items:center; }
       .chat-composer-row input { flex:1; }
-      .chat-voice-tools { display:flex; gap:10px; flex-wrap:wrap; }
-      .chat-voice-tools button { min-width:110px; }
+      .send-button { width:46px; height:46px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:999px; font-size:1.25rem; line-height:1; }
+      .chat-voice-tools { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+      .record-button { width:50px; height:50px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:999px; font-size:1.4rem; line-height:1; }
+      .recording-live { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:2px; padding:12px 14px; border:1px solid rgba(198,40,40,.18); border-radius:14px; background:rgba(198,40,40,.08); }
+      .recording-badge { display:flex; align-items:center; gap:10px; color:var(--ink); font-weight:600; }
+      .recording-dot { width:12px; height:12px; border-radius:999px; background:#c62828; box-shadow:0 0 0 rgba(198,40,40,.4); animation:record-pulse 1.2s infinite; }
+      .stop-button { width:46px; height:46px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:999px; font-size:1.15rem; line-height:1; }
+      @keyframes record-pulse {
+        0% { box-shadow:0 0 0 0 rgba(198,40,40,.45); }
+        70% { box-shadow:0 0 0 10px rgba(198,40,40,0); }
+        100% { box-shadow:0 0 0 0 rgba(198,40,40,0); }
+      }
       @media (max-width:720px) {
         .topnav { display:none; }
         .mobile-nav-button { display:flex; }
@@ -123,16 +133,19 @@
           <div id="chat-list" class="chat-list"></div>
         </div>
         <div class="chat-composer">
-          <div>
-            <label for="chat-text">Message</label>
-            <div class="chat-composer-row">
-              <input id="chat-text" type="text" placeholder="Send a message to your community...">
-              <button id="send-chat">Send</button>
-            </div>
+          <div class="chat-composer-row">
+            <input id="chat-text" type="text" placeholder="Send a message to your community...">
+            <button id="send-chat" class="send-button" aria-label="Send message" title="Send message">&#10148;</button>
           </div>
           <div class="chat-voice-tools">
-            <button id="record-chat">Record Voice</button>
-            <button id="stop-chat" class="secondary" disabled>Stop</button>
+            <button id="record-chat" class="record-button" aria-label="Record voice message" title="Record voice message">&#9679;</button>
+          </div>
+          <div id="chat-recording-live" class="recording-live" hidden>
+            <div class="recording-badge">
+              <span class="recording-dot" aria-hidden="true"></span>
+              <span id="chat-recording-label">Recording voice message...</span>
+            </div>
+            <button id="stop-chat" class="secondary stop-button" aria-label="Stop recording" title="Stop recording">&#9632;</button>
           </div>
           <div id="chat-recording-status" class="status">Voice chat is ready when your group is active.</div>
         </div>
@@ -156,6 +169,8 @@
         activeGroup: document.querySelector("#active-group"),
         chatEmpty: document.querySelector("#chat-empty"),
         chatList: document.querySelector("#chat-list"),
+        chatRecordingLabel: document.querySelector("#chat-recording-label"),
+        chatRecordingLive: document.querySelector("#chat-recording-live"),
         chatRecordingStatus: document.querySelector("#chat-recording-status"),
         chatShell: document.querySelector("#chat-shell"),
         chatText: document.querySelector("#chat-text"),
@@ -217,9 +232,10 @@
         const hasRecorder = Boolean(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
         const isRecording = Boolean(chatRecorder && chatRecorder.state === "recording");
         els.recordChat.disabled = !hasGroup || !hasRecorder || isRecording;
-        els.stopChat.disabled = !isRecording;
         els.sendChat.disabled = !hasGroup;
         els.refreshChat.disabled = !hasGroup;
+        els.chatRecordingLive.hidden = !isRecording;
+        els.stopChat.disabled = !isRecording;
       }
 
       async function authedFetch(path, options = {}) {
@@ -425,6 +441,7 @@
             const blob = new Blob(chatAudioChunks, { type: chatRecorder.mimeType || "audio/webm" });
             const durationMs = Math.max(0, Date.now() - (chatRecordingStartedAt || Date.now()));
             setChatRecordingStatus("Uploading voice message...");
+            els.chatRecordingLive.hidden = true;
             await uploadChatRecording(blob, durationMs);
           } catch (error) {
             setChatRecordingStatus(error.message || "Failed to process voice message.", true);
@@ -437,8 +454,9 @@
         };
 
         chatRecorder.start();
+        els.chatRecordingLabel.textContent = `Recording voice message for ${selectedGroupSlug()}...`;
         updateChatRecorderButtons();
-        setChatRecordingStatus(`Recording voice message for ${selectedGroupSlug()}...`);
+        setChatRecordingStatus("Recording in progress. Tap stop when you are ready to send.");
       }
 
       function stopChatRecording() {
