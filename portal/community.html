@@ -262,7 +262,7 @@
                 </div>
               </div>` : ""}
             <div class="reaction-row">
-              <button class="heart-button react ${item.userReaction === "love" ? "active" : ""}" aria-label="Love this intention" data-intention-id="${item.id}" data-reaction="love">${item.userReaction === "love" ? "&#9829;" : "&#9825;"}</button>
+              <button class="heart-button react ${(item.loveCount > 0 || item.userReaction === "love") ? "active" : ""}" aria-label="Love this intention" data-intention-id="${item.id}" data-reaction="love">${(item.loveCount > 0 || item.userReaction === "love") ? "&#9829;" : "&#9825;"}</button>
               <span class="heart-count">${item.loveCount} ${item.loveCount === 1 ? "person loves" : "people love"} this</span>
             </div>`;
           els.feed.appendChild(card);
