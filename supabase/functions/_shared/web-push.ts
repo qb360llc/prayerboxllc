@@ -8,6 +8,20 @@ type PushPayload = {
   title: string;
 };
 
+type PushDeliveryFailure = {
+  endpoint: string;
+  error: string;
+  statusCode?: number;
+  subscriptionId: string;
+};
+
+type PushDeliveryResult = {
+  attempted: number;
+  failed: number;
+  failures: PushDeliveryFailure[];
+  sent: number;
+};
+
 type PushRow = {
   auth_key: string;
   endpoint: string;
@@ -57,14 +71,25 @@ export async function sendPushToUsers(
   supabase: SupabaseClient,
   recipientUserIds: string[],
   payload: PushPayload,
-) {
+): Promise<PushDeliveryResult> {
   const config = getConfig();
   if (!config || !recipientUserIds.length) {
-    return;
+    return {
+      attempted: 0,
+      failed: 0,
+      failures: [],
+      sent: 0,
+    };
   }
 
   webpush.setVapidDetails(config.subject, config.publicKey, config.privateKey);
   const subscriptions = await loadSubscriptions(supabase, recipientUserIds);
+  const result: PushDeliveryResult = {
+    attempted: subscriptions.length,
+    failed: 0,
+    failures: [],
+    sent: 0,
+  };
 
   await Promise.all(
     subscriptions.map(async (subscription) => {
@@ -79,10 +104,24 @@ export async function sendPushToUsers(
           },
           JSON.stringify(payload),
         );
+        result.sent += 1;
       } catch (error) {
         const statusCode = typeof error === "object" && error && "statusCode" in error
           ? Number((error as { statusCode?: unknown }).statusCode)
           : 0;
+        const message = error instanceof Error
+          ? error.message
+          : typeof error === "string"
+            ? error
+            : "Unknown push delivery error";
+
+        result.failed += 1;
+        result.failures.push({
+          endpoint: subscription.endpoint,
+          error: message,
+          statusCode: statusCode || undefined,
+          subscriptionId: subscription.id,
+        });
 
         if (statusCode === 404 || statusCode === 410) {
           await removeSubscription(supabase, subscription.id);
@@ -93,4 +132,6 @@ export async function sendPushToUsers(
       }
     }),
   );
+
+  return result;
 }

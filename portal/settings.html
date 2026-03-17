@@ -140,6 +140,7 @@
           <button id="install-app">Install App</button>
           <button id="enable-push" class="secondary">Enable Push</button>
           <button id="disable-push" class="secondary">Disable Push</button>
+          <button id="test-push" class="ghost">Send Test Push</button>
         </div>
       </section>
 
@@ -234,6 +235,7 @@
         signOut: document.querySelector("#sign-out"),
         signUp: document.querySelector("#sign-up"),
         status: document.querySelector("#status"),
+        testPush: document.querySelector("#test-push"),
       };
       const SELECTED_GROUP_STORAGE_KEY = "prayerboxSelectedGroupSlug";
       let groups = [];
@@ -448,6 +450,28 @@
         await pwa.unsubscribeFromPush({ getAccessToken });
         await refreshPwaStatus();
         setStatus("Push notifications disabled for this browser.");
+      }
+
+      async function sendTestPush() {
+        const response = await authedFetch("/functions/v1/send-test-push", {
+          body: JSON.stringify({}),
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error || payload.message || "Failed to send test push.");
+        }
+
+        const result = payload.result || {};
+        if (result.attempted && !result.sent && result.failed) {
+          const firstFailure = Array.isArray(result.failures) && result.failures.length
+            ? result.failures[0].error || "Unknown delivery failure."
+            : "Unknown delivery failure.";
+          throw new Error(`Push delivery failed after ${result.attempted} attempt(s): ${firstFailure}`);
+        }
+
+        setStatus(`Test push sent to ${result.sent || 0} subscription(s). Lock the phone or background the app to see the banner.`);
       }
 
       function renderClaimResult(device) {
@@ -719,6 +743,7 @@
       els.installApp.addEventListener("click", () => wrap(installApp, els.installApp));
       els.enablePush.addEventListener("click", () => wrap(enablePush, els.enablePush));
       els.disablePush.addEventListener("click", () => wrap(disablePush, els.disablePush));
+      els.testPush.addEventListener("click", () => wrap(sendTestPush, els.testPush));
       els.createGroup.addEventListener("click", () => wrap(createGroup, els.createGroup));
       els.joinGroup.addEventListener("click", () => wrap(joinGroup, els.joinGroup));
       els.refreshGroups.addEventListener("click", () => wrap(loadMyGroups, els.refreshGroups));
