@@ -229,7 +229,7 @@ async function notifyGroupMembers(
   const { error: insertError } = await supabase.from("notifications").insert(rows);
   if (insertError) throw insertError;
 
-  await sendPushToUsers(supabase, recipientUserIds, {
+  return await sendPushToUsers(supabase, recipientUserIds, {
     body,
     data: {
       groupId,
@@ -320,7 +320,7 @@ Deno.serve(async (request) => {
       if (insertError) throw insertError;
 
       const actorName = await getActorName(supabase, user.id);
-      await notifyGroupMembers(
+      const pushResult = await notifyGroupMembers(
         supabase,
         group.id,
         user.id,
@@ -342,6 +342,7 @@ Deno.serve(async (request) => {
         },
         messages,
         ok: true,
+        pushResult,
       });
     }
 
@@ -370,7 +371,7 @@ Deno.serve(async (request) => {
 
     const actorName = await getActorName(supabase, user.id);
     const preview = messageBody.length > 120 ? `${messageBody.slice(0, 117)}...` : messageBody;
-    await notifyGroupMembers(
+    const pushResult = await notifyGroupMembers(
       supabase,
       group.id,
       user.id,
@@ -393,6 +394,7 @@ Deno.serve(async (request) => {
       },
       messages,
       ok: true,
+      pushResult,
     });
   } catch (error) {
     return json(request, 400, {

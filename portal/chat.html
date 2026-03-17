@@ -366,7 +366,12 @@
         if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to send chat message.");
         els.chatText.value = "";
         renderChat(payload.messages || []);
-        setStatus("Sent your chat message.");
+        const pushResult = payload.pushResult || {};
+        if (pushResult.attempted === 0) {
+          setStatus("Sent your chat message. Push attempted 0 subscriptions for recipients.", true);
+        } else {
+          setStatus(`Sent your chat message. Push sent ${pushResult.sent || 0} of ${pushResult.attempted || 0} attempted subscriptions.`);
+        }
       }
 
       async function uploadChatRecording(blob, durationMs) {
@@ -399,7 +404,12 @@
         const payload = await response.json();
         if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to upload voice message.");
         renderChat(payload.messages || []);
-        setStatus("Sent your voice message.");
+        const pushResult = payload.pushResult || {};
+        if (pushResult.attempted === 0) {
+          setStatus("Sent your voice message. Push attempted 0 subscriptions for recipients.", true);
+        } else {
+          setStatus(`Sent your voice message. Push sent ${pushResult.sent || 0} of ${pushResult.attempted || 0} attempted subscriptions.`);
+        }
         setChatRecordingStatus(`Voice message sent to ${groupSlug}.`);
       }
 
