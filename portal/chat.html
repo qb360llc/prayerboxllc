@@ -14,7 +14,7 @@
       :root { --bg:#f3efe4; --panel:#fffaf0; --ink:#1b1a17; --muted:#6f675d; --accent:#0d6b57; --accent-strong:#084c3e; --line:#d8cfbf; --danger:#a12828; }
       * { box-sizing:border-box; }
       body { margin:0; min-height:100vh; font-family:Georgia,"Times New Roman",serif; color:var(--ink); background:radial-gradient(circle at top left, rgba(13,107,87,.12), transparent 30%), linear-gradient(180deg, #efe7d6 0%, var(--bg) 100%); }
-      main { max-width:860px; margin:0 auto; padding:32px 20px 64px; }
+      main { max-width:860px; margin:0 auto; padding:20px 20px 64px; }
       h1 { margin:0 0 8px; font-size:clamp(2rem,5vw,3.4rem); line-height:1; }
       h2 { margin:0; }
       p { color:var(--muted); line-height:1.5; }
@@ -26,7 +26,8 @@
       .status { margin-top:16px; padding:12px 14px; border-radius:12px; background:rgba(13,107,87,.08); color:var(--ink); white-space:pre-wrap; }
       .status.error { background:rgba(161,40,40,.1); color:var(--danger); }
       .actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:16px; }
-      .topbar { position:sticky; top:12px; z-index:40; display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 14px; border:1px solid var(--line); border-radius:18px; background:color-mix(in srgb, var(--panel) 90%, white 10%); box-shadow:0 14px 40px rgba(27,26,23,.12); backdrop-filter:blur(14px); }
+      .topbar-wrap { position:sticky; top:0; z-index:40; margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw); padding:0 0 14px; background:linear-gradient(180deg, rgba(243,239,228,.96) 0%, rgba(243,239,228,.86) 74%, rgba(243,239,228,0) 100%); backdrop-filter:blur(14px); }
+      .topbar { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 20px; border-bottom:1px solid var(--line); background:color-mix(in srgb, var(--panel) 92%, white 8%); box-shadow:0 10px 24px rgba(27,26,23,.08); }
       .topnav { display:flex; flex-wrap:wrap; gap:10px; }
       .topnav a { display:inline-block; padding:10px 14px; border-radius:999px; text-decoration:none; background:rgba(13,107,87,.08); }
       .notify-link { display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:999px; text-decoration:none; background:rgba(13,107,87,.16); font-weight:600; }
@@ -80,6 +81,7 @@
   <body>
     <main>
       <input id="nav-toggle" class="nav-toggle" type="checkbox">
+      <div class="topbar-wrap">
       <div class="topbar">
         <div style="display:flex; align-items:center; gap:10px;">
           <label for="nav-toggle" class="mobile-nav-button" aria-label="Open navigation menu"><span></span></label>
@@ -94,6 +96,7 @@
           </nav>
         </div>
         <a class="notify-link" href="./notifications.html">Alerts <span class="notify-count" data-notify-count hidden>0</span></a>
+      </div>
       </div>
       <label for="nav-toggle" class="mobile-overlay" aria-hidden="true"></label>
       <aside class="mobile-drawer" aria-label="Mobile navigation">
