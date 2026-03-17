@@ -14,16 +14,17 @@
       :root { --bg:#f3efe4; --panel:#fffaf0; --ink:#1b1a17; --muted:#6f675d; --accent:#0d6b57; --accent-strong:#084c3e; --line:#d8cfbf; }
       * { box-sizing:border-box; }
       body { margin:0; min-height:100vh; font-family:Georgia,"Times New Roman",serif; color:var(--ink); background:radial-gradient(circle at top left, rgba(13,107,87,.12), transparent 30%), linear-gradient(180deg, #efe7d6 0%, var(--bg) 100%); }
-      main { max-width:760px; margin:0 auto; padding:32px 20px 64px; }
+      main { max-width:760px; margin:0 auto; padding:20px 20px 64px; }
       h1 { margin:0 0 8px; font-size:clamp(2rem,5vw,3.4rem); line-height:1; }
       p { color:var(--muted); line-height:1.6; }
       a { color:var(--accent-strong); }
-      .topbar { display:flex; justify-content:flex-end; gap:10px; }
+      .topbar-wrap { position:sticky; top:0; z-index:40; margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw); padding:0 0 14px; background:linear-gradient(180deg, rgba(243,239,228,.96) 0%, rgba(243,239,228,.86) 74%, rgba(243,239,228,0) 100%); backdrop-filter:blur(14px); }
+      .topbar { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 20px; border-bottom:1px solid var(--line); background:color-mix(in srgb, var(--panel) 92%, white 8%); box-shadow:0 10px 24px rgba(27,26,23,.08); }
       .topnav { display:flex; flex-wrap:wrap; gap:10px; }
       .topnav a { display:inline-block; padding:10px 14px; border-radius:999px; text-decoration:none; background:rgba(13,107,87,.08); }
       .notify-link { display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:999px; text-decoration:none; background:rgba(13,107,87,.16); font-weight:600; }
       .notify-count { min-width:1.45rem; padding:2px 6px; border-radius:999px; background:var(--accent-strong); color:#fff; font-size:.78rem; line-height:1.2; text-align:center; }
-      .mobile-top-title { display:none; font-size:1.2rem; font-weight:700; align-self:center; color:var(--ink); }
+      .mobile-top-title { display:block; font-size:1.2rem; font-weight:700; align-self:center; color:var(--ink); }
       .hero { margin-top:18px; }
       .nav-toggle { position:absolute; opacity:0; pointer-events:none; }
       .mobile-nav-button { display:none; width:48px; height:48px; border-radius:14px; background:var(--accent); cursor:pointer; align-items:center; justify-content:center; box-shadow:0 10px 24px rgba(27,26,23,.12); }
@@ -32,7 +33,7 @@
       .mobile-nav-button span::before { top:-6px; }
       .mobile-nav-button span::after { top:6px; }
       .mobile-overlay { display:none; }
-      .mobile-drawer { position:fixed; top:0; left:0; height:100vh; width:min(280px, 82vw); padding:88px 18px 24px; background:var(--panel); border-right:1px solid var(--line); box-shadow:0 18px 40px rgba(27,26,23,.18); transform:translateX(-100%); transition:transform .22s ease; z-index:30; }
+      .mobile-drawer { position:fixed; top:0; left:0; height:100vh; width:min(280px, 82vw); padding:88px 18px 24px; background:var(--panel); border-right:1px solid var(--line); box-shadow:0 18px 40px rgba(27,26,23,.18); transform:translateX(-100%); transition:transform .22s ease; z-index:60; }
       .mobile-drawer nav { display:grid; gap:10px; }
       .mobile-drawer a { display:block; padding:12px 14px; border-radius:14px; text-decoration:none; background:rgba(13,107,87,.08); }
       .panel { margin-top:24px; padding:24px; border:1px solid var(--line); border-radius:18px; background:color-mix(in srgb, var(--panel) 88%, white 12%); box-shadow:0 14px 40px rgba(27,26,23,.08); }
@@ -58,14 +59,11 @@
       .audio-tools { display:flex; gap:10px; margin-top:12px; }
       .audio-tools .icon-button { border-radius:999px; }
       @media (max-width:720px) {
-        .topbar { justify-content:space-between; align-items:center; }
         .topnav { display:none; }
         .mobile-nav-button { display:flex; }
-        .mobile-top-title { display:block; }
         .hero { margin-top:14px; }
-        .hero h1 { display:none; }
         .notify-link { margin-left:auto; }
-        .nav-toggle:checked ~ .mobile-overlay { display:block; position:fixed; inset:0; background:rgba(27,26,23,.36); z-index:25; }
+        .nav-toggle:checked ~ .mobile-overlay { display:block; position:fixed; inset:0; background:rgba(27,26,23,.36); z-index:55; }
         .nav-toggle:checked ~ .mobile-drawer { transform:translateX(0); }
       }
     </style>
@@ -73,6 +71,7 @@
   <body>
     <main>
       <input id="nav-toggle" class="nav-toggle" type="checkbox">
+      <div class="topbar-wrap">
       <div class="topbar">
         <div style="display:flex; align-items:center; gap:10px;">
           <label for="nav-toggle" class="mobile-nav-button" aria-label="Open navigation menu"><span></span></label>
@@ -87,6 +86,7 @@
           </nav>
         </div>
         <a class="notify-link" href="./notifications.html">Alerts <span class="notify-count" data-notify-count hidden>0</span></a>
+      </div>
       </div>
       <label for="nav-toggle" class="mobile-overlay" aria-hidden="true"></label>
       <aside class="mobile-drawer" aria-label="Mobile navigation">
