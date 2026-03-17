@@ -129,7 +129,7 @@ async function notifyGroupMembers(
       url: "/controls.html",
       ...metadata,
     },
-    tag: `lights-${groupId}`,
+    tag: `lights-${groupId}-${crypto.randomUUID()}`,
     title,
   });
 }

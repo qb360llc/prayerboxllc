@@ -237,7 +237,7 @@ async function notifyGroupMembers(
       url: "/chat.html",
       ...metadata,
     },
-    tag: `chat-${groupId}`,
+    tag: `chat-${groupId}-${crypto.randomUUID()}`,
     title,
   });
 }

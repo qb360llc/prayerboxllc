@@ -111,7 +111,7 @@ async function notifyGroupMembers(
       url: "/community.html",
       ...metadata,
     },
-    tag: `${type}-${groupId}`,
+    tag: `${type}-${groupId}-${crypto.randomUUID()}`,
     title,
   });
 }
@@ -148,7 +148,7 @@ async function notifyRecipient(
       url: "/community.html",
       ...metadata,
     },
-    tag: `${type}-${groupId}`,
+    tag: `${type}-${groupId}-${crypto.randomUUID()}`,
     title,
   });
 }

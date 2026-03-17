@@ -63,8 +63,11 @@ self.addEventListener("push", (event) => {
     body: payload.body,
     data: payload.data || { url: "/notifications.html" },
     icon: "/icon.svg",
-    tag: payload.tag || "prayerbox-notification",
   };
+
+  if (payload.tag) {
+    options.tag = payload.tag;
+  }
 
   event.waitUntil(self.registration.showNotification(payload.title || "PRayerbox", options));
 });
