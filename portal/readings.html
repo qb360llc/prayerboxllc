@@ -25,7 +25,6 @@
       .notify-link { display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:999px; text-decoration:none; background:rgba(13,107,87,.16); font-weight:600; }
       .notify-count { min-width:1.45rem; padding:2px 6px; border-radius:999px; background:var(--accent-strong); color:#fff; font-size:.78rem; line-height:1.2; text-align:center; }
       .mobile-top-title { display:block; font-size:1.2rem; font-weight:700; align-self:center; color:var(--ink); }
-      .hero { margin-top:18px; }
       .nav-toggle { position:absolute; opacity:0; pointer-events:none; }
       .mobile-nav-button { display:none; width:48px; height:48px; border-radius:14px; background:var(--accent); cursor:pointer; align-items:center; justify-content:center; box-shadow:0 10px 24px rgba(27,26,23,.12); }
       .mobile-nav-button span { display:block; width:20px; height:2px; background:#fff; position:relative; }
@@ -36,7 +35,7 @@
       .mobile-drawer { position:fixed; top:0; left:0; height:100vh; width:min(280px, 82vw); padding:88px 18px 24px; background:var(--panel); border-right:1px solid var(--line); box-shadow:0 18px 40px rgba(27,26,23,.18); transform:translateX(-100%); transition:transform .22s ease; z-index:60; }
       .mobile-drawer nav { display:grid; gap:10px; }
       .mobile-drawer a { display:block; padding:12px 14px; border-radius:14px; text-decoration:none; background:rgba(13,107,87,.08); }
-      .panel { margin-top:24px; padding:24px; border:1px solid var(--line); border-radius:18px; background:color-mix(in srgb, var(--panel) 88%, white 12%); box-shadow:0 14px 40px rgba(27,26,23,.08); }
+      .panel { margin-top:12px; padding:24px; border:1px solid var(--line); border-radius:18px; background:color-mix(in srgb, var(--panel) 88%, white 12%); box-shadow:0 14px 40px rgba(27,26,23,.08); }
       .cta { display:inline-block; margin-top:18px; padding:12px 16px; border-radius:999px; text-decoration:none; font-weight:600; color:#fff; background:var(--accent); }
       .note { margin-top:16px; font-size:.95rem; }
       .quote { margin-top:20px; padding:18px; border-left:4px solid var(--accent); background:rgba(13,107,87,.08); color:var(--ink); }
@@ -61,7 +60,6 @@
       @media (max-width:720px) {
         .topnav { display:none; }
         .mobile-nav-button { display:flex; }
-        .hero { margin-top:14px; }
         .notify-link { margin-left:auto; }
         .nav-toggle:checked ~ .mobile-overlay { display:block; position:fixed; inset:0; background:rgba(27,26,23,.36); z-index:55; }
         .nav-toggle:checked ~ .mobile-drawer { transform:translateX(0); }
@@ -99,11 +97,6 @@
           <a href="./settings.html">Settings</a>
         </nav>
       </aside>
-      <div class="hero">
-        <h1>Daily Readings</h1>
-        <p>Read the current USCCB reading and share a recording with your own community group.</p>
-      </div>
-
       <section class="panel">
         <div class="recording-panel">
           <div class="group-heading">Community Group</div>
@@ -227,7 +220,7 @@
           localStorage.setItem(SELECTED_GROUP_STORAGE_KEY, activeGroup.slug);
         }
         activeGroupEl.textContent = activeGroup
-          ? `${activeGroup.name} is active here. Change this in Settings.`
+          ? ""
           : "Choose your active community in Settings first.";
         updateRecordingButtons();
       }
@@ -295,7 +288,7 @@
           }
 
           sharedAudioEl.src = recording.audioUrl;
-          recordingMetaEl.textContent = `Latest recording uploaded: ${recording.createdAt || "Unknown"} for ${recording.groupSlug}`;
+          recordingMetaEl.textContent = "";
           setRecordingStatus("Community recording is ready. Press play to listen.");
         } catch (error) {
           setRecordingStatus(error.message || "Failed to load daily reading audio.", true);
