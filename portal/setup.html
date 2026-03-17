@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PRayerbox Setup Guide</title>
+    <meta name="theme-color" content="#0d6b57">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="./site.webmanifest">
+    <link rel="icon" href="./icon.svg" type="image/svg+xml">
+    <style>
+      :root { --bg:#f3efe4; --panel:#fffaf0; --ink:#1b1a17; --muted:#6f675d; --accent:#0d6b57; --accent-strong:#084c3e; --line:#d8cfbf; }
+      * { box-sizing:border-box; }
+      body { margin:0; min-height:100vh; font-family:Georgia,"Times New Roman",serif; color:var(--ink); background:radial-gradient(circle at top left, rgba(13,107,87,.12), transparent 30%), linear-gradient(180deg, #efe7d6 0%, var(--bg) 100%); }
+      main { max-width:780px; margin:0 auto; padding:24px 20px 64px; }
+      h1 { margin:0 0 10px; font-size:clamp(2rem,5vw,3.2rem); line-height:1; }
+      h2 { margin:0 0 10px; font-size:1.35rem; }
+      p, li { color:var(--muted); line-height:1.6; }
+      a { color:var(--accent-strong); }
+      .topbar-wrap { position:sticky; top:0; z-index:40; margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw); padding:0 0 14px; background:linear-gradient(180deg, rgba(243,239,228,.96) 0%, rgba(243,239,228,.86) 74%, rgba(243,239,228,0) 100%); backdrop-filter:blur(14px); }
+      .topbar { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 20px; border-bottom:1px solid var(--line); background:color-mix(in srgb, var(--panel) 92%, white 8%); box-shadow:0 10px 24px rgba(27,26,23,.08); }
+      .nav { display:flex; flex-wrap:wrap; gap:10px; }
+      .nav a { display:inline-block; padding:10px 14px; border-radius:999px; text-decoration:none; background:rgba(13,107,87,.08); }
+      .panel { margin-top:16px; padding:22px; border:1px solid var(--line); border-radius:18px; background:color-mix(in srgb, var(--panel) 88%, white 12%); box-shadow:0 14px 40px rgba(27,26,23,.08); }
+      .hero { margin-top:10px; }
+      .steps { margin:0; padding-left:20px; }
+      .steps li + li { margin-top:10px; }
+      .signal-list { display:grid; gap:12px; margin-top:14px; }
+      .signal { padding:14px; border:1px solid var(--line); border-radius:14px; background:rgba(255,255,255,.55); }
+      .signal strong { display:block; margin-bottom:4px; }
+      .callout { margin-top:14px; padding:16px; border-left:4px solid var(--accent); background:rgba(13,107,87,.08); }
+      code { font-family:"Courier New", monospace; color:var(--accent-strong); }
+      @media (max-width:720px) {
+        main { padding-top:18px; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="topbar-wrap">
+        <div class="topbar">
+          <div class="nav">
+            <a href="./index.html">Home</a>
+            <a href="./settings.html">Settings</a>
+            <a href="./admin.html">Admin</a>
+          </div>
+        </div>
+      </div>
+
+      <section class="hero panel">
+        <h1>PRayerbox Setup Guide</h1>
+        <p>Use this page when you need to connect a box to Wi-Fi for the first time or move it to a new network.</p>
+      </section>
+
+      <section class="panel">
+        <h2>Quick Start</h2>
+        <ol class="steps">
+          <li>Plug in the PRayerbox and wait while it tries to join Wi-Fi.</li>
+          <li>If it does not connect, or if your home Wi-Fi changed, hold the physical PRayerbox button for about 5 seconds.</li>
+          <li>When setup mode starts, join the Wi-Fi network named <code>PRayerbox-Setup-xxxx</code>.</li>
+          <li>If your phone does not open the setup page automatically, open <code>http://192.168.4.1</code>.</li>
+          <li>Enter your home Wi-Fi name and password, then tap <strong>Save and Restart</strong>.</li>
+          <li>The box will blink three quick times, restart, and reconnect to your home Wi-Fi.</li>
+        </ol>
+        <div class="callout">
+          If this is a brand new box, it may still need to be provisioned or claimed in the portal after Wi-Fi is working.
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>LED Meanings</h2>
+        <div class="signal-list">
+          <div class="signal">
+            <strong>Slow blink</strong>
+            The box is trying to join Wi-Fi.
+          </div>
+          <div class="signal">
+            <strong>Fast blink</strong>
+            The setup portal is active and ready for you to connect.
+          </div>
+          <div class="signal">
+            <strong>Three quick flashes</strong>
+            Your Wi-Fi settings were saved and the box is about to restart.
+          </div>
+          <div class="signal">
+            <strong>Short failure blink burst</strong>
+            Wi-Fi connection failed, and the box is switching into setup mode.
+          </div>
+          <div class="signal">
+            <strong>Single brief pulse</strong>
+            The box connected successfully to Wi-Fi.
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>If Setup Does Not Open</h2>
+        <ol class="steps">
+          <li>Make sure you joined the PRayerbox setup Wi-Fi instead of your normal home Wi-Fi.</li>
+          <li>Open a browser and go directly to <code>http://192.168.4.1</code>.</li>
+          <li>If the box still does not appear, unplug it, plug it back in, and hold the button again for 5 seconds.</li>
+        </ol>
+      </section>
+
+      <section class="panel">
+        <h2>After Wi-Fi Works</h2>
+        <ol class="steps">
+          <li>Sign in to PRayerbox.</li>
+          <li>If the box is new, use the claim code or admin provisioning flow as needed.</li>
+          <li>Once claimed, use the portal to join a community, set up notifications, and control your light behavior.</li>
+        </ol>
+      </section>
+    </main>
+  </body>
+</html>
