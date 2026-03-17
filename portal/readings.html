@@ -337,7 +337,12 @@
           throw new Error(payload.error || "Failed to upload recording.");
         }
 
-        setRecordingStatus(`Recording uploaded for ${groupSlug}. Everyone in that community can now listen.`);
+        const pushResult = payload.pushResult || {};
+        if (pushResult.attempted === 0) {
+          setRecordingStatus(`Recording uploaded for ${groupSlug}. Push attempted 0 subscriptions for recipients.`, true);
+        } else {
+          setRecordingStatus(`Recording uploaded for ${groupSlug}. Push sent ${pushResult.sent || 0} of ${pushResult.attempted || 0} attempted subscriptions.`);
+        }
         await loadLatestRecording();
       }
 

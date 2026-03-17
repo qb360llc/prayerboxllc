@@ -7,7 +7,8 @@ create table if not exists notifications (
     notification_type in (
       'intention_posted',
       'intention_loved',
-      'lights_activated'
+      'lights_activated',
+      'daily_reading_uploaded'
     )
   ),
   title text not null,

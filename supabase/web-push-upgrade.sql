@@ -23,7 +23,8 @@ alter table notifications
       'intention_posted',
       'intention_loved',
       'lights_activated',
-      'chat_message'
+      'chat_message',
+      'daily_reading_uploaded'
     )
   );
 

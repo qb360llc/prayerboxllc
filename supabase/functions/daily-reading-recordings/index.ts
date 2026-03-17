@@ -1,4 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { sendPushToUsers } from "../_shared/web-push.ts";
 
 const BUCKET = "daily-readings-audio";
 
@@ -83,6 +84,28 @@ async function getProfile(supabase: ReturnType<typeof createClient>, userId: str
   return data;
 }
 
+async function getActorName(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+) {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("first_name, last_name, display_name, email")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  const fullName = [data?.first_name, data?.last_name]
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .filter(Boolean)
+    .join(" ");
+
+  return fullName || data?.display_name || data?.email || "Someone";
+}
+
 async function getGroupForUser(
   supabase: ReturnType<typeof createClient>,
   userId: string,
@@ -123,6 +146,62 @@ async function getGroupForUser(
   }
 
   return group;
+}
+
+async function notifyGroupMembers(
+  supabase: ReturnType<typeof createClient>,
+  groupId: string,
+  actorUserId: string,
+  title: string,
+  body: string,
+  metadata: Record<string, unknown>,
+) {
+  const { data: members, error } = await supabase
+    .from("group_memberships")
+    .select("user_id")
+    .eq("group_id", groupId)
+    .neq("user_id", actorUserId);
+
+  if (error) {
+    throw error;
+  }
+
+  const recipientUserIds = (members ?? []).map((member: Record<string, unknown>) => String(member.user_id));
+  if (!recipientUserIds.length) {
+    return {
+      attempted: 0,
+      failed: 0,
+      failures: [],
+      sent: 0,
+    };
+  }
+
+  const rows = recipientUserIds.map((recipientUserId) => ({
+    actor_user_id: actorUserId,
+    body,
+    group_id: groupId,
+    metadata,
+    notification_type: "daily_reading_uploaded",
+    recipient_user_id: recipientUserId,
+    title,
+  }));
+
+  const { error: insertError } = await supabase.from("notifications").insert(rows);
+  if (insertError) {
+    throw insertError;
+  }
+
+  return await sendPushToUsers(supabase, recipientUserIds, {
+    body,
+    data: {
+      groupId,
+      type: "daily_reading_uploaded",
+      url: "/readings.html",
+      ...metadata,
+    },
+    tag: `daily-reading-${groupId}-${crypto.randomUUID()}`,
+    title,
+  });
 }
 
 Deno.serve(async (request) => {
@@ -245,8 +324,23 @@ Deno.serve(async (request) => {
       throw signedError;
     }
 
+    const actorName = await getActorName(supabase, user.id);
+    const pushResult = await notifyGroupMembers(
+      supabase,
+      group.id,
+      user.id,
+      "New daily reading recording",
+      `${actorName} uploaded a new daily reading recording in ${group.name}.`,
+      {
+        groupName: group.name,
+        groupSlug: group.slug,
+        readingDate,
+      },
+    );
+
     return json(request, 200, {
       ok: true,
+      pushResult,
       recording: {
         audioUrl: signed.signedUrl,
         createdAt: inserted.created_at,
