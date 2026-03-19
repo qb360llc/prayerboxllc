@@ -39,7 +39,7 @@ enum class LightingMode {
 
 constexpr unsigned long kHeartbeatIntervalMs = 30000;
 constexpr unsigned long kReconnectIntervalMs = 5000;
-constexpr unsigned long kFlashIntervalMs = 400;
+constexpr unsigned long kGlowStepIntervalMs = 18;
 constexpr unsigned long kDebounceMs = 40;
 constexpr unsigned long kManifestRetryIntervalMs = 60000;
 constexpr unsigned long kBootstrapRetryIntervalMs = 30000;
@@ -50,6 +50,13 @@ constexpr unsigned long kWiFiConnectingBlinkIntervalMs = 700;
 constexpr unsigned long kWiFiFailureBlinkIntervalMs = 180;
 constexpr unsigned long kSuccessBlinkIntervalMs = 120;
 constexpr uint8_t kSuccessBlinkCount = 3;
+constexpr uint8_t kPwmChannel = 0;
+constexpr uint8_t kPwmResolutionBits = 8;
+constexpr uint32_t kPwmFrequencyHz = 5000;
+constexpr uint8_t kPwmMaxDuty = (1 << kPwmResolutionBits) - 1;
+constexpr uint8_t kGlowMinDuty = 56;
+constexpr uint8_t kGlowMaxDuty = 176;
+constexpr uint8_t kGlowDutyStep = 4;
 constexpr const char* kPreferencesNamespace = "prayerbox";
 constexpr const char* kDeviceKeyPref = "device_key";
 constexpr const char* kGroupIdPref = "group_id";
@@ -74,7 +81,6 @@ LightingMode currentMode = LightingMode::Off;
 bool localActive = false;
 bool lastButtonReading = false;
 bool stableButtonReading = false;
-bool flashOutputState = false;
 bool activationNeedsPublish = true;
 bool manifestChecked = false;
 bool otaAttempted = false;
@@ -86,16 +92,17 @@ bool longPressHandled = false;
 bool provisioningLedState = false;
 bool wifiConnectingLedState = false;
 bool wifiFailureLedState = false;
+bool glowIncreasing = true;
 
 unsigned long lastHeartbeatMs = 0;
 unsigned long lastReconnectAttemptMs = 0;
-unsigned long lastFlashToggleMs = 0;
 unsigned long lastDebounceMs = 0;
 unsigned long lastManifestAttemptMs = 0;
 unsigned long lastBootstrapAttemptMs = 0;
 unsigned long buttonPressedMs = 0;
 unsigned long lastProvisioningBlinkMs = 0;
 unsigned long lastWiFiConnectingBlinkMs = 0;
+unsigned long lastGlowStepMs = 0;
 
 char commandTopic[96];
 char activationTopic[96];
@@ -116,6 +123,7 @@ void refreshTopicsForGroupChange(const String& nextGroupId);
 void startProvisioningPortal(const char* reason);
 void serviceProvisioningPortal();
 void blinkLedPattern(unsigned long intervalMs, uint8_t flashes);
+void setOutputDuty(uint8_t duty);
 
 const char* deviceId() {
   return runtimeDeviceId;
@@ -287,22 +295,6 @@ void loadWiFiCredentials() {
   snprintf(runtimeWifiPassword, sizeof(runtimeWifiPassword), "%s", storedPassword.c_str());
 }
 
-bool ledOnSignal() {
-#if LED_ACTIVE_HIGH
-  return HIGH;
-#else
-  return LOW;
-#endif
-}
-
-bool ledOffSignal() {
-#if LED_ACTIVE_HIGH
-  return LOW;
-#else
-  return HIGH;
-#endif
-}
-
 const char* lightingModeToString(LightingMode mode) {
   switch (mode) {
     case LightingMode::Off:
@@ -326,8 +318,13 @@ LightingMode parseLightingMode(const String& payload) {
   return LightingMode::Off;
 }
 
+void setOutputDuty(uint8_t duty) {
+  const uint8_t adjustedDuty = LED_ACTIVE_HIGH ? duty : (kPwmMaxDuty - duty);
+  ledcWrite(kPwmChannel, adjustedDuty);
+}
+
 void setOutput(bool on) {
-  digitalWrite(LED_PIN, on ? ledOnSignal() : ledOffSignal());
+  setOutputDuty(on ? kPwmMaxDuty : 0);
 }
 
 void blinkLedPattern(unsigned long intervalMs, uint8_t flashes) {
@@ -344,17 +341,28 @@ void updateOutput() {
 
   switch (currentMode) {
     case LightingMode::Off:
-      setOutput(false);
+      setOutputDuty(0);
       break;
     case LightingMode::Solid:
-      setOutput(true);
+      setOutputDuty(kPwmMaxDuty);
       break;
     case LightingMode::Flash:
-      if (now - lastFlashToggleMs >= kFlashIntervalMs) {
-        lastFlashToggleMs = now;
-        flashOutputState = !flashOutputState;
+      if (now - lastGlowStepMs >= kGlowStepIntervalMs) {
+        lastGlowStepMs = now;
+        static uint8_t glowDuty = kGlowMinDuty;
+        if (glowIncreasing) {
+          glowDuty = min<uint8_t>(kGlowMaxDuty, glowDuty + kGlowDutyStep);
+          if (glowDuty >= kGlowMaxDuty) {
+            glowIncreasing = false;
+          }
+        } else {
+          glowDuty = max<uint8_t>(kGlowMinDuty, glowDuty - kGlowDutyStep);
+          if (glowDuty <= kGlowMinDuty) {
+            glowIncreasing = true;
+          }
+        }
+        setOutputDuty(glowDuty);
       }
-      setOutput(flashOutputState);
       break;
   }
 }
@@ -1242,8 +1250,8 @@ void setup() {
   delay(250);
   Serial.println("APP START");
 
-
-  pinMode(LED_PIN, OUTPUT);
+  ledcSetup(kPwmChannel, kPwmFrequencyHz, kPwmResolutionBits);
+  ledcAttachPin(LED_PIN, kPwmChannel);
 #if BUTTON_ACTIVE_STATE == LOW
   pinMode(BUTTON_PIN, INPUT_PULLUP);
 #else
