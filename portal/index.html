@@ -93,7 +93,7 @@
       const config = window.PRAYERBOX_PORTAL_CONFIG || {};
       const projectUrl = config.projectUrl || "";
       const anonKey = config.anonKey || "";
-      const COMMUNITY_URL = "./community.html";
+      const HOME_URL = "./home.html";
       const els = {
         authConfirmPassword: document.querySelector("#auth-confirm-password"),
         authEmail: document.querySelector("#auth-email"),
@@ -163,8 +163,8 @@
           .eq("id", userId);
       }
 
-      function redirectToCommunity() {
-        window.location.replace(COMMUNITY_URL);
+      function redirectToHome() {
+        window.location.replace(HOME_URL);
       }
 
       async function handleAuthSubmit() {
@@ -196,13 +196,13 @@
           }
 
           await updateProfileNames(data.session.user.id, data.session.user.email?.split("@")[0] || "Community member");
-          redirectToCommunity();
+          redirectToHome();
           return;
         }
 
         const { error } = await client.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        redirectToCommunity();
+        redirectToHome();
       }
 
       async function wrap(fn, button) {
@@ -221,7 +221,7 @@
           const client = getClient();
           const { data } = await client.auth.getSession();
           if (data.session) {
-            redirectToCommunity();
+            redirectToHome();
             return;
           }
           setAuthMode("signin");

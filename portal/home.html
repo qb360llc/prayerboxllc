@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PRayerbox Home</title>
+    <meta name="theme-color" content="#0d6b57">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="./site.webmanifest">
+    <link rel="icon" href="./icon.svg" type="image/svg+xml">
+    <script src="./config.js"></script>
+    <script type="module" src="./pwa.js"></script>
+    <style>
+      :root { --bg:#f3efe4; --panel:#fffaf0; --ink:#1b1a17; --muted:#6f675d; --accent:#0d6b57; --accent-strong:#084c3e; --line:#d8cfbf; --danger:#a12828; }
+      * { box-sizing:border-box; }
+      body { margin:0; min-height:100vh; font-family:Georgia,"Times New Roman",serif; color:var(--ink); background:radial-gradient(circle at top left, rgba(13,107,87,.12), transparent 30%), linear-gradient(180deg, #efe7d6 0%, var(--bg) 100%); }
+      main { max-width:760px; margin:0 auto; padding:14px 16px 64px; }
+      p { color:var(--muted); line-height:1.6; }
+      button { padding:12px 16px; border:0; border-radius:999px; font:inherit; font-weight:600; color:#fff; background:var(--accent); cursor:pointer; }
+      button.secondary { background:var(--accent-strong); }
+      button:disabled { opacity:.6; cursor:wait; }
+      textarea { width:100%; min-height:170px; padding:16px 18px; border:1px solid var(--line); border-radius:22px; font:inherit; background:#fffdf8; color:var(--ink); resize:vertical; }
+      .topbar-wrap { position:sticky; top:0; z-index:40; margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw); padding:0 0 14px; background:linear-gradient(180deg, rgba(243,239,228,.96) 0%, rgba(243,239,228,.86) 74%, rgba(243,239,228,0) 100%); backdrop-filter:blur(14px); }
+      .topbar { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 20px; border-bottom:1px solid var(--line); background:color-mix(in srgb, var(--panel) 92%, white 8%); box-shadow:0 10px 24px rgba(27,26,23,.08); }
+      .topnav { display:flex; flex-wrap:wrap; gap:10px; }
+      .topnav a { display:inline-block; padding:10px 14px; border-radius:999px; text-decoration:none; background:rgba(13,107,87,.08); color:var(--accent-strong); }
+      .notify-link { display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:999px; text-decoration:none; background:rgba(13,107,87,.16); color:var(--accent-strong); font-weight:600; }
+      .notify-count { min-width:1.45rem; padding:2px 6px; border-radius:999px; background:var(--accent-strong); color:#fff; font-size:.78rem; line-height:1.2; text-align:center; }
+      .mobile-top-title { display:block; font-size:1.2rem; font-weight:700; align-self:center; color:var(--ink); }
+      .nav-toggle { position:absolute; opacity:0; pointer-events:none; }
+      .mobile-nav-button { display:none; width:48px; height:48px; border-radius:14px; background:var(--accent); cursor:pointer; align-items:center; justify-content:center; box-shadow:0 10px 24px rgba(27,26,23,.12); }
+      .mobile-nav-button span { display:block; width:20px; height:2px; background:#fff; position:relative; }
+      .mobile-nav-button span::before, .mobile-nav-button span::after { content:""; position:absolute; left:0; width:20px; height:2px; background:#fff; }
+      .mobile-nav-button span::before { top:-6px; }
+      .mobile-nav-button span::after { top:6px; }
+      .mobile-overlay { display:none; }
+      .mobile-drawer { position:fixed; top:0; left:0; height:100vh; width:min(280px, 82vw); padding:88px 18px 24px; background:var(--panel); border-right:1px solid var(--line); box-shadow:0 18px 40px rgba(27,26,23,.18); transform:translateX(-100%); transition:transform .22s ease; z-index:60; }
+      .mobile-drawer nav { display:grid; gap:10px; }
+      .mobile-drawer a { display:block; padding:12px 14px; border-radius:14px; text-decoration:none; background:rgba(13,107,87,.08); color:var(--accent-strong); }
+      .hero-card { margin-top:12px; padding:30px 24px; border:1px solid var(--line); border-radius:28px; background:linear-gradient(165deg, rgba(255,250,240,.98) 0%, rgba(248,242,231,.95) 100%); box-shadow:0 20px 44px rgba(27,26,23,.1); text-align:center; }
+      .hero-title { margin:0; font-size:clamp(2.4rem, 8vw, 4.8rem); line-height:.95; color:var(--ink); }
+      .hero-copy { max-width:28rem; margin:14px auto 0; }
+      .group-pill { display:inline-flex; align-items:center; justify-content:center; padding:10px 16px; border-radius:999px; background:rgba(13,107,87,.1); color:var(--accent-strong); font-weight:700; }
+      .pray-button { display:inline-flex; align-items:center; justify-content:center; min-width:220px; margin-top:20px; padding:18px 26px; font-size:1.15rem; background:linear-gradient(160deg, var(--accent) 0%, var(--accent-strong) 100%); box-shadow:0 16px 30px rgba(13,107,87,.22); }
+      .status { margin-top:18px; padding:12px 14px; border-radius:16px; background:rgba(13,107,87,.08); color:var(--ink); white-space:pre-wrap; }
+      .status.error { background:rgba(161,40,40,.1); color:var(--danger); }
+      .modal-backdrop { position:fixed; inset:0; display:none; align-items:flex-end; justify-content:center; padding:20px 16px; background:rgba(27,26,23,.42); z-index:80; }
+      .modal-backdrop.open { display:flex; }
+      .modal-card { width:min(100%, 560px); padding:20px 18px; border-radius:28px 28px 20px 20px; background:rgba(255,250,240,.98); box-shadow:0 24px 48px rgba(27,26,23,.22); }
+      .modal-header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+      .modal-title { font-size:1.2rem; font-weight:700; }
+      .modal-close { padding:0; border:0; background:transparent; color:var(--accent-strong); font-size:1.9rem; line-height:1; min-width:auto; box-shadow:none; }
+      .modal-copy { margin:0 0 12px; font-size:.96rem; color:var(--muted); }
+      .modal-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:14px; }
+      @media (max-width:720px) {
+        .topnav { display:none; }
+        .mobile-nav-button { display:flex; }
+        .notify-link { margin-left:auto; }
+        .nav-toggle:checked ~ .mobile-overlay { display:block; position:fixed; inset:0; background:rgba(27,26,23,.36); z-index:55; }
+        .nav-toggle:checked ~ .mobile-drawer { transform:translateX(0); }
+      }
+      @media (max-width:719px) {
+        main { padding:12px 14px 64px; }
+        .hero-card { padding:24px 18px; border-radius:24px; }
+        .pray-button { width:100%; }
+        .modal-backdrop { padding:12px; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <input id="nav-toggle" class="nav-toggle" type="checkbox">
+      <div class="topbar-wrap">
+        <div class="topbar">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <label for="nav-toggle" class="mobile-nav-button" aria-label="Open navigation menu"><span></span></label>
+            <div class="mobile-top-title">Home</div>
+            <nav class="topnav" aria-label="Primary">
+              <a href="./home.html">Home</a>
+              <a href="./community.html">Community</a>
+              <a href="./members.html">Members</a>
+              <a href="./chat.html">Chat</a>
+              <a href="./readings.html">Daily Readings</a>
+              <a href="./controls.html">Controls</a>
+              <a href="./notifications.html">Notifications</a>
+              <a href="./settings.html">Settings</a>
+            </nav>
+          </div>
+          <a class="notify-link" href="./notifications.html">Alerts <span class="notify-count" data-notify-count hidden>0</span></a>
+        </div>
+      </div>
+      <label for="nav-toggle" class="mobile-overlay" aria-hidden="true"></label>
+      <aside class="mobile-drawer" aria-label="Mobile navigation">
+        <nav>
+          <a href="./home.html">Home</a>
+          <a href="./community.html">Community</a>
+          <a href="./members.html">Members</a>
+          <a href="./chat.html">Chat</a>
+          <a href="./readings.html">Daily Readings</a>
+          <a href="./controls.html">Controls</a>
+          <a href="./notifications.html">Notifications</a>
+          <a href="./settings.html">Settings</a>
+        </nav>
+      </aside>
+
+      <section class="hero-card">
+        <div id="active-group" class="group-pill">Loading your selected community...</div>
+        <h1 class="hero-title">Pray</h1>
+        <p class="hero-copy">Enter into prayer with one tap. You can share an intention first, or simply begin in silence.</p>
+        <button id="pray-button" class="pray-button">Pray</button>
+        <div id="status" class="status">Choose your active community in Settings before starting prayer.</div>
+      </section>
+
+      <div id="pray-modal" class="modal-backdrop" aria-hidden="true">
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="pray-modal-title">
+          <div class="modal-header">
+            <div class="modal-title" id="pray-modal-title">Would you like to add an intention?</div>
+            <button id="close-pray-modal" class="modal-close" aria-label="Close prayer dialog">&times;</button>
+          </div>
+          <p class="modal-copy">Add an intention and share it to the prayer feed, or skip and begin prayer without one.</p>
+          <textarea id="intention-body" placeholder="Write an intention to share with your community..."></textarea>
+          <div class="modal-actions">
+            <button id="skip-prayer" class="secondary">Skip</button>
+            <button id="send-prayer">Send</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script type="module">
+      import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+      const config = window.PRAYERBOX_PORTAL_CONFIG || {};
+      const projectUrl = config.projectUrl || "";
+      const anonKey = config.anonKey || "";
+      const SELECTED_GROUP_STORAGE_KEY = "prayerboxSelectedGroupSlug";
+      const HOME_URL = "./index.html";
+      const els = {
+        activeGroup: document.querySelector("#active-group"),
+        closePrayModal: document.querySelector("#close-pray-modal"),
+        intentionBody: document.querySelector("#intention-body"),
+        prayButton: document.querySelector("#pray-button"),
+        prayModal: document.querySelector("#pray-modal"),
+        sendPrayer: document.querySelector("#send-prayer"),
+        skipPrayer: document.querySelector("#skip-prayer"),
+        status: document.querySelector("#status"),
+      };
+
+      let supabase = null;
+
+      function getClient() {
+        if (!projectUrl || !anonKey) {
+          throw new Error("Portal config is missing. Ask the admin to update portal/config.js.");
+        }
+        if (!supabase) {
+          supabase = createClient(projectUrl, anonKey);
+        }
+        return supabase;
+      }
+
+      function setStatus(message, isError = false) {
+        els.status.textContent = message;
+        els.status.classList.toggle("error", isError);
+      }
+
+      function setNotificationBadge(count) {
+        document.querySelectorAll("[data-notify-count]").forEach((badge) => {
+          badge.hidden = !count;
+          badge.textContent = count > 99 ? "99+" : String(count || 0);
+        });
+      }
+
+      function selectedGroupSlug() {
+        return localStorage.getItem(SELECTED_GROUP_STORAGE_KEY) || "";
+      }
+
+      function openPrayModal() {
+        els.prayModal.classList.add("open");
+        els.prayModal.setAttribute("aria-hidden", "false");
+        requestAnimationFrame(() => els.intentionBody.focus());
+      }
+
+      function closePrayModal() {
+        els.prayModal.classList.remove("open");
+        els.prayModal.setAttribute("aria-hidden", "true");
+        els.intentionBody.value = "";
+      }
+
+      async function authedFetch(path, options = {}) {
+        const client = getClient();
+        const { data: sessionData } = await client.auth.getSession();
+        const accessToken = sessionData.session?.access_token;
+        if (!accessToken) throw new Error("Sign in on the home page first.");
+        return fetch(`${projectUrl}${path}`, {
+          ...options,
+          headers: {
+            apikey: anonKey,
+            Authorization: `Bearer ${accessToken}`,
+            ...(options.headers || {}),
+          },
+        });
+      }
+
+      async function refreshNotificationBadge() {
+        try {
+          const response = await authedFetch("/functions/v1/my-notifications", { method: "GET" });
+          const payload = await response.json();
+          if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to load notifications.");
+          setNotificationBadge(payload.unreadCount || 0);
+        } catch {
+          setNotificationBadge(0);
+        }
+      }
+
+      async function loadGroups() {
+        const response = await authedFetch("/functions/v1/my-groups", { method: "GET" });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to load communities.");
+        const groups = payload.groups || [];
+        const savedGroupSlug = selectedGroupSlug();
+        const activeGroup = groups.find((group) => group.slug === savedGroupSlug) || groups[0] || null;
+        if (!activeGroup) {
+          els.activeGroup.textContent = "Choose your active community in Settings first.";
+          els.prayButton.disabled = true;
+          setStatus("Choose your active community in Settings before starting prayer.", true);
+          return;
+        }
+        if (activeGroup.slug !== savedGroupSlug) {
+          localStorage.setItem(SELECTED_GROUP_STORAGE_KEY, activeGroup.slug);
+        }
+        els.activeGroup.textContent = activeGroup.name;
+        els.prayButton.disabled = false;
+        setStatus("When you're ready, tap Pray.");
+      }
+
+      async function startPrayer(intention = "") {
+        const groupSlug = selectedGroupSlug();
+        if (!groupSlug) {
+          throw new Error("Choose your active community in Settings first.");
+        }
+
+        const response = await authedFetch("/functions/v1/start-prayer", {
+          body: JSON.stringify({ groupSlug, intention }),
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to start prayer.");
+
+        closePrayModal();
+        const pushResult = payload.pushResult || {};
+        if (intention) {
+          if (pushResult.attempted === 0) {
+            setStatus("Prayer started and your intention was shared. Push attempted 0 subscriptions for recipients.", true);
+          } else {
+            setStatus(`Prayer started and your intention was shared. Push sent ${pushResult.sent || 0} of ${pushResult.attempted || 0} attempted subscriptions.`);
+          }
+        } else if (pushResult.attempted === 0) {
+          setStatus("Prayer started. Push attempted 0 subscriptions for recipients.", true);
+        } else {
+          setStatus(`Prayer started. Push sent ${pushResult.sent || 0} of ${pushResult.attempted || 0} attempted subscriptions.`);
+        }
+      }
+
+      async function boot() {
+        try {
+          const client = getClient();
+          const { data } = await client.auth.getSession();
+          if (!data.session) {
+            window.location.replace(HOME_URL);
+            return;
+          }
+          await refreshNotificationBadge();
+          await loadGroups();
+        } catch (error) {
+          setStatus(error.message || "Unable to load the portal.", true);
+        }
+      }
+
+      async function wrap(fn, button) {
+        try {
+          button.disabled = true;
+          await fn();
+        } catch (error) {
+          setStatus(error.message || "Request failed.", true);
+        } finally {
+          button.disabled = false;
+        }
+      }
+
+      els.prayButton.addEventListener("click", openPrayModal);
+      els.closePrayModal.addEventListener("click", closePrayModal);
+      els.sendPrayer.addEventListener("click", () => wrap(() => {
+        const intention = els.intentionBody.value.trim();
+        if (!intention) {
+          throw new Error("Add an intention or press Skip.");
+        }
+        return startPrayer(intention);
+      }, els.sendPrayer));
+      els.skipPrayer.addEventListener("click", () => wrap(() => startPrayer(""), els.skipPrayer));
+      els.prayModal.addEventListener("click", (event) => {
+        if (event.target === els.prayModal) {
+          closePrayModal();
+        }
+      });
+
+      boot();
+    </script>
+  </body>
+</html>
