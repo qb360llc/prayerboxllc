@@ -45,20 +45,12 @@
       .mobile-drawer nav { display:grid; gap:10px; }
       .mobile-drawer a { display:block; padding:12px 14px; border-radius:14px; text-decoration:none; background:rgba(13,107,87,.08); }
       .panel { margin-top:14px; padding:18px 18px 20px; border:1px solid rgba(216,207,191,.9); border-radius:24px; background:rgba(255,250,240,.92); box-shadow:0 18px 36px rgba(27,26,23,.08); }
-      .hero-card { margin-top:10px; padding:20px 18px; border-radius:28px; background:linear-gradient(160deg, rgba(13,107,87,.96) 0%, rgba(8,76,62,.96) 100%); color:#fff; box-shadow:0 18px 36px rgba(13,107,87,.22); }
+      .hero-card { margin-top:10px; padding:18px 18px; border-radius:28px; background:linear-gradient(160deg, rgba(13,107,87,.96) 0%, rgba(8,76,62,.96) 100%); color:#fff; box-shadow:0 18px 36px rgba(13,107,87,.22); }
       .hero-card h1 { margin:0; font-size:clamp(2rem,7vw,3.6rem); }
-      .hero-card p { margin:8px 0 0; color:rgba(255,255,255,.86); }
       .group-pill { display:inline-flex; align-items:center; gap:8px; margin-top:14px; padding:10px 14px; border-radius:999px; background:rgba(255,255,255,.16); color:#fff; font-size:.96rem; font-weight:600; }
       .group-pill.empty { background:rgba(255,255,255,.12); color:rgba(255,255,255,.86); }
       .composer-card { padding:18px; border-radius:24px; background:rgba(255,255,255,.98); }
-      .composer-header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; }
-      .composer-title { font-size:1.18rem; font-weight:700; }
-      .composer-subtitle { font-size:.92rem; color:var(--muted); }
-      .composer { display:grid; gap:12px; }
-      .composer textarea { min-height:122px; border-radius:20px; padding:16px 18px; border:1px solid rgba(216,207,191,.8); background:#fffdf8; box-shadow:inset 0 1px 0 rgba(255,255,255,.85); }
-      .composer-bar { display:flex; gap:12px; align-items:flex-end; }
-      .composer-bar textarea { flex:1; margin:0; }
-      .composer-bar button { min-width:112px; white-space:nowrap; background:linear-gradient(160deg, var(--accent) 0%, var(--accent-strong) 100%); box-shadow:0 12px 22px rgba(13,107,87,.2); }
+      .composer-trigger { display:inline-flex; align-items:center; justify-content:center; min-width:168px; background:linear-gradient(160deg, var(--accent) 0%, var(--accent-strong) 100%); box-shadow:0 12px 22px rgba(13,107,87,.2); }
       .feed-panel { padding-top:16px; }
       .feed-shell { margin-top:16px; max-height:none; overflow:visible; }
       .feed { display:grid; gap:16px; }
@@ -84,6 +76,18 @@
       .edit-link:hover { background:transparent; color:var(--accent); }
       .edit-actions { display:flex; gap:10px; margin-top:0; }
       .floating-status { margin-top:14px; font-size:.92rem; }
+      .status[hidden] { display:none; }
+      .modal-backdrop { position:fixed; inset:0; display:none; align-items:flex-end; justify-content:center; padding:20px 16px; background:rgba(27,26,23,.42); z-index:80; }
+      .modal-backdrop.open { display:flex; }
+      .modal-card { width:min(100%, 560px); padding:20px 18px; border-radius:28px 28px 20px 20px; background:rgba(255,250,240,.98); box-shadow:0 24px 48px rgba(27,26,23,.22); }
+      .modal-header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+      .modal-title { font-size:1.2rem; font-weight:700; }
+      .modal-close { padding:0; border:0; background:transparent; color:var(--accent-strong); font-size:1.9rem; line-height:1; min-width:auto; box-shadow:none; }
+      .modal-close:hover { background:transparent; color:var(--accent); }
+      .modal-copy { margin:0 0 12px; font-size:.92rem; color:var(--muted); }
+      .modal-textarea { width:100%; min-height:170px; border-radius:22px; padding:16px 18px; border:1px solid rgba(216,207,191,.8); background:#fffdf8; box-shadow:inset 0 1px 0 rgba(255,255,255,.85); }
+      .modal-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:14px; }
+      .modal-actions button { min-width:112px; }
       @media (max-width:720px) {
         .topnav { display:none; }
         .mobile-nav-button { display:flex; }
@@ -95,9 +99,9 @@
         main { padding:12px 14px 64px; }
         .hero-card { margin-top:8px; padding:18px 16px; border-radius:26px; }
         .panel { border-radius:22px; padding:16px; }
-        .composer-bar { flex-direction:column; align-items:stretch; }
-        .composer-bar button { width:100%; }
+        .composer-trigger { width:100%; }
         .intention { padding:16px; border-radius:20px; }
+        .modal-backdrop { padding:12px; }
       }
     </style>
   </head>
@@ -136,24 +140,12 @@
       </aside>
       <section class="hero-card">
         <h1>Community</h1>
-        <p>Pray together, share intentions, and keep your circle close.</p>
         <div id="active-group" class="group-pill empty">Loading your selected community...</div>
       </section>
 
       <section class="panel composer-card">
-        <div class="composer">
-          <div class="composer-header">
-            <div>
-              <div class="composer-title">Share an intention</div>
-              <div class="composer-subtitle">Add a prayer, update, or need from your heart.</div>
-            </div>
-          </div>
-          <div class="composer-bar">
-            <textarea id="intention-body" placeholder="Share a prayer intention with your community..."></textarea>
-            <button id="post-intention">Share</button>
-          </div>
-        </div>
-        <div id="status" class="status floating-status">Idle.</div>
+        <button id="open-compose" class="composer-trigger">Share Intention</button>
+        <div id="status" class="status floating-status" hidden></div>
       </section>
 
       <section class="panel feed-panel">
@@ -169,6 +161,21 @@
           <div id="feed" class="feed"></div>
         </div>
       </section>
+
+      <div id="compose-modal" class="modal-backdrop" aria-hidden="true">
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="compose-modal-title">
+          <div class="modal-header">
+            <div class="modal-title" id="compose-modal-title">Share Intention</div>
+            <button id="close-compose" class="modal-close" aria-label="Close share intention dialog">&times;</button>
+          </div>
+          <p class="modal-copy">Add a prayer, update, or need from your heart and share it with your community.</p>
+          <textarea id="intention-body" class="modal-textarea" placeholder="Share a prayer intention with your community..."></textarea>
+          <div class="modal-actions">
+            <button id="cancel-compose" class="secondary">Cancel</button>
+            <button id="post-intention">Share</button>
+          </div>
+        </div>
+      </div>
     </main>
 
     <script type="module">
@@ -184,6 +191,10 @@
         feed: document.querySelector("#feed"),
         feedEmpty: document.querySelector("#feed-empty"),
         intentionBody: document.querySelector("#intention-body"),
+        composeModal: document.querySelector("#compose-modal"),
+        openCompose: document.querySelector("#open-compose"),
+        closeCompose: document.querySelector("#close-compose"),
+        cancelCompose: document.querySelector("#cancel-compose"),
         postIntention: document.querySelector("#post-intention"),
         refreshFeed: document.querySelector("#refresh-feed"),
         status: document.querySelector("#status"),
@@ -193,8 +204,20 @@
       let editingIntentionId = null;
 
       function setStatus(message, isError = false) {
+        els.status.hidden = !message;
         els.status.textContent = message;
         els.status.classList.toggle("error", isError);
+      }
+
+      function openComposeModal() {
+        els.composeModal.classList.add("open");
+        els.composeModal.setAttribute("aria-hidden", "false");
+        requestAnimationFrame(() => els.intentionBody.focus());
+      }
+
+      function closeComposeModal() {
+        els.composeModal.classList.remove("open");
+        els.composeModal.setAttribute("aria-hidden", "true");
       }
 
       function escapeHtml(value) {
@@ -370,7 +393,6 @@
         const payload = await response.json();
         if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to load intentions.");
         renderFeed(payload.intentions || []);
-        setStatus(`Loaded intentions for ${payload.group?.name || groupSlug}.`);
       }
 
       async function postIntention() {
@@ -387,6 +409,7 @@
         const payload = await response.json();
         if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to post intention.");
         els.intentionBody.value = "";
+        closeComposeModal();
         renderFeed(payload.intentions || []);
         const pushResult = payload.pushResult || {};
         if (pushResult.attempted === 0) {
@@ -470,6 +493,14 @@
 
       els.refreshFeed.addEventListener("click", () => wrap(loadFeed, els.refreshFeed));
       els.postIntention.addEventListener("click", () => wrap(postIntention, els.postIntention));
+      els.openCompose.addEventListener("click", openComposeModal);
+      els.closeCompose.addEventListener("click", closeComposeModal);
+      els.cancelCompose.addEventListener("click", closeComposeModal);
+      els.composeModal.addEventListener("click", (event) => {
+        if (event.target === els.composeModal) {
+          closeComposeModal();
+        }
+      });
 
       boot();
     </script>
