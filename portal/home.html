@@ -107,6 +107,20 @@
       .feed-date { font-size:.84rem; color:#6f675d; }
       .feed-body, .feed-event-copy { margin:0; color:#1d1b18; }
       .feed-event-copy { font-weight:600; }
+      .feed-modal-card { background:linear-gradient(180deg, #294d61 0%, var(--bg) 42%, var(--bg-deep) 100%); color:var(--cream); }
+      .feed-modal-card .modal-title,
+      .feed-modal-card .modal-close { color:var(--cream); }
+      .feed-modal-card .modal-body-scroll { max-height:calc(100vh - 94px); padding:0 2px 8px; }
+      .feed-surface { min-height:calc(100vh - 140px); padding:12px; border-radius:28px; background:rgba(18,35,46,.52); border:1px solid rgba(248,241,223,.12); }
+      .feed-surface .feed-empty { color:rgba(248,241,223,.82); background:rgba(248,241,223,.06); border-color:rgba(248,241,223,.1); }
+      .feed-surface .feed-shell { max-height:calc(100vh - 190px); padding:2px 2px 8px; border-radius:24px; }
+      .feed-surface .feed-shell::-webkit-scrollbar-thumb { background:rgba(248,241,223,.22); }
+      .feed-surface .feed-card { background:rgba(248,241,223,.08); border-color:rgba(248,241,223,.08); }
+      .feed-surface .feed-card.prayer-event { background:rgba(200,146,61,.16); border-color:rgba(200,146,61,.24); }
+      .feed-surface .feed-author,
+      .feed-surface .feed-body,
+      .feed-surface .feed-event-copy { color:var(--cream); }
+      .feed-surface .feed-date { color:rgba(248,241,223,.66); }
       .reading-card { display:grid; gap:10px; }
       .reading-card h3 { margin:0; font-size:1.1rem; }
       .reading-card p { color:#1d1b18; }
@@ -139,6 +153,9 @@
         .topbar { padding:calc(env(safe-area-inset-top, 0px) + 12px) 14px 0 72px; min-height:60px; }
         .profile-menu-shell { margin-left:auto; }
         .profile-menu-panel { right:0; top:56px; }
+        .feed-surface { min-height:calc(100vh - 130px); padding:10px; border-radius:22px; }
+        .feed-modal-card .modal-body-scroll { max-height:calc(100vh - 88px); }
+        .feed-surface .feed-shell { max-height:calc(100vh - 178px); border-radius:20px; }
       }
     </style>
   </head>
@@ -282,15 +299,17 @@
       </div>
 
       <div id="feed-modal" class="modal-backdrop top-sheet" aria-hidden="true">
-        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="feed-modal-title">
+        <div class="modal-card feed-modal-card" role="dialog" aria-modal="true" aria-labelledby="feed-modal-title">
           <div class="modal-header">
             <div class="modal-title" id="feed-modal-title">Prayer Feed</div>
             <button id="close-feed-modal" class="modal-close" aria-label="Close prayer feed dialog">&times;</button>
           </div>
           <div class="modal-body-scroll">
-            <div id="feed-empty" class="feed-empty" hidden>No prayer activity yet.</div>
-            <div class="feed-shell">
-              <div id="prayer-feed" class="feed-list"></div>
+            <div class="feed-surface">
+              <div id="feed-empty" class="feed-empty" hidden>No prayer activity yet.</div>
+              <div class="feed-shell">
+                <div id="prayer-feed" class="feed-list"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -409,9 +428,10 @@
       function formatFeedDate(value) {
         try {
           return new Intl.DateTimeFormat(undefined, {
-            month: "short",
             day: "numeric",
-            year: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+            month: "short",
           }).format(new Date(value));
         } catch {
           return "";
