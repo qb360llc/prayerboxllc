@@ -13,8 +13,8 @@
     <style>
       :root { --bg:#f3efe4; --panel:#fffaf0; --ink:#1b1a17; --muted:#6f675d; --accent:#0d6b57; --accent-strong:#084c3e; --line:#d8cfbf; --danger:#a12828; }
       * { box-sizing:border-box; }
-      body { margin:0; min-height:100vh; font-family:Georgia,"Times New Roman",serif; color:var(--ink); background:radial-gradient(circle at top left, rgba(13,107,87,.12), transparent 30%), linear-gradient(180deg, #efe7d6 0%, var(--bg) 100%); }
-      main { max-width:860px; margin:0 auto; padding:20px 20px 64px; }
+      body { margin:0; min-height:100vh; font-family:Georgia,"Times New Roman",serif; color:var(--ink); background:linear-gradient(180deg, #f7f1e4 0%, #f2ecde 28%, #efe8da 100%); }
+      main { max-width:760px; margin:0 auto; padding:14px 16px 64px; }
       h1 { margin:0 0 8px; font-size:clamp(2rem,5vw,3.4rem); line-height:1; }
       h2, h3 { margin:0; }
       p { color:var(--muted); line-height:1.5; }
@@ -24,9 +24,8 @@
       button:disabled { opacity:.6; cursor:wait; }
       textarea { width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:12px; font:inherit; background:#fff; color:var(--ink); min-height:72px; resize:vertical; }
       label { display:block; font-size:.92rem; margin-bottom:6px; color:var(--muted); }
-      .status { margin-top:16px; padding:12px 14px; border-radius:12px; background:rgba(13,107,87,.08); color:var(--ink); white-space:pre-wrap; }
+      .status { margin-top:14px; padding:12px 14px; border-radius:16px; background:rgba(13,107,87,.08); color:var(--ink); white-space:pre-wrap; }
       .status.error { background:rgba(161,40,40,.1); color:var(--danger); }
-      .actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:16px; }
       .topbar-wrap { position:sticky; top:0; z-index:40; margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw); padding:0 0 14px; background:linear-gradient(180deg, rgba(243,239,228,.96) 0%, rgba(243,239,228,.86) 74%, rgba(243,239,228,0) 100%); backdrop-filter:blur(14px); }
       .topbar { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 20px; border-bottom:1px solid var(--line); background:color-mix(in srgb, var(--panel) 92%, white 8%); box-shadow:0 10px 24px rgba(27,26,23,.08); }
       .topnav { display:flex; flex-wrap:wrap; gap:10px; }
@@ -45,38 +44,60 @@
       .mobile-drawer { position:fixed; top:0; left:0; height:100vh; width:min(280px, 82vw); padding:88px 18px 24px; background:var(--panel); border-right:1px solid var(--line); box-shadow:0 18px 40px rgba(27,26,23,.18); transform:translateX(-100%); transition:transform .22s ease; z-index:60; }
       .mobile-drawer nav { display:grid; gap:10px; }
       .mobile-drawer a { display:block; padding:12px 14px; border-radius:14px; text-decoration:none; background:rgba(13,107,87,.08); }
-      .panel { margin-top:14px; padding:18px 20px; border:1px solid var(--line); border-radius:18px; background:color-mix(in srgb, var(--panel) 88%, white 12%); box-shadow:0 14px 40px rgba(27,26,23,.08); }
-      .feed-shell { margin-top:18px; max-height:560px; overflow:auto; padding-right:6px; }
-      .feed { display:grid; gap:14px; }
-      .intention { padding:16px; border:1px solid var(--line); border-radius:16px; background:rgba(255,255,255,.55); }
-      .section-title { display:flex; align-items:center; gap:10px; }
-      .group-summary { display:flex; align-items:center; justify-content:space-between; gap:12px; }
-      .refresh-link { padding:0; border:0; background:transparent; color:var(--accent-strong); font-size:1.7rem; line-height:1; display:inline-flex; align-items:center; justify-content:center; box-shadow:none; min-width:auto; }
+      .panel { margin-top:14px; padding:18px 18px 20px; border:1px solid rgba(216,207,191,.9); border-radius:24px; background:rgba(255,250,240,.92); box-shadow:0 18px 36px rgba(27,26,23,.08); }
+      .hero-card { margin-top:10px; padding:20px 18px; border-radius:28px; background:linear-gradient(160deg, rgba(13,107,87,.96) 0%, rgba(8,76,62,.96) 100%); color:#fff; box-shadow:0 18px 36px rgba(13,107,87,.22); }
+      .hero-card h1 { margin:0; font-size:clamp(2rem,7vw,3.6rem); }
+      .hero-card p { margin:8px 0 0; color:rgba(255,255,255,.86); }
+      .group-pill { display:inline-flex; align-items:center; gap:8px; margin-top:14px; padding:10px 14px; border-radius:999px; background:rgba(255,255,255,.16); color:#fff; font-size:.96rem; font-weight:600; }
+      .group-pill.empty { background:rgba(255,255,255,.12); color:rgba(255,255,255,.86); }
+      .composer-card { padding:18px; border-radius:24px; background:rgba(255,255,255,.98); }
+      .composer-header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; }
+      .composer-title { font-size:1.18rem; font-weight:700; }
+      .composer-subtitle { font-size:.92rem; color:var(--muted); }
+      .composer { display:grid; gap:12px; }
+      .composer textarea { min-height:122px; border-radius:20px; padding:16px 18px; border:1px solid rgba(216,207,191,.8); background:#fffdf8; box-shadow:inset 0 1px 0 rgba(255,255,255,.85); }
+      .composer-bar { display:flex; gap:12px; align-items:flex-end; }
+      .composer-bar textarea { flex:1; margin:0; }
+      .composer-bar button { min-width:112px; white-space:nowrap; background:linear-gradient(160deg, var(--accent) 0%, var(--accent-strong) 100%); box-shadow:0 12px 22px rgba(13,107,87,.2); }
+      .feed-panel { padding-top:16px; }
+      .feed-shell { margin-top:16px; max-height:none; overflow:visible; }
+      .feed { display:grid; gap:16px; }
+      .intention { padding:18px; border:1px solid rgba(216,207,191,.8); border-radius:22px; background:linear-gradient(180deg, rgba(255,255,255,.94) 0%, rgba(255,250,242,.92) 100%); box-shadow:0 12px 24px rgba(27,26,23,.05); }
+      .section-title { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+      .section-heading { display:grid; gap:4px; }
+      .section-kicker { font-size:.8rem; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+      .refresh-link { padding:0; border:0; background:transparent; color:var(--accent-strong); font-size:1.85rem; line-height:1; display:inline-flex; align-items:center; justify-content:center; box-shadow:none; min-width:auto; }
       .refresh-link:hover { background:transparent; color:var(--accent); }
-      .meta { margin-top:12px; color:var(--muted); font-size:.92rem; }
+      .author-row { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+      .avatar { width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:rgba(13,107,87,.12); color:var(--accent-strong); font-size:.95rem; font-weight:700; letter-spacing:.04em; flex:0 0 auto; }
+      .author-meta { min-width:0; }
+      .author-name { font-size:.98rem; font-weight:700; }
+      .meta { margin-top:2px; color:var(--muted); font-size:.85rem; }
+      .intention-body { margin:0; color:var(--ink); font-size:1rem; line-height:1.65; }
       .reaction-row { display:flex; align-items:center; gap:10px; margin-top:14px; }
-      .heart-button { width:42px; height:42px; padding:0; border-radius:999px; background:#fff; border:1px solid var(--line); color:#b55b5b; font-size:1.2rem; line-height:1; }
+      .heart-button { width:42px; height:42px; padding:0; border-radius:999px; background:#fff; border:1px solid rgba(216,207,191,.9); color:#b55b5b; font-size:1.2rem; line-height:1; box-shadow:none; }
       .heart-button.active { background:#fde7e7; border-color:#d45a5a; color:#c62828; }
       .heart-count { font-size:.95rem; color:var(--muted); }
       .empty { color:var(--muted); }
-      .composer { display:grid; gap:12px; }
       .edit-bar { display:grid; gap:10px; margin-top:12px; }
       .edit-link { margin-top:10px; padding:0; border:0; background:transparent; color:var(--accent-strong); font-size:.92rem; font-weight:600; text-decoration:underline; min-width:auto; box-shadow:none; }
       .edit-link:hover { background:transparent; color:var(--accent); }
       .edit-actions { display:flex; gap:10px; margin-top:0; }
-      .composer-bar { display:flex; gap:12px; align-items:flex-end; }
-      .composer-bar textarea { flex:1; margin:0; }
-      .composer-bar button { white-space:nowrap; }
+      .floating-status { margin-top:14px; font-size:.92rem; }
       @media (max-width:720px) {
         .topnav { display:none; }
         .mobile-nav-button { display:flex; }
-        .hero { margin-top:6px; }
         .notify-link { margin-left:auto; }
         .nav-toggle:checked ~ .mobile-overlay { display:block; position:fixed; inset:0; background:rgba(27,26,23,.36); z-index:55; }
         .nav-toggle:checked ~ .mobile-drawer { transform:translateX(0); }
       }
       @media (max-width:719px) {
+        main { padding:12px 14px 64px; }
+        .hero-card { margin-top:8px; padding:18px 16px; border-radius:26px; }
+        .panel { border-radius:22px; padding:16px; }
         .composer-bar { flex-direction:column; align-items:stretch; }
+        .composer-bar button { width:100%; }
+        .intention { padding:16px; border-radius:20px; }
       }
     </style>
   </head>
@@ -113,33 +134,40 @@
           <a href="./settings.html">Settings</a>
         </nav>
       </aside>
-      <section class="panel">
+      <section class="hero-card">
+        <h1>Community</h1>
+        <p>Pray together, share intentions, and keep your circle close.</p>
+        <div id="active-group" class="group-pill empty">Loading your selected community...</div>
+      </section>
+
+      <section class="panel composer-card">
         <div class="composer">
-          <h2>Prayers / Intentions</h2>
+          <div class="composer-header">
+            <div>
+              <div class="composer-title">Share an intention</div>
+              <div class="composer-subtitle">Add a prayer, update, or need from your heart.</div>
+            </div>
+          </div>
           <div class="composer-bar">
-            <textarea id="intention-body" placeholder="Please pray for my family, for healing, for peace, or for a special intention..."></textarea>
+            <textarea id="intention-body" placeholder="Share a prayer intention with your community..."></textarea>
             <button id="post-intention">Share</button>
           </div>
         </div>
+        <div id="status" class="status floating-status">Idle.</div>
       </section>
 
-      <section class="panel">
+      <section class="panel feed-panel">
         <div class="section-title">
-          <h2>Community Feed</h2>
+          <div class="section-heading">
+            <div class="section-kicker">Prayer Feed</div>
+            <h2>Community Feed</h2>
+          </div>
           <button id="refresh-feed" class="refresh-link" aria-label="Refresh feed" title="Refresh feed">&#x21bb;</button>
-        </div>
-        <div class="group-summary">
-          <div id="active-group" class="empty">Loading your selected community...</div>
         </div>
         <div id="feed-empty" class="empty">No intentions loaded yet.</div>
         <div class="feed-shell">
           <div id="feed" class="feed"></div>
         </div>
-      </section>
-
-      <section class="panel">
-        <h2>Status</h2>
-        <div id="status" class="status">Idle.</div>
       </section>
     </main>
 
@@ -175,6 +203,17 @@
           .replaceAll("<", "&lt;")
           .replaceAll(">", "&gt;")
           .replaceAll('"', "&quot;");
+      }
+
+      function initialsForName(value) {
+        const parts = String(value || "")
+          .trim()
+          .split(/\s+/)
+          .filter(Boolean);
+        if (!parts.length) {
+          return "PB";
+        }
+        return parts.slice(0, 2).map((part) => part[0].toUpperCase()).join("");
       }
 
       function getClient() {
@@ -232,13 +271,15 @@
         els.refreshFeed.disabled = !activeGroup;
         if (!activeGroup) {
           els.activeGroup.textContent = "Choose your active community in Settings first.";
+          els.activeGroup.classList.add("empty");
           els.feedEmpty.textContent = "Join or create a community in Settings before posting intentions.";
           return;
         }
         if (activeGroup.slug !== savedGroupSlug) {
           localStorage.setItem(SELECTED_GROUP_STORAGE_KEY, activeGroup.slug);
         }
-        els.activeGroup.textContent = "";
+        els.activeGroup.textContent = activeGroup.name;
+        els.activeGroup.classList.remove("empty");
       }
 
       function renderFeed(intentions) {
@@ -253,8 +294,14 @@
           const card = document.createElement("article");
           card.className = "intention";
           card.innerHTML = `
-            <h3>${escapeHtml(item.body)}</h3>
-            <div class="meta">Shared by ${escapeHtml(item.createdBy)} on ${new Date(item.createdAt).toLocaleString()}</div>
+            <div class="author-row">
+              <div class="avatar">${escapeHtml(initialsForName(item.createdBy))}</div>
+              <div class="author-meta">
+                <div class="author-name">${escapeHtml(item.createdBy)}</div>
+                <div class="meta">${new Date(item.createdAt).toLocaleString()}</div>
+              </div>
+            </div>
+            <p class="intention-body">${escapeHtml(item.body)}</p>
             ${item.isOwn ? (editingIntentionId === item.id ? `
               <div class="edit-bar">
                 <textarea class="edit-intention-body" data-intention-id="${item.id}">${escapeHtml(item.body)}</textarea>
