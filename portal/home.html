@@ -54,7 +54,8 @@
       .pray-button.amen { background:linear-gradient(160deg, rgba(248,241,223,.94) 0%, #f0dcb5 100%); }
       .status { max-width:28rem; margin:0 auto; padding:12px 14px; border-radius:18px; background:rgba(248,241,223,.12); border:1px solid rgba(248,241,223,.12); white-space:pre-wrap; }
       .status.error { color:var(--danger); background:rgba(127,30,19,.28); border-color:rgba(255,209,201,.2); }
-      .feed-panel { margin-top:18px; padding:22px 18px 20px; border-radius:30px; background:rgba(18,35,46,.52); border:1px solid rgba(248,241,223,.14); backdrop-filter:blur(12px); box-shadow:0 16px 30px rgba(10,18,24,.16); }
+      .second-page { min-height:100vh; display:flex; align-items:flex-start; padding-top:28px; }
+      .feed-panel { width:100%; margin-top:0; padding:22px 18px 20px; border-radius:30px; background:rgba(18,35,46,.52); border:1px solid rgba(248,241,223,.14); backdrop-filter:blur(12px); box-shadow:0 16px 30px rgba(10,18,24,.16); }
       .feed-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
       .feed-title { font-size:1.04rem; letter-spacing:.08em; text-transform:uppercase; color:rgba(248,241,223,.84); }
       .feed-empty { padding:14px 16px; border-radius:20px; border:1px solid rgba(248,241,223,.1); background:rgba(248,241,223,.06); color:rgba(248,241,223,.82); }
@@ -124,7 +125,8 @@
         main { padding:12px 14px 48px; }
         .hero-card { min-height:calc(100vh - 110px); padding:18px 10px 8px; display:flex; flex-direction:column; justify-content:flex-end; gap:14px; }
         .pray-button { width:100%; max-width:280px; }
-        .feed-panel { margin-top:16px; padding:18px 14px; border-radius:24px; }
+        .second-page { min-height:100vh; padding-top:22px; }
+        .feed-panel { padding:18px 14px; border-radius:24px; }
         .feed-shell { max-height:58vh; }
         .modal-backdrop { padding:12px; }
         .modal-backdrop.top-sheet { padding:0; }
@@ -194,13 +196,15 @@
         <div id="status" class="status">Choose your active community in Settings before starting prayer.</div>
       </section>
 
-      <section class="feed-panel" aria-labelledby="prayer-feed-title">
-        <div class="feed-heading">
-          <div id="prayer-feed-title" class="feed-title">Prayer Feed</div>
-        </div>
-        <div id="feed-empty" class="feed-empty" hidden>No prayer activity yet.</div>
-        <div class="feed-shell">
-          <div id="prayer-feed" class="feed-list"></div>
+      <section id="prayer-feed-page" class="second-page" aria-labelledby="prayer-feed-title">
+        <div class="feed-panel">
+          <div class="feed-heading">
+            <div id="prayer-feed-title" class="feed-title">Prayer Feed</div>
+          </div>
+          <div id="feed-empty" class="feed-empty" hidden>No prayer activity yet.</div>
+          <div class="feed-shell">
+            <div id="prayer-feed" class="feed-list"></div>
+          </div>
         </div>
       </section>
 
@@ -305,6 +309,7 @@
         prayButton: document.querySelector("#pray-button"),
         prayModal: document.querySelector("#pray-modal"),
         prayerFeed: document.querySelector("#prayer-feed"),
+        prayerFeedPage: document.querySelector("#prayer-feed-page"),
         prayerBanner: document.querySelector("#prayer-banner"),
         recordButton: document.querySelector("#record-button"),
         recordingStatus: document.querySelector("#recording-status"),
@@ -331,6 +336,7 @@
       let audioChunks = [];
       let currentSessionUser = null;
       let currentPrayerFeed = [];
+      let snapLockUntil = 0;
 
       function intentionStorageKey() {
         return `prayerboxPrayerIntention:${selectedGroupSlug()}`;
@@ -424,6 +430,10 @@
         const willOpen = !els.profileMenuPanel.classList.contains("open");
         els.profileMenuPanel.classList.toggle("open", willOpen);
         els.profileMenuToggle?.setAttribute("aria-expanded", willOpen ? "true" : "false");
+      }
+
+      function anyModalOpen() {
+        return document.querySelector(".modal-backdrop.open") !== null;
       }
 
       function currentLocalDate() {
@@ -865,6 +875,28 @@
         renderPrayerFeed();
       }
 
+      function maybeSnapToPrayerFeed() {
+        if (!els.prayerFeedPage || anyModalOpen()) {
+          return;
+        }
+
+        const now = Date.now();
+        if (now < snapLockUntil) {
+          return;
+        }
+
+        const secondPageTop = els.prayerFeedPage.offsetTop;
+        const threshold = secondPageTop - (window.innerHeight * 0.55);
+        const currentY = window.scrollY;
+
+        if (currentY >= threshold && currentY < secondPageTop - 24) {
+          snapLockUntil = now + 900;
+          els.prayerFeedPage.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else if (currentY < secondPageTop - window.innerHeight) {
+          snapLockUntil = 0;
+        }
+      }
+
       async function saveIntentionFromSideRail() {
         const groupSlug = selectedGroupSlug();
         const body = els.editIntentionBody.value.trim();
@@ -1110,6 +1142,7 @@
           closeActionStrip();
         }
       });
+      window.addEventListener("scroll", maybeSnapToPrayerFeed, { passive: true });
       window.addEventListener("beforeunload", () => {
         if (refreshTimer) window.clearInterval(refreshTimer);
       });
