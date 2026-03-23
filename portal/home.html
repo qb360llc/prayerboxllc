@@ -48,7 +48,6 @@
       .mobile-action-strip { position:absolute; top:58px; left:0; display:flex; flex-direction:column; gap:10px; overflow:hidden; max-height:0; opacity:0; transform:translateY(-8px); transition:max-height .24s ease, opacity .18s ease, transform .18s ease; }
       .mobile-action-strip.open { max-height:360px; opacity:1; transform:translateY(0); }
       .hero-card { min-height:calc(100vh - 140px); display:grid; align-content:space-between; gap:16px; padding:18px 18px 20px; text-align:center; }
-      .prayer-banner { width:fit-content; max-width:100%; margin:0 auto; padding:8px 16px; border-radius:999px; background:rgba(248,241,223,.13); border:1px solid rgba(248,241,223,.16); font-size:.92rem; font-weight:700; letter-spacing:.02em; }
       .hero-stack { display:grid; gap:10px; justify-items:center; align-content:end; min-height:100%; }
       .pray-button { display:inline-flex; align-items:center; justify-content:center; min-width:220px; margin-top:0; padding:18px 30px; font-size:1.12rem; background:linear-gradient(160deg, #ead1a0 0%, #c8923d 100%); box-shadow:0 18px 36px rgba(12,25,34,.24); }
       .pray-button.amen { background:linear-gradient(160deg, rgba(248,241,223,.94) 0%, #f0dcb5 100%); }
@@ -163,7 +162,7 @@
         .hero-card { background:transparent; border-color:transparent; box-shadow:none; }
         .hero-stack { padding-top:0; padding-bottom:0; margin-top:auto; }
         .hero-presence { margin-top:4px; }
-        .prayer-banner, .status, .hero-avatar { backdrop-filter:blur(8px); background:rgba(24,44,58,.34); }
+        .status, .hero-avatar { backdrop-filter:blur(8px); background:rgba(24,44,58,.34); }
         .hero-avatars { width:min(100%, 308px); min-height:116px; gap:8px 6px; }
         .topbar-wrap { padding-bottom:0; }
         .topbar { padding:calc(env(safe-area-inset-top, 0px) + 12px) 14px 0 72px; min-height:60px; }
@@ -237,7 +236,6 @@
             <div class="hero-avatars-empty">No one is in prayer yet.</div>
           </div>
         </div>
-        <div id="prayer-banner" class="prayer-banner" hidden>0 people in prayer</div>
         <div id="status" class="status sr-only">Choose your active community in Settings before starting prayer.</div>
       </section>
 
@@ -390,7 +388,6 @@
         prayButton: document.querySelector("#pray-button"),
         prayModal: document.querySelector("#pray-modal"),
         prayerFeed: document.querySelector("#prayer-feed"),
-        prayerBanner: document.querySelector("#prayer-banner"),
         recordButton: document.querySelector("#record-button"),
         recordingStatus: document.querySelector("#recording-status"),
         refreshAudioButton: document.querySelector("#refresh-audio"),
@@ -568,10 +565,7 @@
       }
 
       function updateBannerAndButton() {
-        const others = currentPrayerState.othersInPrayerCount || 0;
         const ownActive = (currentPrayerState.ownActiveCount || 0) > 0;
-        els.prayerBanner.hidden = others < 1;
-        els.prayerBanner.textContent = `${others} ${others === 1 ? "person" : "people"} in prayer`;
         els.prayButton.textContent = ownActive ? "Amen" : "Pray";
         els.prayButton.classList.toggle("amen", ownActive);
       }
