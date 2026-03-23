@@ -78,12 +78,15 @@
         .nav-toggle:checked ~ .mobile-drawer { transform:translateX(0); }
       }
       @media (max-width:719px) {
+        body { background:#234457 url("./home-mobile-bg.svg") center top / cover no-repeat fixed; }
+        body::before, body::after { display:none; }
         main { padding:12px 14px 48px; }
         .hero-card { min-height:calc(100vh - 110px); padding:18px 10px 18px; }
         .pray-button { width:100%; max-width:280px; }
         .modal-backdrop { padding:12px; }
-        body::before { width:min(96vw, 470px); bottom:21vh; }
-        body::after { top:59%; height:min(24vh, 180px); }
+        .topbar-wrap { background:linear-gradient(180deg, rgba(35,68,87,.86) 0%, rgba(35,68,87,.54) 74%, rgba(35,68,87,0) 100%); }
+        .hero-card { background:transparent; border-color:transparent; box-shadow:none; }
+        .group-pill, .prayer-banner, .status { backdrop-filter:blur(8px); background:rgba(24,44,58,.34); }
       }
     </style>
   </head>

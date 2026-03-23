@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 675 1200" role="img" aria-labelledby="title desc">
+  <title id="title">PRayerbox mobile home background</title>
+  <desc id="desc">Blue background with a gold monstrance and the words I AM THE BREAD OF LIFE.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#294d61"/>
+      <stop offset="100%" stop-color="#234457"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#d9b36b"/>
+      <stop offset="50%" stop-color="#c8923d"/>
+      <stop offset="100%" stop-color="#b97f26"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#fff9ed" stop-opacity="1"/>
+      <stop offset="55%" stop-color="#f6dca9" stop-opacity=".85"/>
+      <stop offset="100%" stop-color="#f6dca9" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="675" height="1200" fill="url(#bg)"/>
+
+  <g transform="translate(337.5 460)">
+    <circle r="150" fill="url(#glow)"/>
+    <g stroke="url(#gold)" stroke-linecap="round" opacity=".95">
+      <g id="ray">
+        <line x1="0" y1="-150" x2="0" y2="-245" stroke-width="3"/>
+      </g>
+      <use href="#ray" transform="rotate(8)"/>
+      <use href="#ray" transform="rotate(16)"/>
+      <use href="#ray" transform="rotate(24)"/>
+      <use href="#ray" transform="rotate(32)"/>
+      <use href="#ray" transform="rotate(40)"/>
+      <use href="#ray" transform="rotate(48)"/>
+      <use href="#ray" transform="rotate(56)"/>
+      <use href="#ray" transform="rotate(64)"/>
+      <use href="#ray" transform="rotate(72)"/>
+      <use href="#ray" transform="rotate(80)"/>
+      <use href="#ray" transform="rotate(88)"/>
+      <use href="#ray" transform="rotate(96)"/>
+      <use href="#ray" transform="rotate(104)"/>
+      <use href="#ray" transform="rotate(112)"/>
+      <use href="#ray" transform="rotate(120)"/>
+      <use href="#ray" transform="rotate(128)"/>
+      <use href="#ray" transform="rotate(136)"/>
+      <use href="#ray" transform="rotate(144)"/>
+      <use href="#ray" transform="rotate(152)"/>
+      <use href="#ray" transform="rotate(160)"/>
+      <use href="#ray" transform="rotate(168)"/>
+      <use href="#ray" transform="rotate(176)"/>
+      <use href="#ray" transform="rotate(184)"/>
+      <use href="#ray" transform="rotate(192)"/>
+      <use href="#ray" transform="rotate(200)"/>
+      <use href="#ray" transform="rotate(208)"/>
+      <use href="#ray" transform="rotate(216)"/>
+      <use href="#ray" transform="rotate(224)"/>
+      <use href="#ray" transform="rotate(232)"/>
+      <use href="#ray" transform="rotate(240)"/>
+      <use href="#ray" transform="rotate(248)"/>
+      <use href="#ray" transform="rotate(256)"/>
+      <use href="#ray" transform="rotate(264)"/>
+      <use href="#ray" transform="rotate(272)"/>
+      <use href="#ray" transform="rotate(280)"/>
+      <use href="#ray" transform="rotate(288)"/>
+      <use href="#ray" transform="rotate(296)"/>
+      <use href="#ray" transform="rotate(304)"/>
+      <use href="#ray" transform="rotate(312)"/>
+      <use href="#ray" transform="rotate(320)"/>
+      <use href="#ray" transform="rotate(328)"/>
+      <use href="#ray" transform="rotate(336)"/>
+      <use href="#ray" transform="rotate(344)"/>
+      <use href="#ray" transform="rotate(352)"/>
+    </g>
+
+    <g fill="url(#gold)">
+      <circle r="77" fill="#fffdf9" stroke="#b97f26" stroke-width="6"/>
+      <circle r="92" fill="none" stroke="url(#gold)" stroke-width="12"/>
+      <rect x="-150" y="-16" width="300" height="32" rx="12"/>
+      <rect x="-16" y="-112" width="32" height="365" rx="12"/>
+      <ellipse cx="0" cy="312" rx="82" ry="28"/>
+      <path d="M-62 304C-56 255 -36 236 0 236c36 0 56 19 62 68Z"/>
+      <path d="M-12 -182h24v58h-24z"/>
+      <path d="M-44 -160h88v18h-88z"/>
+      <path d="M-4 -212h8v42h-8z"/>
+      <path d="M-28 -200h56v10h-56z"/>
+    </g>
+  </g>
+
+  <text x="337.5" y="915" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="34" letter-spacing="2" fill="#f8f1df">
+    I AM THE BREAD OF LIFE
+  </text>
+</svg>
