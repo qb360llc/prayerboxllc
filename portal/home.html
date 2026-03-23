@@ -35,15 +35,16 @@
       button.secondary { background:rgba(248,241,223,.14); color:var(--cream); border:1px solid var(--line); }
       button:disabled { opacity:.6; cursor:wait; }
       textarea { width:100%; min-height:170px; padding:16px 18px; border:1px solid rgba(248,241,223,.18); border-radius:22px; font:inherit; background:rgba(255,250,242,.96); color:#1d1b18; resize:vertical; }
-      .topbar-wrap { position:sticky; top:0; z-index:40; margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw); padding:0 0 14px; background:linear-gradient(180deg, rgba(35,68,87,.92) 0%, rgba(35,68,87,.72) 74%, rgba(35,68,87,0) 100%); backdrop-filter:blur(16px); }
-      .topbar { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 20px; border-bottom:1px solid rgba(248,241,223,.12); background:rgba(26,52,67,.72); box-shadow:0 10px 24px rgba(10,18,24,.18); }
+      .topbar-wrap { margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw); padding:0 0 14px; }
+      .topbar { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 20px; background:transparent; }
       .topnav { display:flex; flex-wrap:wrap; gap:10px; }
       .topnav a { display:inline-block; padding:10px 14px; border-radius:999px; text-decoration:none; background:rgba(248,241,223,.1); color:var(--cream); }
-      .notify-link { display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:999px; text-decoration:none; background:rgba(248,241,223,.14); color:var(--cream); font-weight:600; }
-      .notify-count { min-width:1.45rem; padding:2px 6px; border-radius:999px; background:#f7d28d; color:#173241; font-size:.78rem; line-height:1.2; text-align:center; }
+      .notify-link { position:relative; display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px; text-decoration:none; color:var(--cream); background:transparent; }
+      .notify-link::before { content:"\1F514"; font-size:1.35rem; line-height:1; }
+      .notify-count { position:absolute; top:1px; right:-2px; min-width:1.15rem; padding:1px 5px; border-radius:999px; background:#f7d28d; color:#173241; font-size:.72rem; line-height:1.15; text-align:center; }
       .mobile-top-title { display:block; font-size:1.2rem; font-weight:700; align-self:center; color:var(--cream); }
       .nav-toggle { position:absolute; opacity:0; pointer-events:none; }
-      .mobile-nav-button { display:none; width:48px; height:48px; border-radius:14px; background:rgba(248,241,223,.16); cursor:pointer; align-items:center; justify-content:center; box-shadow:0 10px 24px rgba(10,18,24,.18); }
+      .mobile-nav-button { display:none; width:48px; height:48px; border-radius:14px; background:transparent; cursor:pointer; align-items:center; justify-content:center; box-shadow:none; }
       .mobile-nav-button span { display:block; width:20px; height:2px; background:var(--cream); position:relative; }
       .mobile-nav-button span::before, .mobile-nav-button span::after { content:""; position:absolute; left:0; width:20px; height:2px; background:var(--cream); }
       .mobile-nav-button span::before { top:-6px; }
@@ -81,7 +82,6 @@
         .hero-card { min-height:calc(100vh - 110px); padding:18px 10px 8px; display:flex; flex-direction:column; justify-content:flex-end; gap:14px; }
         .pray-button { width:100%; max-width:280px; }
         .modal-backdrop { padding:12px; }
-        .topbar-wrap { background:linear-gradient(180deg, rgba(35,68,87,.86) 0%, rgba(35,68,87,.54) 74%, rgba(35,68,87,0) 100%); }
         .hero-card { background:transparent; border-color:transparent; box-shadow:none; }
         .hero-stack { padding-top:0; padding-bottom:0; margin-top:auto; }
         .prayer-banner, .status { backdrop-filter:blur(8px); background:rgba(24,44,58,.34); }
