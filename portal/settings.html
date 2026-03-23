@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>PRayerbox Settings</title>
+    <title>Prayerbox Settings</title>
     <meta name="theme-color" content="#0d6b57">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <link rel="manifest" href="./site.webmanifest">
@@ -14,29 +14,17 @@
       :root { --bg:#234457; --bg-deep:#1b3443; --panel:rgba(24,44,58,.82); --ink:#f8f1df; --muted:rgba(248,241,223,.78); --accent:#c8923d; --accent-strong:#d9b36b; --line:rgba(248,241,223,.14); --danger:#ffd1c9; }
       * { box-sizing:border-box; }
       body { margin:0; min-height:100vh; font-family:Georgia,"Times New Roman",serif; color:var(--ink); background:linear-gradient(180deg, #294d61 0%, var(--bg) 42%, var(--bg-deep) 100%); }
-      main { max-width:760px; margin:0 auto; padding:20px 20px 64px; }
+      main { max-width:760px; margin:0 auto; padding:18px 20px 64px; }
       h1 { margin:0 0 8px; font-size:clamp(2rem,5vw,3.4rem); line-height:1; }
       h2 { margin:0 0 8px; }
       p { color:var(--muted); line-height:1.5; }
       a { color:var(--ink); }
-      .topbar-wrap { position:sticky; top:0; z-index:40; margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw); padding:0 0 14px; background:linear-gradient(180deg, rgba(35,68,87,.96) 0%, rgba(35,68,87,.84) 74%, rgba(35,68,87,0) 100%); backdrop-filter:blur(14px); }
-      .topbar { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 20px; border-bottom:1px solid var(--line); background:rgba(24,44,58,.92); box-shadow:0 10px 24px rgba(10,18,24,.2); }
-      .topnav { display:flex; flex-wrap:wrap; gap:10px; }
-      .topnav a { display:inline-block; padding:10px 14px; border-radius:999px; text-decoration:none; background:rgba(248,241,223,.1); }
-      .notify-link { display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:999px; text-decoration:none; background:rgba(201,146,61,.2); font-weight:600; }
-      .notify-count { min-width:1.45rem; padding:2px 6px; border-radius:999px; background:var(--accent); color:#173241; font-size:.78rem; line-height:1.2; text-align:center; }
-      .mobile-top-title { display:block; font-size:1.2rem; font-weight:700; align-self:center; color:var(--ink); }
-      .hero { margin-top:18px; }
-      .nav-toggle { position:absolute; opacity:0; pointer-events:none; }
-      .mobile-nav-button { display:none; width:48px; height:48px; border-radius:14px; background:transparent; cursor:pointer; align-items:center; justify-content:center; box-shadow:none; }
-      .mobile-nav-button span { display:block; width:20px; height:2px; background:var(--ink); position:relative; }
-      .mobile-nav-button span::before, .mobile-nav-button span::after { content:""; position:absolute; left:0; width:20px; height:2px; background:var(--ink); }
-      .mobile-nav-button span::before { top:-6px; }
-      .mobile-nav-button span::after { top:6px; }
-      .mobile-overlay { display:none; }
-      .mobile-drawer { position:fixed; top:0; left:0; height:100vh; width:min(280px, 82vw); padding:88px 18px 24px; background:#1e3847; border-right:1px solid var(--line); box-shadow:0 18px 40px rgba(10,18,24,.3); transform:translateX(-100%); transition:transform .22s ease; z-index:60; }
-      .mobile-drawer nav { display:grid; gap:10px; }
-      .mobile-drawer a { display:block; padding:12px 14px; border-radius:14px; text-decoration:none; background:rgba(248,241,223,.08); }
+      .page-shell { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:18px; }
+      .shell-link { width:48px; height:48px; border-radius:14px; display:inline-flex; align-items:center; justify-content:center; text-decoration:none; background:rgba(248,241,223,.12); border:1px solid var(--line); box-shadow:0 10px 24px rgba(10,18,24,.16); }
+      .shell-link svg { width:22px; height:22px; stroke:var(--ink); fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+      .shell-avatar { width:48px; height:48px; border-radius:50%; overflow:hidden; border:1px solid var(--line); background:rgba(248,241,223,.12); box-shadow:0 10px 24px rgba(10,18,24,.16); }
+      .shell-avatar img { width:100%; height:100%; object-fit:cover; display:block; }
+      .shell-avatar .avatar-fallback { font-size:.88rem; }
       .panel { margin-top:24px; padding:20px; border:1px solid var(--line); border-radius:22px; background:var(--panel); box-shadow:0 14px 40px rgba(10,18,24,.2); backdrop-filter:blur(12px); }
       .grid { display:grid; gap:12px; }
       @media (min-width:640px) { .grid.two { grid-template-columns:1fr 1fr; } }
@@ -64,57 +52,25 @@
       .avatar-copy { max-width:28rem; }
       .helper { font-size:.92rem; color:var(--muted); }
       code { font-family:"Courier New", monospace; }
+      [hidden] { display:none !important; }
       @media (max-width:720px) {
-        .topnav { display:none; }
-        .mobile-nav-button { display:flex; }
-        .hero { margin-top:14px; }
-        .notify-link { margin-left:auto; }
-        .nav-toggle:checked ~ .mobile-overlay { display:block; position:fixed; inset:0; background:rgba(27,26,23,.36); z-index:55; }
-        .nav-toggle:checked ~ .mobile-drawer { transform:translateX(0); }
+        main { padding:16px 14px 52px; }
+        .page-shell { margin-bottom:14px; }
       }
     </style>
   </head>
-  <body>
+    <body>
     <main>
-      <input id="nav-toggle" class="nav-toggle" type="checkbox">
-      <div class="topbar-wrap">
-      <div class="topbar">
-        <div style="display:flex; align-items:center; gap:10px;">
-          <label for="nav-toggle" class="mobile-nav-button" aria-label="Open navigation menu"><span></span></label>
-          <div class="mobile-top-title">Settings</div>
-          <nav class="topnav" aria-label="Primary">
-            <a href="./home.html">Home</a>
-            <a href="./community.html">Community</a>
-            <a href="./members.html">Members</a>
-            <a href="./chat.html">Chat</a>
-            <a href="./readings.html">Daily Readings</a>
-            <a href="./controls.html">Controls</a>
-            <a href="./notifications.html">Notifications</a>
-            <a href="./settings.html">Settings</a>
-          </nav>
+      <div class="page-shell">
+        <a class="shell-link" href="./home.html" aria-label="Go to home">
+          <svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V21h13V9.5"/><path d="M9.5 21v-6h5v6"/></svg>
+        </a>
+        <div id="settings-avatar" class="shell-avatar">
+          <div class="avatar-fallback">PB</div>
         </div>
-        <a class="notify-link" href="./notifications.html">Alerts <span class="notify-count" data-notify-count hidden>0</span></a>
-      </div>
-      </div>
-      <label for="nav-toggle" class="mobile-overlay" aria-hidden="true"></label>
-      <aside class="mobile-drawer" aria-label="Mobile navigation">
-        <nav>
-          <a href="./home.html">Home</a>
-          <a href="./community.html">Community</a>
-          <a href="./members.html">Members</a>
-          <a href="./chat.html">Chat</a>
-          <a href="./readings.html">Daily Readings</a>
-          <a href="./controls.html">Controls</a>
-          <a href="./notifications.html">Notifications</a>
-          <a href="./settings.html">Settings</a>
-        </nav>
-      </aside>
-      <div class="hero">
-        <h1>PRayerbox Settings</h1>
-        <p>Manage your profile, communities, devices, and notifications.</p>
       </div>
 
-      <section class="panel">
+      <section id="auth-panel" class="panel">
         <h2>Sign In</h2>
         <div class="grid two">
           <div><label for="email">Email</label><input id="email" type="email" placeholder="you@example.com"></div>
@@ -162,7 +118,7 @@
 
       <section class="panel">
         <h2>App & Notifications</h2>
-        <p>Install PRayerbox on your phone and enable push notifications for new activity.</p>
+        <p>Install Prayerbox on your phone and enable push notifications for new activity.</p>
         <div id="install-status" class="status">Checking app install support...</div>
         <div id="push-status" class="status">Checking push notification support...</div>
         <div class="actions">
@@ -268,10 +224,12 @@
         refreshProfile: document.querySelector("#refresh-profile"),
         refreshGroups: document.querySelector("#refresh-groups"),
         removeAvatar: document.querySelector("#remove-avatar"),
+        authPanel: document.querySelector("#auth-panel"),
         saveProfile: document.querySelector("#save-profile"),
         selectedGroup: document.querySelector("#selected-group"),
         selectedGroupStatus: document.querySelector("#selected-group-status"),
         sessionState: document.querySelector("#session-state"),
+        settingsAvatar: document.querySelector("#settings-avatar"),
         signIn: document.querySelector("#sign-in"),
         signOut: document.querySelector("#sign-out"),
         signUp: document.querySelector("#sign-up"),
@@ -312,15 +270,18 @@
           .join(" ")
           || profile?.display_name
           || user?.email?.split("@")[0]
-          || "PRayerbox";
+          || "Prayerbox";
         const avatarUrl = typeof profile?.avatar_url === "string" ? profile.avatar_url.trim() : "";
 
         if (avatarUrl) {
           els.avatarPreview.innerHTML = `<img src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(fullName)}">`;
+          els.settingsAvatar.innerHTML = `<img src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(fullName)}">`;
           return;
         }
 
-        els.avatarPreview.innerHTML = `<div class="avatar-fallback">${escapeHtml(initialsForName(fullName))}</div>`;
+        const fallbackMarkup = `<div class="avatar-fallback">${escapeHtml(initialsForName(fullName))}</div>`;
+        els.avatarPreview.innerHTML = fallbackMarkup;
+        els.settingsAvatar.innerHTML = fallbackMarkup;
       }
 
       async function copyText(text) {
@@ -411,17 +372,19 @@
           const user = await getSignedInUser();
           const session = { user };
           els.sessionState.value = session ? `Signed in as ${session.user.email}` : "Signed out";
+          els.authPanel.hidden = true;
           await refreshNotificationBadge();
           return true;
         } catch {
           els.sessionState.value = "Signed out";
+          els.authPanel.hidden = false;
           setNotificationBadge(0);
           return false;
         }
       }
 
       async function refreshPwaStatus() {
-        const pwa = window.PRayerboxPWA;
+        const pwa = window.PrayerboxPWA || window.PRayerboxPWA;
         if (!pwa) {
           els.installStatus.textContent = "PWA support script is not loaded.";
           els.pushStatus.textContent = "Push support script is not loaded.";
@@ -433,11 +396,11 @@
 
         const state = await pwa.getPushState();
         if (state.isInstalled) {
-          els.installStatus.textContent = "PRayerbox is already installed on this device.";
+          els.installStatus.textContent = "Prayerbox is already installed on this device.";
         } else if (state.canInstall) {
-          els.installStatus.textContent = "This device can install PRayerbox as an app.";
+          els.installStatus.textContent = "This device can install Prayerbox as an app.";
         } else {
-          els.installStatus.textContent = "Use your browser's Add to Home Screen or install menu to add PRayerbox as an app.";
+          els.installStatus.textContent = "Use your browser's Add to Home Screen or install menu to add Prayerbox as an app.";
         }
 
         els.installApp.disabled = state.isInstalled || !state.canInstall;
@@ -556,7 +519,7 @@
       }
 
       async function installApp() {
-        const pwa = window.PRayerboxPWA;
+        const pwa = window.PrayerboxPWA || window.PRayerboxPWA;
         if (!pwa) throw new Error("PWA support is not available.");
         await pwa.installApp();
         await refreshPwaStatus();
@@ -564,7 +527,7 @@
       }
 
       async function enablePush() {
-        const pwa = window.PRayerboxPWA;
+        const pwa = window.PrayerboxPWA || window.PRayerboxPWA;
         if (!pwa) throw new Error("Push support is not available.");
         await getSignedInUser();
         await pwa.subscribeToPush({ getAccessToken });
@@ -573,7 +536,7 @@
       }
 
       async function disablePush() {
-        const pwa = window.PRayerboxPWA;
+        const pwa = window.PrayerboxPWA || window.PRayerboxPWA;
         if (!pwa) throw new Error("Push support is not available.");
         await getSignedInUser();
         await pwa.unsubscribeFromPush({ getAccessToken });
