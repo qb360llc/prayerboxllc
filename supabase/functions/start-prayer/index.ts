@@ -22,7 +22,7 @@ function corsHeaders(request: Request) {
   return {
     "Access-Control-Allow-Headers":
       "authorization, content-type, x-client-info, apikey",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Origin": origin,
     Vary: "Origin",
   };
@@ -146,10 +146,6 @@ Deno.serve(async (request) => {
     return new Response("ok", { headers: corsHeaders(request) });
   }
 
-  if (request.method !== "POST") {
-    return json(request, 405, { error: "Method not allowed.", ok: false });
-  }
-
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -174,6 +170,85 @@ Deno.serve(async (request) => {
     const user = userData.user;
     if (!user) {
       return json(request, 401, { error: "Invalid user token.", ok: false });
+    }
+
+    if (request.method === "GET") {
+      const url = new URL(request.url);
+      const groupSlug = url.searchParams.get("groupSlug")?.trim();
+      if (!groupSlug) {
+        return json(request, 400, { error: "groupSlug is required.", ok: false });
+      }
+
+      const { data: group, error: groupError } = await supabase
+        .from("app_groups")
+        .select("id, slug, name")
+        .eq("slug", groupSlug)
+        .maybeSingle();
+
+      if (groupError) {
+        throw groupError;
+      }
+
+      if (!group) {
+        return json(request, 404, { error: "Unknown group.", ok: false });
+      }
+
+      const { data: membership, error: membershipError } = await supabase
+        .from("group_memberships")
+        .select("id")
+        .eq("group_id", group.id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (membershipError) {
+        throw membershipError;
+      }
+
+      if (!membership) {
+        return json(request, 403, { error: "Join this community before viewing prayer state.", ok: false });
+      }
+
+      const { data: userDevices, error: userDevicesError } = await supabase
+        .from("devices")
+        .select("id, is_active")
+        .eq("group_id", group.id)
+        .eq("owner_user_id", user.id);
+
+      if (userDevicesError) {
+        throw userDevicesError;
+      }
+
+      const ownActiveCount = (userDevices ?? []).filter((device: Record<string, unknown>) => Boolean(device.is_active)).length;
+
+      const { data: groupActivityData, error: activityError } = await supabase
+        .from("group_activity")
+        .select("slug, active_count, lighting_mode")
+        .eq("slug", group.slug)
+        .single();
+
+      if (activityError) {
+        throw activityError;
+      }
+
+      const groupActivity = groupActivityData as GroupActivityRow;
+      return json(request, 200, {
+        ok: true,
+        group: {
+          groupId: group.id,
+          groupName: group.name,
+          groupSlug: group.slug,
+        },
+        prayerState: {
+          activeCount: groupActivity.active_count,
+          lightingMode: groupActivity.lighting_mode,
+          othersInPrayerCount: Math.max(0, groupActivity.active_count - ownActiveCount),
+          ownActiveCount,
+        },
+      });
+    }
+
+    if (request.method !== "POST") {
+      return json(request, 405, { error: "Method not allowed.", ok: false });
     }
 
     const body = await request.json() as StartPrayerRequest;
