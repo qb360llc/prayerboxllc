@@ -54,6 +54,21 @@
       .pray-button.amen { background:linear-gradient(160deg, rgba(248,241,223,.94) 0%, #f0dcb5 100%); }
       .status { max-width:28rem; margin:0 auto; padding:12px 14px; border-radius:18px; background:rgba(248,241,223,.12); border:1px solid rgba(248,241,223,.12); white-space:pre-wrap; }
       .status.error { color:var(--danger); background:rgba(127,30,19,.28); border-color:rgba(255,209,201,.2); }
+      .feed-panel { margin-top:18px; padding:22px 18px 20px; border-radius:30px; background:rgba(18,35,46,.52); border:1px solid rgba(248,241,223,.14); backdrop-filter:blur(12px); box-shadow:0 16px 30px rgba(10,18,24,.16); }
+      .feed-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
+      .feed-title { font-size:1.04rem; letter-spacing:.08em; text-transform:uppercase; color:rgba(248,241,223,.84); }
+      .feed-empty { padding:14px 16px; border-radius:20px; border:1px solid rgba(248,241,223,.1); background:rgba(248,241,223,.06); color:rgba(248,241,223,.82); }
+      .feed-shell { max-height:min(62vh, 760px); overflow:auto; padding-right:4px; }
+      .feed-shell::-webkit-scrollbar { width:8px; }
+      .feed-shell::-webkit-scrollbar-thumb { background:rgba(248,241,223,.2); border-radius:999px; }
+      .feed-list { display:grid; gap:14px; }
+      .feed-card { padding:16px 16px 14px; border-radius:22px; background:rgba(248,241,223,.08); border:1px solid rgba(248,241,223,.08); }
+      .feed-card.prayer-event { background:rgba(217,179,107,.12); border-color:rgba(217,179,107,.18); }
+      .feed-meta { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; }
+      .feed-author { font-size:.98rem; font-weight:700; color:var(--cream); }
+      .feed-date { font-size:.84rem; color:rgba(248,241,223,.62); }
+      .feed-body { margin:0; color:rgba(248,241,223,.9); }
+      .feed-event-copy { margin:0; font-size:1rem; font-weight:600; color:var(--cream); }
       .modal-backdrop { position:fixed; inset:0; display:none; align-items:flex-end; justify-content:center; padding:20px 16px; background:rgba(10,18,24,.54); z-index:80; }
       .modal-backdrop.open { display:flex; }
       .modal-backdrop.center-modal { align-items:center; }
@@ -109,6 +124,8 @@
         main { padding:12px 14px 48px; }
         .hero-card { min-height:calc(100vh - 110px); padding:18px 10px 8px; display:flex; flex-direction:column; justify-content:flex-end; gap:14px; }
         .pray-button { width:100%; max-width:280px; }
+        .feed-panel { margin-top:16px; padding:18px 14px; border-radius:24px; }
+        .feed-shell { max-height:58vh; }
         .modal-backdrop { padding:12px; }
         .modal-backdrop.top-sheet { padding:0; }
         .modal-backdrop.top-sheet .modal-card { width:100%; min-height:100vh; border-radius:0 0 24px 24px; }
@@ -175,6 +192,16 @@
         </div>
         <div id="prayer-banner" class="prayer-banner" hidden>0 people in prayer</div>
         <div id="status" class="status">Choose your active community in Settings before starting prayer.</div>
+      </section>
+
+      <section class="feed-panel" aria-labelledby="prayer-feed-title">
+        <div class="feed-heading">
+          <div id="prayer-feed-title" class="feed-title">Prayer Feed</div>
+        </div>
+        <div id="feed-empty" class="feed-empty" hidden>No prayer activity yet.</div>
+        <div class="feed-shell">
+          <div id="prayer-feed" class="feed-list"></div>
+        </div>
       </section>
 
       <div id="pray-modal" class="modal-backdrop" aria-hidden="true">
@@ -277,12 +304,14 @@
         profileMenuToggle: document.querySelector("#profile-menu-toggle"),
         prayButton: document.querySelector("#pray-button"),
         prayModal: document.querySelector("#pray-modal"),
+        prayerFeed: document.querySelector("#prayer-feed"),
         prayerBanner: document.querySelector("#prayer-banner"),
         recordButton: document.querySelector("#record-button"),
         recordingStatus: document.querySelector("#recording-status"),
         refreshAudioButton: document.querySelector("#refresh-audio"),
         readingModal: document.querySelector("#reading-modal"),
         readingModalContent: document.querySelector("#reading-modal-content"),
+        feedEmpty: document.querySelector("#feed-empty"),
         saveIntention: document.querySelector("#save-intention"),
         sendPrayer: document.querySelector("#send-prayer"),
         sharedAudio: document.querySelector("#shared-audio"),
@@ -301,6 +330,7 @@
       let recordingStartedAt = null;
       let audioChunks = [];
       let currentSessionUser = null;
+      let currentPrayerFeed = [];
 
       function intentionStorageKey() {
         return `prayerboxPrayerIntention:${selectedGroupSlug()}`;
@@ -332,6 +362,27 @@
           badge.hidden = !count;
           badge.textContent = count > 99 ? "99+" : String(count || 0);
         });
+      }
+
+      function escapeHtml(value) {
+        return String(value || "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#39;");
+      }
+
+      function formatFeedDate(value) {
+        try {
+          return new Intl.DateTimeFormat(undefined, {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          }).format(new Date(value));
+        } catch {
+          return "";
+        }
       }
 
       function selectedGroupSlug() {
@@ -754,6 +805,66 @@
           .join("");
       }
 
+      function renderPrayerFeed() {
+        const groupSlug = selectedGroupSlug();
+        if (!groupSlug) {
+          els.prayerFeed.innerHTML = "";
+          els.feedEmpty.hidden = false;
+          els.feedEmpty.textContent = "Choose your active community in Settings before viewing the prayer feed.";
+          return;
+        }
+
+        if (!currentPrayerFeed.length) {
+          els.prayerFeed.innerHTML = "";
+          els.feedEmpty.hidden = false;
+          els.feedEmpty.textContent = "No prayer activity yet.";
+          return;
+        }
+
+        els.feedEmpty.hidden = true;
+        els.prayerFeed.innerHTML = currentPrayerFeed.map((item) => {
+          if (item.type === "prayer_event") {
+            return `
+              <article class="feed-card prayer-event">
+                <div class="feed-meta">
+                  <span class="feed-author">${escapeHtml(item.createdBy)}</span>
+                  <span class="feed-date">${escapeHtml(formatFeedDate(item.createdAt))}</span>
+                </div>
+                <p class="feed-event-copy">${escapeHtml(item.body)}</p>
+              </article>
+            `;
+          }
+
+          return `
+            <article class="feed-card">
+              <div class="feed-meta">
+                <span class="feed-author">${escapeHtml(item.createdBy)}</span>
+                <span class="feed-date">${escapeHtml(formatFeedDate(item.createdAt))}</span>
+              </div>
+              <p class="feed-body">${escapeHtml(item.body)}</p>
+            </article>
+          `;
+        }).join("");
+      }
+
+      async function loadPrayerFeed() {
+        const groupSlug = selectedGroupSlug();
+        if (!groupSlug) {
+          currentPrayerFeed = [];
+          renderPrayerFeed();
+          return;
+        }
+
+        const response = await authedFetch(`/functions/v1/prayer-feed?groupSlug=${encodeURIComponent(groupSlug)}`, {
+          method: "GET",
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to load prayer feed.");
+
+        currentPrayerFeed = payload.items || [];
+        renderPrayerFeed();
+      }
+
       async function saveIntentionFromSideRail() {
         const groupSlug = selectedGroupSlug();
         const body = els.editIntentionBody.value.trim();
@@ -772,6 +883,7 @@
         if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to save intention.");
         saveStoredIntention({ body, id: payload.intentionId || saved?.id || null });
         closeIntentionModal();
+        await loadPrayerFeed();
         setStatus(saved?.id ? "Updated your intention." : "Shared your intention.");
       }
 
@@ -785,7 +897,9 @@
         if (!activeGroup) {
           els.prayButton.disabled = true;
           currentPrayerState = { othersInPrayerCount: 0, ownActiveCount: 0 };
+          currentPrayerFeed = [];
           updateBannerAndButton();
+          renderPrayerFeed();
           updateRecordingButtons();
           setRecordingStatus("Choose your active community in Settings before using recordings.", true);
           setStatus("Choose your active community in Settings before starting prayer.", true);
@@ -797,6 +911,7 @@
         els.prayButton.disabled = false;
         updateRecordingButtons();
         await refreshPrayerState(true);
+        await loadPrayerFeed();
       }
 
       async function startPrayer(intention = "") {
@@ -815,6 +930,7 @@
 
         closePrayModal();
         await refreshPrayerState();
+        await loadPrayerFeed();
         const pushResult = payload.pushResult || {};
         if (intention) {
           saveStoredIntention({ body: intention, id: payload.intentionId || null });
@@ -848,6 +964,7 @@
 
         saveStoredIntention(null);
         await refreshPrayerState();
+        await loadPrayerFeed();
         const pushResult = payload.pushResult || {};
         if (pushResult.attempted === 0) {
           setStatus("Prayer ended. Push attempted 0 subscriptions for recipients.", true);
@@ -869,10 +986,12 @@
           await loadGroups();
           refreshTimer = window.setInterval(() => {
             refreshPrayerState().catch(() => {});
+            loadPrayerFeed().catch(() => {});
           }, 15000);
           document.addEventListener("visibilitychange", () => {
             if (!document.hidden) {
               refreshPrayerState().catch(() => {});
+              loadPrayerFeed().catch(() => {});
               refreshNotificationBadge().catch(() => {});
               loadProfileShortcut().catch(() => {});
             }

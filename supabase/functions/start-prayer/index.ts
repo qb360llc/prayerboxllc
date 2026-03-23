@@ -13,6 +13,24 @@ type GroupActivityRow = {
   slug: string;
 };
 
+type GroupRow = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
+type DeviceRow = {
+  device_uid: string;
+  display_name: string;
+  id: string;
+};
+
+type PrayerParticipant = {
+  startedAt: string;
+  userId: string;
+  name: string;
+};
+
 function corsHeaders(request: Request) {
   const allowedOrigin = Deno.env.get("PRAYERBOX_PORTAL_ORIGIN");
   const requestOrigin = request.headers.get("Origin");
@@ -106,7 +124,9 @@ async function notifyGroupMembers(
 
   if (error) throw error;
 
-  const recipientUserIds = (members ?? []).map((member: Record<string, unknown>) => String(member.user_id));
+  const recipientUserIds = (members ?? []).map((member: Record<string, unknown>) =>
+    String(member.user_id)
+  );
   if (!recipientUserIds.length) {
     return {
       attempted: 0,
@@ -140,6 +160,111 @@ async function notifyGroupMembers(
     tag: `prayer-${groupId}-${crypto.randomUUID()}`,
     title,
   });
+}
+
+async function getGroupForUser(
+  supabase: ReturnType<typeof createClient>,
+  groupSlug: string,
+  userId: string,
+) {
+  const { data: group, error: groupError } = await supabase
+    .from("app_groups")
+    .select("id, slug, name")
+    .eq("slug", groupSlug)
+    .maybeSingle();
+
+  if (groupError) {
+    throw groupError;
+  }
+
+  if (!group) {
+    throw new Error("Unknown group.");
+  }
+
+  const { data: membership, error: membershipError } = await supabase
+    .from("group_memberships")
+    .select("id")
+    .eq("group_id", group.id)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (membershipError) {
+    throw membershipError;
+  }
+
+  if (!membership) {
+    throw new Error("Join this community before starting prayer.");
+  }
+
+  return group as GroupRow;
+}
+
+async function getUserDevices(
+  supabase: ReturnType<typeof createClient>,
+  groupId: string,
+  userId: string,
+) {
+  const { data, error } = await supabase
+    .from("devices")
+    .select("id, device_uid, display_name")
+    .eq("group_id", groupId)
+    .eq("owner_user_id", userId);
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []) as DeviceRow[];
+}
+
+async function getPrayerParticipants(
+  supabase: ReturnType<typeof createClient>,
+  groupId: string,
+) {
+  const { data: presenceRows, error: presenceError } = await supabase
+    .from("prayer_presence")
+    .select("user_id, started_at")
+    .eq("group_id", groupId)
+    .order("started_at", { ascending: true });
+
+  if (presenceError) {
+    throw presenceError;
+  }
+
+  const rows = (presenceRows ?? []) as Array<{ started_at: string; user_id: string }>;
+  const userIds = Array.from(new Set(rows.map((row) => row.user_id)));
+  if (!userIds.length) {
+    return [] as PrayerParticipant[];
+  }
+
+  const { data: profiles, error: profilesError } = await supabase
+    .from("profiles")
+    .select("id, first_name, last_name, display_name, email")
+    .in("id", userIds);
+
+  if (profilesError) {
+    throw profilesError;
+  }
+
+  const namesByUserId = new Map(
+    (profiles ?? []).map((profile: Record<string, unknown>) => {
+      const fullName = [profile.first_name, profile.last_name]
+        .map((value) => (typeof value === "string" ? value.trim() : ""))
+        .filter(Boolean)
+        .join(" ");
+
+      return [
+        String(profile.id),
+        fullName || String(profile.display_name || profile.email || "Community member"),
+      ];
+    }),
+  );
+
+  return rows.map((row) => ({
+    startedAt: row.started_at,
+    userId: row.user_id,
+    name: namesByUserId.get(row.user_id) || "Community member",
+  }));
 }
 
 Deno.serve(async (request) => {
@@ -180,85 +305,9 @@ Deno.serve(async (request) => {
         return json(request, 400, { error: "groupSlug is required.", ok: false });
       }
 
-      const { data: group, error: groupError } = await supabase
-        .from("app_groups")
-        .select("id, slug, name")
-        .eq("slug", groupSlug)
-        .maybeSingle();
-
-      if (groupError) {
-        throw groupError;
-      }
-
-      if (!group) {
-        return json(request, 404, { error: "Unknown group.", ok: false });
-      }
-
-      const { data: membership, error: membershipError } = await supabase
-        .from("group_memberships")
-        .select("id")
-        .eq("group_id", group.id)
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (membershipError) {
-        throw membershipError;
-      }
-
-      if (!membership) {
-        return json(request, 403, { error: "Join this community before viewing prayer state.", ok: false });
-      }
-
-      const { data: userDevices, error: userDevicesError } = await supabase
-        .from("devices")
-        .select("id, is_active")
-        .eq("group_id", group.id)
-        .eq("owner_user_id", user.id);
-
-      if (userDevicesError) {
-        throw userDevicesError;
-      }
-
-      const ownActiveCount = (userDevices ?? []).filter((device: Record<string, unknown>) => Boolean(device.is_active)).length;
-
-      const { data: activeDevices, error: activeDevicesError } = await supabase
-        .from("devices")
-        .select("owner_user_id")
-        .eq("group_id", group.id)
-        .eq("is_active", true)
-        .not("owner_user_id", "is", null);
-
-      if (activeDevicesError) {
-        throw activeDevicesError;
-      }
-
-      const participantIds = Array.from(
-        new Set((activeDevices ?? []).map((device: Record<string, unknown>) => String(device.owner_user_id))),
-      );
-
-      let participants: Array<{ userId: string; name: string }> = [];
-      if (participantIds.length) {
-        const { data: profiles, error: profilesError } = await supabase
-          .from("profiles")
-          .select("id, first_name, last_name, display_name, email")
-          .in("id", participantIds);
-
-        if (profilesError) {
-          throw profilesError;
-        }
-
-        participants = (profiles ?? []).map((profile: Record<string, unknown>) => {
-          const fullName = [profile.first_name, profile.last_name]
-            .map((value) => (typeof value === "string" ? value.trim() : ""))
-            .filter(Boolean)
-            .join(" ");
-
-          return {
-            name: fullName || String(profile.display_name || profile.email || "Community member"),
-            userId: String(profile.id),
-          };
-        });
-      }
+      const group = await getGroupForUser(supabase, groupSlug, user.id);
+      const participants = await getPrayerParticipants(supabase, group.id);
+      const ownActiveCount = participants.some((participant) => participant.userId === user.id) ? 1 : 0;
 
       const { data: groupActivityData, error: activityError } = await supabase
         .from("group_activity")
@@ -279,7 +328,7 @@ Deno.serve(async (request) => {
           groupSlug: group.slug,
         },
         prayerState: {
-          activeCount: groupActivity.active_count,
+          activeCount: participants.length,
           lightingMode: groupActivity.lighting_mode,
           othersInPrayerCount: participants.filter((participant) => participant.userId !== user.id).length,
           ownActiveCount,
@@ -301,81 +350,106 @@ Deno.serve(async (request) => {
       return json(request, 400, { error: "groupSlug is required.", ok: false });
     }
 
-    const { data: group, error: groupError } = await supabase
-      .from("app_groups")
-      .select("id, slug, name")
-      .eq("slug", groupSlug)
-      .maybeSingle();
-
-    if (groupError) {
-      throw groupError;
-    }
-
-    if (!group) {
-      return json(request, 404, { error: "Unknown group.", ok: false });
-    }
-
-    const { data: membership, error: membershipError } = await supabase
-      .from("group_memberships")
-      .select("id")
-      .eq("group_id", group.id)
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (membershipError) {
-      throw membershipError;
-    }
-
-    if (!membership) {
-      return json(request, 403, { error: "Join this community before starting prayer.", ok: false });
-    }
-
-    const { data: devices, error: devicesError } = await supabase
-      .from("devices")
-      .select("id, device_uid, display_name")
-      .eq("group_id", group.id)
-      .eq("owner_user_id", user.id);
-
-    if (devicesError) {
-      throw devicesError;
-    }
-
-    if (!devices?.length) {
-      return json(request, 400, { error: "Claim a light box in this community before starting prayer.", ok: false });
-    }
-
+    const group = await getGroupForUser(supabase, groupSlug, user.id);
+    const devices = await getUserDevices(supabase, group.id, user.id);
     const now = new Date().toISOString();
-    const deviceIds = devices.map((device: Record<string, unknown>) => String(device.id));
-
+    const deviceIds = devices.map((device) => device.id);
     const nextActiveState = action === "start";
-    const { error: deviceUpdateError } = await supabase
-      .from("devices")
-      .update({
-        is_active: nextActiveState,
-        last_seen_at: now,
-      })
-      .in("id", deviceIds);
 
-    if (deviceUpdateError) {
-      throw deviceUpdateError;
+    if (action === "start") {
+      const { error: presenceError } = await supabase
+        .from("prayer_presence")
+        .upsert(
+          {
+            group_id: group.id,
+            started_at: now,
+            user_id: user.id,
+          },
+          { onConflict: "group_id,user_id" },
+        );
+
+      if (presenceError) {
+        throw presenceError;
+      }
+
+      const { error: eventError } = await supabase
+        .from("prayer_presence_events")
+        .insert({
+          event_type: "entered",
+          group_id: group.id,
+          user_id: user.id,
+        });
+
+      if (eventError) {
+        throw eventError;
+      }
+    } else {
+      const { data: existingPresence, error: presenceLookupError } = await supabase
+        .from("prayer_presence")
+        .select("id")
+        .eq("group_id", group.id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (presenceLookupError) {
+        throw presenceLookupError;
+      }
+
+      const { error: deletePresenceError } = await supabase
+        .from("prayer_presence")
+        .delete()
+        .eq("group_id", group.id)
+        .eq("user_id", user.id);
+
+      if (deletePresenceError) {
+        throw deletePresenceError;
+      }
+
+      if (existingPresence) {
+        const { error: eventError } = await supabase
+          .from("prayer_presence_events")
+          .insert({
+            event_type: "left",
+            group_id: group.id,
+            user_id: user.id,
+          });
+
+        if (eventError) {
+          throw eventError;
+        }
+      }
     }
 
-    const eventRows = devices.map((device: Record<string, unknown>) => ({
-      device_id: device.id,
-      event_type: "portal_activation_changed",
-      payload: {
-        active: nextActiveState,
-        actorUserId: user.id,
-        source: "home_prayer",
-      },
-    }));
+    if (deviceIds.length) {
+      const { error: deviceUpdateError } = await supabase
+        .from("devices")
+        .update({
+          is_active: nextActiveState,
+          last_seen_at: now,
+        })
+        .in("id", deviceIds);
 
-    const { error: eventInsertError } = await supabase
-      .from("device_events")
-      .insert(eventRows);
+      if (deviceUpdateError) {
+        throw deviceUpdateError;
+      }
 
-    if (eventInsertError) {
-      throw eventInsertError;
+      const eventRows = devices.map((device) => ({
+        device_id: device.id,
+        event_type: "portal_activation_changed",
+        payload: {
+          active: nextActiveState,
+          actorUserId: user.id,
+          source: "home_prayer",
+        },
+      }));
+
+      const { error: eventInsertError } = await supabase
+        .from("device_events")
+        .insert(eventRows);
+
+      if (eventInsertError) {
+        throw eventInsertError;
+      }
     }
 
     let intentionId: string | null = null;
@@ -408,7 +482,9 @@ Deno.serve(async (request) => {
     }
 
     const groupActivity = groupActivityData as GroupActivityRow;
-    await publishLightingMode(groupActivity.lighting_mode, groupActivity.slug);
+    if (deviceIds.length) {
+      await publishLightingMode(groupActivity.lighting_mode, groupActivity.slug);
+    }
 
     const actorName = await getActorName(supabase, user.id);
     const preview = intention.replace(/\s+/g, " ").trim().slice(0, 160);
@@ -433,6 +509,7 @@ Deno.serve(async (request) => {
       },
     );
 
+    const participants = await getPrayerParticipants(supabase, group.id);
     return json(request, 200, {
       ok: true,
       group: {
@@ -444,11 +521,17 @@ Deno.serve(async (request) => {
         activeCount: groupActivity.active_count,
         lightingMode: groupActivity.lighting_mode,
       },
+      prayerState: {
+        activeCount: participants.length,
+        othersInPrayerCount: participants.filter((participant) => participant.userId !== user.id).length,
+        ownActiveCount: participants.some((participant) => participant.userId === user.id) ? 1 : 0,
+        participants,
+      },
       intention: action === "start" ? (intention || null) : null,
       intentionId,
       pushResult,
       action,
-      devices: devices.map((device: Record<string, unknown>) => ({
+      devices: devices.map((device) => ({
         deviceId: device.device_uid,
         displayName: device.display_name,
       })),
