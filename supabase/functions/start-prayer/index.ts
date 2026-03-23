@@ -2,6 +2,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { sendPushToUsers } from "../_shared/web-push.ts";
 
 type StartPrayerRequest = {
+  action?: "start" | "stop";
   groupSlug?: string;
   intention?: string;
 };
@@ -292,6 +293,7 @@ Deno.serve(async (request) => {
     }
 
     const body = await request.json() as StartPrayerRequest;
+    const action = body.action === "stop" ? "stop" : "start";
     const groupSlug = body.groupSlug?.trim();
     const intention = body.intention?.trim() || "";
 
@@ -345,10 +347,11 @@ Deno.serve(async (request) => {
     const now = new Date().toISOString();
     const deviceIds = devices.map((device: Record<string, unknown>) => String(device.id));
 
+    const nextActiveState = action === "start";
     const { error: deviceUpdateError } = await supabase
       .from("devices")
       .update({
-        is_active: true,
+        is_active: nextActiveState,
         last_seen_at: now,
       })
       .in("id", deviceIds);
@@ -361,7 +364,7 @@ Deno.serve(async (request) => {
       device_id: device.id,
       event_type: "portal_activation_changed",
       payload: {
-        active: true,
+        active: nextActiveState,
         actorUserId: user.id,
         source: "home_prayer",
       },
@@ -376,7 +379,7 @@ Deno.serve(async (request) => {
     }
 
     let intentionId: string | null = null;
-    if (intention) {
+    if (action === "start" && intention) {
       const { data: insertedIntention, error: insertIntentionError } = await supabase
         .from("community_intentions")
         .insert({
@@ -409,17 +412,20 @@ Deno.serve(async (request) => {
 
     const actorName = await getActorName(supabase, user.id);
     const preview = intention.replace(/\s+/g, " ").trim().slice(0, 160);
-    const notificationBody = intention
-      ? `${actorName} has entered into prayer in ${group.name}: "${preview}${intention.length > preview.length ? "..." : ""}"`
-      : `${actorName} has entered into prayer in ${group.name} without adding an intention.`;
+    const notificationBody = action === "start"
+      ? (intention
+        ? `${actorName} has entered into prayer in ${group.name}: "${preview}${intention.length > preview.length ? "..." : ""}"`
+        : `${actorName} has entered into prayer in ${group.name} without adding an intention.`)
+      : `${actorName} has left prayer in ${group.name}.`;
 
     const pushResult = await notifyGroupMembers(
       supabase,
       group.id,
       user.id,
-      "Prayer started",
+      action === "start" ? "Prayer started" : "Prayer ended",
       notificationBody,
       {
+        action,
         groupSlug: group.slug,
         intentionId,
         preview: preview || null,
@@ -438,9 +444,10 @@ Deno.serve(async (request) => {
         activeCount: groupActivity.active_count,
         lightingMode: groupActivity.lighting_mode,
       },
-      intention: intention || null,
+      intention: action === "start" ? (intention || null) : null,
       intentionId,
       pushResult,
+      action,
       devices: devices.map((device: Record<string, unknown>) => ({
         deviceId: device.device_uid,
         displayName: device.display_name,

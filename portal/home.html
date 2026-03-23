@@ -498,6 +498,30 @@
         }
       }
 
+      async function stopPrayer() {
+        const groupSlug = selectedGroupSlug();
+        if (!groupSlug) {
+          throw new Error("Choose your active community in Settings first.");
+        }
+
+        const response = await authedFetch("/functions/v1/start-prayer", {
+          body: JSON.stringify({ action: "stop", groupSlug }),
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to end prayer.");
+
+        saveStoredIntention(null);
+        await refreshPrayerState();
+        const pushResult = payload.pushResult || {};
+        if (pushResult.attempted === 0) {
+          setStatus("Prayer ended. Push attempted 0 subscriptions for recipients.", true);
+        } else {
+          setStatus(`Prayer ended. Push sent ${pushResult.sent || 0} of ${pushResult.attempted || 0} attempted subscriptions.`);
+        }
+      }
+
       async function boot() {
         try {
           const client = getClient();
@@ -536,7 +560,7 @@
 
       els.prayButton.addEventListener("click", () => {
         if ((currentPrayerState.ownActiveCount || 0) > 0) {
-          setStatus("You are already in prayer.");
+          wrap(stopPrayer, els.prayButton);
           return;
         }
         openPrayModal();
