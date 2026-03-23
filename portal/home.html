@@ -54,10 +54,7 @@
       .mobile-drawer a { display:block; padding:12px 14px; border-radius:14px; text-decoration:none; background:rgba(248,241,223,.08); color:var(--cream); }
       .hero-card { min-height:calc(100vh - 140px); display:grid; align-content:space-between; gap:22px; padding:24px 18px 24px; text-align:center; }
       .prayer-banner { width:fit-content; max-width:100%; margin:0 auto; padding:8px 16px; border-radius:999px; background:rgba(248,241,223,.13); border:1px solid rgba(248,241,223,.16); font-size:.92rem; font-weight:700; letter-spacing:.02em; }
-      .group-pill { display:inline-flex; align-items:center; justify-content:center; padding:10px 16px; margin:0 auto; border-radius:999px; background:rgba(248,241,223,.1); color:var(--cream); font-weight:700; }
-      .hero-stack { display:grid; gap:18px; justify-items:center; padding-top:3vh; }
-      .hero-title { margin:0; font-size:clamp(2.7rem, 10vw, 5.6rem); line-height:.92; text-shadow:0 2px 16px rgba(10,18,24,.22); }
-      .hero-copy { max-width:24rem; font-size:1rem; }
+      .hero-stack { display:grid; gap:18px; justify-items:center; align-content:end; min-height:100%; }
       .pray-button { display:inline-flex; align-items:center; justify-content:center; min-width:220px; margin-top:8px; padding:18px 30px; font-size:1.12rem; background:linear-gradient(160deg, #ead1a0 0%, #c8923d 100%); box-shadow:0 18px 36px rgba(12,25,34,.24); }
       .pray-button.amen { background:linear-gradient(160deg, rgba(248,241,223,.94) 0%, #f0dcb5 100%); }
       .status { max-width:28rem; margin:0 auto; padding:12px 14px; border-radius:18px; background:rgba(248,241,223,.12); border:1px solid rgba(248,241,223,.12); white-space:pre-wrap; }
@@ -78,15 +75,16 @@
         .nav-toggle:checked ~ .mobile-drawer { transform:translateX(0); }
       }
       @media (max-width:719px) {
-        body { background:#234457 url("./home-mobile-bg.svg") center top / cover no-repeat fixed; }
+        body { background:#234457 url("./home-mobile-bg.svg") center -12px / cover no-repeat fixed; }
         body::before, body::after { display:none; }
         main { padding:12px 14px 48px; }
-        .hero-card { min-height:calc(100vh - 110px); padding:18px 10px 18px; }
+        .hero-card { min-height:calc(100vh - 110px); padding:18px 10px 8px; }
         .pray-button { width:100%; max-width:280px; }
         .modal-backdrop { padding:12px; }
         .topbar-wrap { background:linear-gradient(180deg, rgba(35,68,87,.86) 0%, rgba(35,68,87,.54) 74%, rgba(35,68,87,0) 100%); }
         .hero-card { background:transparent; border-color:transparent; box-shadow:none; }
-        .group-pill, .prayer-banner, .status { backdrop-filter:blur(8px); background:rgba(24,44,58,.34); }
+        .hero-stack { padding-top:0; padding-bottom:14px; }
+        .prayer-banner, .status { backdrop-filter:blur(8px); background:rgba(24,44,58,.34); }
       }
     </style>
   </head>
@@ -129,9 +127,6 @@
       <section class="hero-card">
         <div id="prayer-banner" class="prayer-banner" hidden>0 people in prayer</div>
         <div class="hero-stack">
-          <div id="active-group" class="group-pill">Loading your selected community...</div>
-          <h1 class="hero-title">Pray</h1>
-          <p class="hero-copy">Enter into prayer with one tap. You can share an intention first, or simply begin in silence.</p>
           <button id="pray-button" class="pray-button">Pray</button>
         </div>
         <div id="status" class="status">Choose your active community in Settings before starting prayer.</div>
@@ -162,7 +157,6 @@
       const SELECTED_GROUP_STORAGE_KEY = "prayerboxSelectedGroupSlug";
       const AUTH_URL = "./index.html";
       const els = {
-        activeGroup: document.querySelector("#active-group"),
         closePrayModal: document.querySelector("#close-pray-modal"),
         intentionBody: document.querySelector("#intention-body"),
         prayButton: document.querySelector("#pray-button"),
@@ -277,7 +271,6 @@
         const savedGroupSlug = selectedGroupSlug();
         const activeGroup = groups.find((group) => group.slug === savedGroupSlug) || groups[0] || null;
         if (!activeGroup) {
-          els.activeGroup.textContent = "Choose your active community in Settings first.";
           els.prayButton.disabled = true;
           currentPrayerState = { othersInPrayerCount: 0, ownActiveCount: 0 };
           updateBannerAndButton();
@@ -287,7 +280,6 @@
         if (activeGroup.slug !== savedGroupSlug) {
           localStorage.setItem(SELECTED_GROUP_STORAGE_KEY, activeGroup.slug);
         }
-        els.activeGroup.textContent = activeGroup.name;
         els.prayButton.disabled = false;
         await refreshPrayerState(true);
       }
