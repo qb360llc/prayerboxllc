@@ -36,19 +36,17 @@
       button:disabled { opacity:.6; cursor:wait; }
       textarea { width:100%; min-height:170px; padding:16px 18px; border:1px solid rgba(248,241,223,.18); border-radius:22px; font:inherit; background:rgba(255,250,242,.96); color:#1d1b18; resize:vertical; }
       .topbar-wrap { margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw); padding:0 0 14px; }
-      .topbar { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 20px; background:transparent; }
+      .topbar { position:relative; display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 20px; background:transparent; }
       .topnav { display:flex; flex-wrap:wrap; gap:10px; }
       .topnav a { display:inline-block; padding:10px 14px; border-radius:999px; text-decoration:none; background:rgba(248,241,223,.1); color:var(--cream); }
-      .nav-toggle { position:absolute; opacity:0; pointer-events:none; }
-      .mobile-nav-button { display:none; width:48px; height:48px; border-radius:14px; background:transparent; cursor:pointer; align-items:center; justify-content:center; box-shadow:none; }
+      .mobile-action-cluster { display:none; }
+      .mobile-nav-button { width:48px; height:48px; border-radius:14px; background:transparent; cursor:pointer; align-items:center; justify-content:center; box-shadow:none; padding:0; }
       .mobile-nav-button span { display:block; width:20px; height:2px; background:var(--cream); position:relative; }
       .mobile-nav-button span::before, .mobile-nav-button span::after { content:""; position:absolute; left:0; width:20px; height:2px; background:var(--cream); }
       .mobile-nav-button span::before { top:-6px; }
       .mobile-nav-button span::after { top:6px; }
-      .mobile-overlay { display:none; }
-      .mobile-drawer { position:fixed; top:0; left:0; height:100vh; width:min(280px, 82vw); padding:88px 18px 24px; background:#1e3847; border-right:1px solid rgba(248,241,223,.12); box-shadow:0 18px 40px rgba(10,18,24,.3); transform:translateX(-100%); transition:transform .22s ease; z-index:60; }
-      .mobile-drawer nav { display:grid; gap:10px; }
-      .mobile-drawer a { display:block; padding:12px 14px; border-radius:14px; text-decoration:none; background:rgba(248,241,223,.08); color:var(--cream); }
+      .mobile-action-strip { display:flex; gap:10px; overflow:hidden; max-width:0; opacity:0; transform:translateX(-8px); transition:max-width .22s ease, opacity .18s ease, transform .18s ease; }
+      .mobile-action-strip.open { max-width:240px; opacity:1; transform:translateX(0); }
       .hero-card { min-height:calc(100vh - 140px); display:grid; align-content:space-between; gap:22px; padding:24px 18px 24px; text-align:center; }
       .prayer-banner { width:fit-content; max-width:100%; margin:0 auto; padding:8px 16px; border-radius:999px; background:rgba(248,241,223,.13); border:1px solid rgba(248,241,223,.16); font-size:.92rem; font-weight:700; letter-spacing:.02em; }
       .hero-stack { display:grid; gap:18px; justify-items:center; align-content:end; min-height:100%; }
@@ -73,12 +71,21 @@
       .modal-backdrop.top-sheet .modal-body-scroll { max-height:calc(100vh - 110px); }
       .modal-body-scroll::-webkit-scrollbar { width:8px; }
       .modal-body-scroll::-webkit-scrollbar-thumb { background:rgba(35,68,87,.22); border-radius:999px; }
-      .side-rail { display:none; }
       .rail-button { width:48px; height:48px; border-radius:15px; background:rgba(201,146,61,.2); border:1px solid rgba(248,241,223,.22); display:inline-flex; align-items:center; justify-content:center; padding:0; backdrop-filter:blur(10px); box-shadow:0 12px 28px rgba(10,18,24,.22); }
       .rail-button svg { width:22px; height:22px; stroke:#f8f1df; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+      .profile-menu-shell { position:relative; margin-left:auto; }
       .profile-shortcut { width:48px; height:48px; border-radius:50%; overflow:hidden; text-decoration:none; color:var(--cream); font-weight:700; letter-spacing:.03em; }
       .profile-shortcut img { width:100%; height:100%; object-fit:cover; display:block; }
       .profile-fallback { width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:linear-gradient(160deg, rgba(248,241,223,.94) 0%, #d9b36b 100%); color:#173241; font-size:.88rem; }
+      .profile-menu-panel { position:absolute; top:58px; right:0; min-width:216px; display:none; padding:14px; border:1px solid rgba(248,241,223,.16); border-radius:18px; background:rgba(24,44,58,.96); box-shadow:0 18px 38px rgba(10,18,24,.28); backdrop-filter:blur(12px); }
+      .profile-menu-panel.open { display:grid; gap:12px; }
+      .profile-menu-name { font-weight:700; color:var(--cream); }
+      .profile-menu-meta { font-size:.9rem; color:rgba(248,241,223,.7); }
+      .profile-menu-actions { display:grid; gap:8px; }
+      .profile-menu-actions a,
+      .profile-menu-actions button { width:100%; text-align:center; text-decoration:none; }
+      .profile-menu-actions .secondary,
+      .profile-menu-actions .ghost { color:var(--cream); }
       .participants-list { display:grid; gap:10px; }
       .participant-item { padding:12px 14px; border-radius:14px; background:rgba(35,68,87,.08); color:#1d1b18; }
       .reading-card { display:grid; gap:10px; }
@@ -94,9 +101,7 @@
       .reading-sheet-scroll::-webkit-scrollbar-thumb { background:rgba(35,68,87,.22); border-radius:999px; }
       @media (max-width:720px) {
         .topnav { display:none; }
-        .mobile-nav-button { display:flex; }
-        .nav-toggle:checked ~ .mobile-overlay { display:block; position:fixed; inset:0; background:rgba(10,18,24,.46); z-index:55; }
-        .nav-toggle:checked ~ .mobile-drawer { transform:translateX(0); }
+        .mobile-action-cluster { position:absolute; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:10px; }
       }
       @media (max-width:719px) {
         body { background:#234457 url("./home-mobile-bg.svg") center -12px / cover no-repeat fixed; }
@@ -111,17 +116,33 @@
         .hero-card { background:transparent; border-color:transparent; box-shadow:none; }
         .hero-stack { padding-top:0; padding-bottom:0; margin-top:auto; }
         .prayer-banner, .status { backdrop-filter:blur(8px); background:rgba(24,44,58,.34); }
-        .side-rail { position:fixed; left:50%; top:calc(env(safe-area-inset-top, 0px) + 18px); transform:translateX(-50%); display:flex; gap:10px; z-index:35; align-items:center; justify-content:center; }
+        .topbar-wrap { padding-bottom:0; }
+        .topbar { padding:calc(env(safe-area-inset-top, 0px) + 12px) 14px 0; }
+        .mobile-action-cluster { left:14px; transform:none; }
+        .profile-menu-shell { margin-left:auto; }
+        .profile-menu-panel { right:0; top:56px; }
       }
     </style>
   </head>
   <body>
     <main>
-      <input id="nav-toggle" class="nav-toggle" type="checkbox">
       <div class="topbar-wrap">
         <div class="topbar">
+          <div class="mobile-action-cluster">
+            <button id="action-menu-toggle" class="mobile-nav-button" type="button" aria-label="Open home actions" aria-expanded="false"><span></span></button>
+            <div id="mobile-action-strip" class="mobile-action-strip" aria-label="Home quick actions">
+              <button id="open-reading-modal" class="rail-button" aria-label="Open daily gospel">
+                <svg viewBox="0 0 24 24"><path d="M6 4.5h9.5A2.5 2.5 0 0 1 18 7v12.5a1 1 0 0 0-1-1H6.5A2.5 2.5 0 0 0 4 21V7a2.5 2.5 0 0 1 2-2.5Z"/><path d="M8 7.5h6"/><path d="M8 11h6"/><path d="M8 14.5h4"/></svg>
+              </button>
+              <button id="open-intention-modal" class="rail-button" aria-label="Open intention editor">
+                <svg viewBox="0 0 24 24"><path d="M12 21c4.2-3.2 7-6.5 7-10a4 4 0 0 0-7-2.4A4 4 0 0 0 5 11c0 3.5 2.8 6.8 7 10Z"/><path d="M12 7v6"/><path d="M9 10h6"/></svg>
+              </button>
+              <button id="open-participants-modal" class="rail-button" aria-label="Open participants list">
+                <svg viewBox="0 0 24 24"><path d="M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M16.5 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/><path d="M3.5 19a4.5 4.5 0 0 1 9 0"/><path d="M13 19a3.5 3.5 0 0 1 7 0"/></svg>
+              </button>
+            </div>
+          </div>
           <div style="display:flex; align-items:center; gap:10px;">
-            <label for="nav-toggle" class="mobile-nav-button" aria-label="Open navigation menu"><span></span></label>
             <nav class="topnav" aria-label="Primary">
               <a href="./home.html">Home</a>
               <a href="./community.html">Community</a>
@@ -133,21 +154,20 @@
               <a href="./settings.html">Settings</a>
             </nav>
           </div>
+          <div class="profile-menu-shell">
+            <button id="profile-menu-toggle" class="rail-button profile-shortcut" type="button" aria-label="Open profile menu" aria-expanded="false">
+              <span id="profile-fallback" class="profile-fallback">PB</span>
+            </button>
+            <div id="profile-menu-panel" class="profile-menu-panel" aria-label="Profile menu">
+              <div>
+                <div id="profile-menu-name" class="profile-menu-name">PRayerbox</div>
+                <div id="profile-menu-meta" class="profile-menu-meta">Account</div>
+              </div>
+              <div id="profile-menu-actions" class="profile-menu-actions"></div>
+            </div>
+          </div>
         </div>
       </div>
-      <label for="nav-toggle" class="mobile-overlay" aria-hidden="true"></label>
-      <aside class="mobile-drawer" aria-label="Mobile navigation">
-        <nav>
-          <a href="./home.html">Home</a>
-          <a href="./community.html">Community</a>
-          <a href="./members.html">Members</a>
-          <a href="./chat.html">Chat</a>
-          <a href="./readings.html">Daily Readings</a>
-          <a href="./controls.html">Controls</a>
-          <a href="./notifications.html">Notifications</a>
-          <a href="./settings.html">Settings</a>
-        </nav>
-      </aside>
 
       <section class="hero-card">
         <div class="hero-stack">
@@ -156,21 +176,6 @@
         <div id="prayer-banner" class="prayer-banner" hidden>0 people in prayer</div>
         <div id="status" class="status">Choose your active community in Settings before starting prayer.</div>
       </section>
-
-      <div class="side-rail" aria-label="Quick actions">
-        <button id="open-reading-modal" class="rail-button" aria-label="Open daily gospel">
-          <svg viewBox="0 0 24 24"><path d="M6 4.5h9.5A2.5 2.5 0 0 1 18 7v12.5a1 1 0 0 0-1-1H6.5A2.5 2.5 0 0 0 4 21V7a2.5 2.5 0 0 1 2-2.5Z"/><path d="M8 7.5h6"/><path d="M8 11h6"/><path d="M8 14.5h4"/></svg>
-        </button>
-        <button id="open-intention-modal" class="rail-button" aria-label="Open intention editor">
-          <svg viewBox="0 0 24 24"><path d="M12 21c4.2-3.2 7-6.5 7-10a4 4 0 0 0-7-2.4A4 4 0 0 0 5 11c0 3.5 2.8 6.8 7 10Z"/><path d="M12 7v6"/><path d="M9 10h6"/></svg>
-        </button>
-        <button id="open-participants-modal" class="rail-button" aria-label="Open participants list">
-          <svg viewBox="0 0 24 24"><path d="M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M16.5 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/><path d="M3.5 19a4.5 4.5 0 0 1 9 0"/><path d="M13 19a3.5 3.5 0 0 1 7 0"/></svg>
-        </button>
-        <a id="profile-shortcut" class="rail-button profile-shortcut" href="./settings.html" aria-label="Open settings profile">
-          <span id="profile-fallback" class="profile-fallback">PB</span>
-        </a>
-      </div>
 
       <div id="pray-modal" class="modal-backdrop" aria-hidden="true">
         <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="pray-modal-title">
@@ -250,6 +255,7 @@
       const SELECTED_GROUP_STORAGE_KEY = "prayerboxSelectedGroupSlug";
       const AUTH_URL = "./index.html";
       const els = {
+        actionMenuToggle: document.querySelector("#action-menu-toggle"),
         closePrayModal: document.querySelector("#close-pray-modal"),
         closeReadingModal: document.querySelector("#close-reading-modal"),
         closeIntentionModal: document.querySelector("#close-intention-modal"),
@@ -257,13 +263,18 @@
         editIntentionBody: document.querySelector("#edit-intention-body"),
         intentionBody: document.querySelector("#intention-body"),
         intentionModal: document.querySelector("#intention-modal"),
+        mobileActionStrip: document.querySelector("#mobile-action-strip"),
         openIntentionModal: document.querySelector("#open-intention-modal"),
         openParticipantsModal: document.querySelector("#open-participants-modal"),
         openReadingModal: document.querySelector("#open-reading-modal"),
         participantsList: document.querySelector("#participants-list"),
         participantsModal: document.querySelector("#participants-modal"),
         profileFallback: document.querySelector("#profile-fallback"),
-        profileShortcut: document.querySelector("#profile-shortcut"),
+        profileMenuActions: document.querySelector("#profile-menu-actions"),
+        profileMenuMeta: document.querySelector("#profile-menu-meta"),
+        profileMenuName: document.querySelector("#profile-menu-name"),
+        profileMenuPanel: document.querySelector("#profile-menu-panel"),
+        profileMenuToggle: document.querySelector("#profile-menu-toggle"),
         prayButton: document.querySelector("#pray-button"),
         prayModal: document.querySelector("#pray-modal"),
         prayerBanner: document.querySelector("#prayer-banner"),
@@ -289,6 +300,7 @@
       let mediaRecorder = null;
       let recordingStartedAt = null;
       let audioChunks = [];
+      let currentSessionUser = null;
 
       function intentionStorageKey() {
         return `prayerboxPrayerIntention:${selectedGroupSlug()}`;
@@ -339,6 +351,28 @@
           .filter(Boolean);
         if (!parts.length) return "PB";
         return parts.slice(0, 2).map((part) => part[0]?.toUpperCase() || "").join("");
+      }
+
+      function closeActionStrip() {
+        els.mobileActionStrip.classList.remove("open");
+        els.actionMenuToggle?.setAttribute("aria-expanded", "false");
+      }
+
+      function toggleActionStrip() {
+        const willOpen = !els.mobileActionStrip.classList.contains("open");
+        els.mobileActionStrip.classList.toggle("open", willOpen);
+        els.actionMenuToggle?.setAttribute("aria-expanded", willOpen ? "true" : "false");
+      }
+
+      function closeProfileMenu() {
+        els.profileMenuPanel.classList.remove("open");
+        els.profileMenuToggle?.setAttribute("aria-expanded", "false");
+      }
+
+      function toggleProfileMenu() {
+        const willOpen = !els.profileMenuPanel.classList.contains("open");
+        els.profileMenuPanel.classList.toggle("open", willOpen);
+        els.profileMenuToggle?.setAttribute("aria-expanded", willOpen ? "true" : "false");
       }
 
       function currentLocalDate() {
@@ -481,11 +515,30 @@
 
         const avatarUrl = typeof profile?.avatar_url === "string" ? profile.avatar_url.trim() : "";
         if (avatarUrl) {
-          els.profileShortcut.innerHTML = `<img src="${avatarUrl}" alt="${name}">`;
+          els.profileMenuToggle.innerHTML = `<img src="${avatarUrl}" alt="${name}">`;
+        } else {
+          els.profileMenuToggle.innerHTML = `<span id="profile-fallback" class="profile-fallback">${initialsForName(name)}</span>`;
+        }
+
+        els.profileMenuName.textContent = name;
+        if (currentSessionUser?.email) {
+          els.profileMenuMeta.textContent = currentSessionUser.email;
+          els.profileMenuActions.innerHTML = `
+            <a class="secondary" href="./settings.html">Settings</a>
+            <button id="profile-sign-out" class="ghost" type="button">Sign Out</button>
+          `;
+          els.profileMenuActions.querySelector("#profile-sign-out")?.addEventListener("click", () => {
+            signOutFromMenu().catch((error) => setStatus(error.message || "Failed to sign out.", true));
+          });
           return;
         }
 
-        els.profileShortcut.innerHTML = `<span id="profile-fallback" class="profile-fallback">${initialsForName(name)}</span>`;
+        els.profileMenuMeta.textContent = "No active account";
+        els.profileMenuActions.innerHTML = `
+          <a class="secondary" href="./settings.html">Settings</a>
+          <a class="ghost" href="./index.html?mode=signin">Sign In</a>
+          <a class="ghost" href="./index.html?mode=signup">Sign Up</a>
+        `;
       }
 
       async function loadProfileShortcut() {
@@ -493,7 +546,11 @@
           const client = getClient();
           const session = await getSession();
           const user = session?.user;
-          if (!user) return;
+          currentSessionUser = user || null;
+          if (!user) {
+            renderProfileShortcut(null, "");
+            return;
+          }
 
           const { data, error } = await client
             .from("profiles")
@@ -506,6 +563,15 @@
         } catch {
           renderProfileShortcut(null, "");
         }
+      }
+
+      async function signOutFromMenu() {
+        const client = getClient();
+        const { error } = await client.auth.signOut();
+        if (error) throw error;
+        currentSessionUser = null;
+        closeProfileMenu();
+        window.location.replace("./index.html?mode=signin");
       }
 
       async function refreshPrayerState(showReadyMessage = false) {
@@ -840,7 +906,19 @@
         }
       }
 
+      els.actionMenuToggle?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        closeProfileMenu();
+        toggleActionStrip();
+      });
+      els.profileMenuToggle?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        closeActionStrip();
+        toggleProfileMenu();
+      });
       els.prayButton.addEventListener("click", () => {
+        closeActionStrip();
+        closeProfileMenu();
         if ((currentPrayerState.ownActiveCount || 0) > 0) {
           wrap(stopPrayer, els.prayButton);
           return;
@@ -848,6 +926,8 @@
         openPrayModal();
       });
       els.openReadingModal.addEventListener("click", async () => {
+        closeActionStrip();
+        closeProfileMenu();
         els.openReadingModal.disabled = true;
         openReadingModal();
         try {
@@ -861,8 +941,14 @@
           els.openReadingModal.disabled = false;
         }
       });
-      els.openIntentionModal.addEventListener("click", openIntentionModal);
+      els.openIntentionModal.addEventListener("click", () => {
+        closeActionStrip();
+        closeProfileMenu();
+        openIntentionModal();
+      });
       els.openParticipantsModal.addEventListener("click", () => {
+        closeActionStrip();
+        closeProfileMenu();
         renderParticipants();
         openParticipantsModal();
       });
@@ -896,6 +982,14 @@
       });
       els.participantsModal.addEventListener("click", (event) => {
         if (event.target === els.participantsModal) closeParticipantsModal();
+      });
+      document.addEventListener("click", (event) => {
+        if (!els.profileMenuPanel.contains(event.target) && !els.profileMenuToggle.contains(event.target)) {
+          closeProfileMenu();
+        }
+        if (!els.mobileActionStrip.contains(event.target) && !els.actionMenuToggle.contains(event.target)) {
+          closeActionStrip();
+        }
       });
       window.addEventListener("beforeunload", () => {
         if (refreshTimer) window.clearInterval(refreshTimer);

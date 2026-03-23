@@ -224,7 +224,11 @@
             redirectToHome();
             return;
           }
-          setAuthMode("signin");
+          const params = new URLSearchParams(window.location.search);
+          const requestedMode = params.get("mode") === "signup" || window.location.hash === "#signup"
+            ? "signup"
+            : "signin";
+          setAuthMode(requestedMode);
         } catch (error) {
           setAuthStatus(error.message || "Unable to load the portal.", true);
         }
