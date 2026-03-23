@@ -19,7 +19,7 @@
   </defs>
   <rect width="675" height="1200" fill="url(#bg)"/>
 
-  <g transform="translate(337.5 460)">
+  <g transform="translate(337.5 426)">
     <circle r="150" fill="url(#glow)"/>
     <g stroke="url(#gold)" stroke-linecap="round" opacity=".95">
       <g id="ray">
@@ -85,7 +85,7 @@
     </g>
   </g>
 
-  <text x="337.5" y="915" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="34" letter-spacing="2" fill="#f8f1df">
+  <text x="337.5" y="860" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="34" letter-spacing="2" fill="#f8f1df">
     I AM THE BREAD OF LIFE
   </text>
 </svg>
