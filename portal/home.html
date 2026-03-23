@@ -39,10 +39,6 @@
       .topbar { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 20px; background:transparent; }
       .topnav { display:flex; flex-wrap:wrap; gap:10px; }
       .topnav a { display:inline-block; padding:10px 14px; border-radius:999px; text-decoration:none; background:rgba(248,241,223,.1); color:var(--cream); }
-      .notify-link { position:relative; display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px; text-decoration:none; color:var(--cream); background:transparent; }
-      .notify-link::before { content:"\1F514"; font-size:1.35rem; line-height:1; }
-      .notify-count { position:absolute; top:1px; right:-2px; min-width:1.15rem; padding:1px 5px; border-radius:999px; background:#f7d28d; color:#173241; font-size:.72rem; line-height:1.15; text-align:center; }
-      .mobile-top-title { display:block; font-size:1.2rem; font-weight:700; align-self:center; color:var(--cream); }
       .nav-toggle { position:absolute; opacity:0; pointer-events:none; }
       .mobile-nav-button { display:none; width:48px; height:48px; border-radius:14px; background:transparent; cursor:pointer; align-items:center; justify-content:center; box-shadow:none; }
       .mobile-nav-button span { display:block; width:20px; height:2px; background:var(--cream); position:relative; }
@@ -95,7 +91,6 @@
         <div class="topbar">
           <div style="display:flex; align-items:center; gap:10px;">
             <label for="nav-toggle" class="mobile-nav-button" aria-label="Open navigation menu"><span></span></label>
-            <div class="mobile-top-title">Home</div>
             <nav class="topnav" aria-label="Primary">
               <a href="./home.html">Home</a>
               <a href="./community.html">Community</a>
@@ -107,7 +102,6 @@
               <a href="./settings.html">Settings</a>
             </nav>
           </div>
-          <a class="notify-link" href="./notifications.html">Alerts <span class="notify-count" data-notify-count hidden>0</span></a>
         </div>
       </div>
       <label for="nav-toggle" class="mobile-overlay" aria-hidden="true"></label>
