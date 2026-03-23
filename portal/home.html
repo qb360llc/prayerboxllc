@@ -54,6 +54,13 @@
       .pray-button.amen { background:linear-gradient(160deg, rgba(248,241,223,.94) 0%, #f0dcb5 100%); }
       .status { max-width:28rem; margin:0 auto; padding:12px 14px; border-radius:18px; background:rgba(248,241,223,.12); border:1px solid rgba(248,241,223,.12); white-space:pre-wrap; }
       .status.error { color:var(--danger); background:rgba(127,30,19,.28); border-color:rgba(255,209,201,.2); }
+      .info-fab { position:fixed; right:18px; bottom:18px; width:48px; height:48px; padding:0; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; font-size:1.15rem; z-index:40; box-shadow:0 14px 26px rgba(10,18,24,.26); }
+      .info-fab::before { content:"i"; font-style:italic; font-weight:700; }
+      .info-panel { position:fixed; right:18px; bottom:76px; width:min(320px, calc(100vw - 28px)); display:none; padding:14px; border-radius:20px; background:rgba(18,35,46,.94); border:1px solid rgba(248,241,223,.14); box-shadow:0 18px 36px rgba(10,18,24,.3); z-index:40; }
+      .info-panel.open { display:grid; gap:8px; }
+      .info-panel-title { font-size:.82rem; letter-spacing:.08em; text-transform:uppercase; color:rgba(248,241,223,.62); }
+      .info-panel-body { color:var(--cream); white-space:pre-wrap; }
+      .info-panel-body.empty { color:rgba(248,241,223,.62); }
       .modal-backdrop { position:fixed; inset:0; display:none; align-items:flex-end; justify-content:center; padding:20px 16px; background:rgba(10,18,24,.54); z-index:80; }
       .modal-backdrop.open { display:flex; }
       .modal-backdrop.center-modal { align-items:center; }
@@ -156,6 +163,8 @@
         .feed-surface { min-height:calc(100vh - 130px); padding:10px; border-radius:22px; }
         .feed-modal-card .modal-body-scroll { max-height:calc(100vh - 88px); }
         .feed-surface .feed-shell { max-height:calc(100vh - 178px); border-radius:20px; }
+        .info-fab { right:14px; bottom:14px; }
+        .info-panel { right:14px; bottom:70px; width:min(300px, calc(100vw - 24px)); }
       }
     </style>
   </head>
@@ -217,6 +226,12 @@
         <div id="prayer-banner" class="prayer-banner" hidden>0 people in prayer</div>
         <div id="status" class="status">Choose your active community in Settings before starting prayer.</div>
       </section>
+
+      <button id="info-fab" class="info-fab" type="button" aria-label="Open activity details" aria-expanded="false"></button>
+      <div id="info-panel" class="info-panel" aria-label="Home activity details">
+        <div class="info-panel-title">Latest Update</div>
+        <div id="info-panel-body" class="info-panel-body empty">No recent activity details.</div>
+      </div>
 
       <div id="pray-modal" class="modal-backdrop" aria-hidden="true">
         <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="pray-modal-title">
@@ -338,6 +353,9 @@
         feedModal: document.querySelector("#feed-modal"),
         groupList: document.querySelector("#group-list"),
         groupModal: document.querySelector("#group-modal"),
+        infoFab: document.querySelector("#info-fab"),
+        infoPanel: document.querySelector("#info-panel"),
+        infoPanelBody: document.querySelector("#info-panel-body"),
         intentionBody: document.querySelector("#intention-body"),
         intentionModal: document.querySelector("#intention-modal"),
         mobileActionStrip: document.querySelector("#mobile-action-strip"),
@@ -383,6 +401,7 @@
       let currentSessionUser = null;
       let currentGroups = [];
       let currentPrayerFeed = [];
+      let latestInfoMessage = "";
 
       function intentionStorageKey() {
         return `prayerboxPrayerIntention:${selectedGroupSlug()}`;
@@ -407,6 +426,18 @@
       function setStatus(message, isError = false) {
         els.status.textContent = message;
         els.status.classList.toggle("error", isError);
+      }
+
+      function setInfoMessage(message = "") {
+        latestInfoMessage = String(message || "").trim();
+        if (!latestInfoMessage) {
+          els.infoPanelBody.textContent = "No recent activity details.";
+          els.infoPanelBody.classList.add("empty");
+          return;
+        }
+
+        els.infoPanelBody.textContent = latestInfoMessage;
+        els.infoPanelBody.classList.remove("empty");
       }
 
       function setNotificationBadge(count) {
@@ -466,6 +497,17 @@
         const willOpen = !els.mobileActionStrip.classList.contains("open");
         els.mobileActionStrip.classList.toggle("open", willOpen);
         els.actionMenuToggle?.setAttribute("aria-expanded", willOpen ? "true" : "false");
+      }
+
+      function closeInfoPanel() {
+        els.infoPanel.classList.remove("open");
+        els.infoFab?.setAttribute("aria-expanded", "false");
+      }
+
+      function toggleInfoPanel() {
+        const willOpen = !els.infoPanel.classList.contains("open");
+        els.infoPanel.classList.toggle("open", willOpen);
+        els.infoFab?.setAttribute("aria-expanded", willOpen ? "true" : "false");
       }
 
       function closeProfileMenu() {
@@ -704,6 +746,7 @@
         if (!groupSlug) {
           currentPrayerState = { othersInPrayerCount: 0, ownActiveCount: 0 };
           updateBannerAndButton();
+          setStatus("Choose your active community in Settings before starting prayer.", true);
           return;
         }
 
@@ -716,9 +759,7 @@
           saveStoredIntention(null);
         }
         updateBannerAndButton();
-        if (showReadyMessage) {
-          setStatus(currentPrayerState.ownActiveCount > 0 ? "You are already in prayer." : "When you're ready, tap Pray.");
-        }
+        setStatus(currentPrayerState.ownActiveCount > 0 ? "You are already in prayer." : "When you're ready, tap Pray.");
       }
 
       async function loadReadingModalContent() {
@@ -972,7 +1013,7 @@
         closeActionStrip();
         await loadGroups();
         await loadPrayerFeed();
-        setStatus("Community updated.");
+        setInfoMessage("Community updated.");
       }
 
       async function saveIntentionFromSideRail() {
@@ -994,7 +1035,7 @@
         saveStoredIntention({ body, id: payload.intentionId || saved?.id || null });
         closeIntentionModal();
         await loadPrayerFeed();
-        setStatus(saved?.id ? "Updated your intention." : "Shared your intention.");
+        setInfoMessage(saved?.id ? "Updated your intention." : "Shared your intention.");
       }
 
       async function loadGroups() {
@@ -1045,16 +1086,16 @@
         if (intention) {
           saveStoredIntention({ body: intention, id: payload.intentionId || null });
           if (pushResult.attempted === 0) {
-            setStatus("Prayer started and your intention was shared. Push attempted 0 subscriptions for recipients.", true);
+            setInfoMessage("Prayer started and your intention was shared. Push attempted 0 subscriptions for recipients.");
           } else {
-            setStatus(`Prayer started and your intention was shared. Push sent ${pushResult.sent || 0} of ${pushResult.attempted || 0} attempted subscriptions.`);
+            setInfoMessage(`Prayer started and your intention was shared. Push sent ${pushResult.sent || 0} of ${pushResult.attempted || 0} attempted subscriptions.`);
           }
         } else if (pushResult.attempted === 0) {
           saveStoredIntention(null);
-          setStatus("Prayer started. Push attempted 0 subscriptions for recipients.", true);
+          setInfoMessage("Prayer started. Push attempted 0 subscriptions for recipients.");
         } else {
           saveStoredIntention(null);
-          setStatus(`Prayer started. Push sent ${pushResult.sent || 0} of ${pushResult.attempted || 0} attempted subscriptions.`);
+          setInfoMessage(`Prayer started. Push sent ${pushResult.sent || 0} of ${pushResult.attempted || 0} attempted subscriptions.`);
         }
       }
 
@@ -1077,9 +1118,9 @@
         await loadPrayerFeed();
         const pushResult = payload.pushResult || {};
         if (pushResult.attempted === 0) {
-          setStatus("Prayer ended. Push attempted 0 subscriptions for recipients.", true);
+          setInfoMessage("Prayer ended. Push attempted 0 subscriptions for recipients.");
         } else {
-          setStatus(`Prayer ended. Push sent ${pushResult.sent || 0} of ${pushResult.attempted || 0} attempted subscriptions.`);
+          setInfoMessage(`Prayer ended. Push sent ${pushResult.sent || 0} of ${pushResult.attempted || 0} attempted subscriptions.`);
         }
       }
 
@@ -1138,16 +1179,25 @@
       els.actionMenuToggle?.addEventListener("click", (event) => {
         event.stopPropagation();
         closeProfileMenu();
+        closeInfoPanel();
         toggleActionStrip();
       });
       els.profileMenuToggle?.addEventListener("click", (event) => {
         event.stopPropagation();
         closeActionStrip();
+        closeInfoPanel();
         toggleProfileMenu();
+      });
+      els.infoFab?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        closeActionStrip();
+        closeProfileMenu();
+        toggleInfoPanel();
       });
       els.prayButton.addEventListener("click", () => {
         closeActionStrip();
         closeProfileMenu();
+        closeInfoPanel();
         if ((currentPrayerState.ownActiveCount || 0) > 0) {
           wrap(stopPrayer, els.prayButton);
           return;
@@ -1157,6 +1207,7 @@
       els.openReadingModal.addEventListener("click", async () => {
         closeActionStrip();
         closeProfileMenu();
+        closeInfoPanel();
         els.openReadingModal.disabled = true;
         openReadingModal();
         try {
@@ -1173,22 +1224,26 @@
       els.openIntentionModal.addEventListener("click", () => {
         closeActionStrip();
         closeProfileMenu();
+        closeInfoPanel();
         openIntentionModal();
       });
       els.openParticipantsModal.addEventListener("click", () => {
         closeActionStrip();
         closeProfileMenu();
+        closeInfoPanel();
         renderParticipants();
         openParticipantsModal();
       });
       els.openGroupModal.addEventListener("click", () => {
         closeActionStrip();
         closeProfileMenu();
+        closeInfoPanel();
         openGroupModal();
       });
       els.openFeedModal.addEventListener("click", () => {
         closeActionStrip();
         closeProfileMenu();
+        closeInfoPanel();
         loadPrayerFeed()
           .catch((error) => setStatus(error.message || "Failed to load prayer feed.", true))
           .finally(() => openFeedModal());
@@ -1238,6 +1293,9 @@
         }
         if (!els.mobileActionStrip.contains(event.target) && !els.actionMenuToggle.contains(event.target)) {
           closeActionStrip();
+        }
+        if (!els.infoPanel.contains(event.target) && !els.infoFab.contains(event.target)) {
+          closeInfoPanel();
         }
       });
       window.addEventListener("beforeunload", () => {
