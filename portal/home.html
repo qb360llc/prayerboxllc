@@ -81,9 +81,14 @@
       .reading-card { display:grid; gap:10px; }
       .reading-card h3 { margin:0; font-size:1.1rem; }
       .reading-card p { color:#1d1b18; }
-      .listen-status-banner { padding:12px 14px; border-radius:16px; background:rgba(35,68,87,.08); color:#1d1b18; }
-      .listen-status-banner.error { color:#9f2715; background:rgba(181,58,35,.12); }
-      .listen-player { width:100%; margin-top:12px; }
+      .recording-panel { position:sticky; top:-18px; z-index:2; margin:0 -18px 16px; padding:18px; background:rgba(255,250,240,.98); border-bottom:1px solid rgba(35,68,87,.12); box-shadow:0 10px 22px rgba(10,18,24,.08); }
+      .recording-status { margin-top:0; }
+      .recording-audio { width:100%; margin-top:12px; }
+      .audio-tools { display:flex; gap:10px; margin-top:12px; }
+      .audio-tools .icon-button { width:46px; height:46px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:999px; font-size:1.12rem; line-height:1; }
+      .reading-sheet-scroll { max-height:calc(100vh - 110px); overflow:auto; padding-right:4px; }
+      .reading-sheet-scroll::-webkit-scrollbar { width:8px; }
+      .reading-sheet-scroll::-webkit-scrollbar-thumb { background:rgba(35,68,87,.22); border-radius:999px; }
       @media (max-width:720px) {
         .topnav { display:none; }
         .mobile-nav-button { display:flex; }
@@ -99,6 +104,7 @@
         .modal-backdrop { padding:12px; }
         .modal-backdrop.top-sheet { padding:0; }
         .modal-backdrop.top-sheet .modal-card { width:100%; min-height:100vh; border-radius:0 0 24px 24px; }
+        .recording-panel { top:0; margin:0 -18px 14px; }
         .hero-card { background:transparent; border-color:transparent; box-shadow:none; }
         .hero-stack { padding-top:0; padding-bottom:0; margin-top:auto; }
         .prayer-banner, .status { backdrop-filter:blur(8px); background:rgba(24,44,58,.34); }
@@ -158,9 +164,6 @@
         <button id="open-participants-modal" class="rail-button" aria-label="Open participants list">
           <svg viewBox="0 0 24 24"><path d="M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M16.5 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/><path d="M3.5 19a4.5 4.5 0 0 1 9 0"/><path d="M13 19a3.5 3.5 0 0 1 7 0"/></svg>
         </button>
-        <button id="open-listen-modal" class="rail-button" aria-label="Play daily reading recording">
-          <svg viewBox="0 0 24 24"><path d="M15 8a5 5 0 1 1-4.9 6"/><path d="M15.5 5.5v13"/><path d="m10 9 7-3.5"/><path d="m10 15 7 3.5"/></svg>
-        </button>
       </div>
 
       <div id="pray-modal" class="modal-backdrop" aria-hidden="true">
@@ -184,7 +187,16 @@
             <div class="modal-title" id="reading-modal-title">Daily Gospel</div>
             <button id="close-reading-modal" class="modal-close" aria-label="Close gospel dialog">&times;</button>
           </div>
-          <div class="modal-body-scroll">
+          <div class="modal-body-scroll reading-sheet-scroll">
+            <div class="recording-panel">
+              <div id="recording-status" class="status recording-status">No recordings today.</div>
+              <audio id="shared-audio" class="recording-audio" controls preload="none"></audio>
+              <div class="audio-tools">
+                <button id="record-button" class="icon-button" aria-label="Record reading" title="Record reading">●</button>
+                <button id="stop-button" class="secondary icon-button" aria-label="Stop recording" title="Stop recording" disabled>■</button>
+                <button id="refresh-audio" class="secondary icon-button" aria-label="Refresh latest audio" title="Refresh latest audio">↻</button>
+              </div>
+            </div>
             <div id="reading-modal-content" class="reading-card">
               <p>Loading today's gospel...</p>
             </div>
@@ -221,18 +233,6 @@
         </div>
       </div>
 
-      <div id="listen-modal" class="modal-backdrop top-sheet" aria-hidden="true">
-        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="listen-modal-title">
-          <div class="modal-header">
-            <div class="modal-title" id="listen-modal-title">Daily Reading Recording</div>
-            <button id="close-listen-modal" class="modal-close" aria-label="Close daily reading recording dialog">&times;</button>
-          </div>
-          <div class="modal-body-scroll">
-            <div id="listen-status" class="listen-status-banner">Loading today's recording...</div>
-            <audio id="listen-audio" class="listen-player" controls hidden></audio>
-          </div>
-        </div>
-      </div>
     </main>
 
     <script type="module">
@@ -247,29 +247,29 @@
         closePrayModal: document.querySelector("#close-pray-modal"),
         closeReadingModal: document.querySelector("#close-reading-modal"),
         closeIntentionModal: document.querySelector("#close-intention-modal"),
-        closeListenModal: document.querySelector("#close-listen-modal"),
         closeParticipantsModal: document.querySelector("#close-participants-modal"),
         editIntentionBody: document.querySelector("#edit-intention-body"),
         intentionBody: document.querySelector("#intention-body"),
         intentionModal: document.querySelector("#intention-modal"),
         openIntentionModal: document.querySelector("#open-intention-modal"),
-        openListenModal: document.querySelector("#open-listen-modal"),
         openParticipantsModal: document.querySelector("#open-participants-modal"),
         openReadingModal: document.querySelector("#open-reading-modal"),
-        listenAudio: document.querySelector("#listen-audio"),
-        listenModal: document.querySelector("#listen-modal"),
-        listenStatus: document.querySelector("#listen-status"),
         participantsList: document.querySelector("#participants-list"),
         participantsModal: document.querySelector("#participants-modal"),
         prayButton: document.querySelector("#pray-button"),
         prayModal: document.querySelector("#pray-modal"),
         prayerBanner: document.querySelector("#prayer-banner"),
+        recordButton: document.querySelector("#record-button"),
+        recordingStatus: document.querySelector("#recording-status"),
+        refreshAudioButton: document.querySelector("#refresh-audio"),
         readingModal: document.querySelector("#reading-modal"),
         readingModalContent: document.querySelector("#reading-modal-content"),
         saveIntention: document.querySelector("#save-intention"),
         sendPrayer: document.querySelector("#send-prayer"),
+        sharedAudio: document.querySelector("#shared-audio"),
         skipIntention: document.querySelector("#skip-intention"),
         skipPrayer: document.querySelector("#skip-prayer"),
+        stopButton: document.querySelector("#stop-button"),
         status: document.querySelector("#status"),
       };
 
@@ -277,6 +277,10 @@
       let refreshTimer = null;
       let currentPrayerState = { othersInPrayerCount: 0, ownActiveCount: 0, participants: [] };
       let readingModalLoaded = false;
+      let currentReadingDate = currentLocalDate();
+      let mediaRecorder = null;
+      let recordingStartedAt = null;
+      let audioChunks = [];
 
       function intentionStorageKey() {
         return `prayerboxPrayerIntention:${selectedGroupSlug()}`;
@@ -290,6 +294,12 @@
           supabase = createClient(projectUrl, anonKey);
         }
         return supabase;
+      }
+
+      async function getSession() {
+        const client = getClient();
+        const { data } = await client.auth.getSession();
+        return data.session;
       }
 
       function setStatus(message, isError = false) {
@@ -322,6 +332,29 @@
         return `${year}-${month}-${day}`;
       }
 
+      function setRecordingStatus(message, isError = false) {
+        els.recordingStatus.textContent = message;
+        els.recordingStatus.classList.toggle("error", isError);
+      }
+
+      function preferredMimeType() {
+        const candidates = [
+          "audio/webm;codecs=opus",
+          "audio/webm",
+          "audio/mp4",
+        ];
+
+        return candidates.find((type) => window.MediaRecorder && MediaRecorder.isTypeSupported(type)) || "";
+      }
+
+      function updateRecordingButtons() {
+        const hasGroup = Boolean(selectedGroupSlug());
+        const hasRecorder = Boolean(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
+        const isRecording = Boolean(mediaRecorder && mediaRecorder.state === "recording");
+        els.recordButton.disabled = !hasGroup || !hasRecorder || isRecording;
+        els.stopButton.disabled = !isRecording;
+      }
+
       function updateBannerAndButton() {
         const others = currentPrayerState.othersInPrayerCount || 0;
         const ownActive = (currentPrayerState.ownActiveCount || 0) > 0;
@@ -351,6 +384,7 @@
       function closeReadingModal() {
         els.readingModal.classList.remove("open");
         els.readingModal.setAttribute("aria-hidden", "true");
+        els.sharedAudio.pause();
       }
 
       function openIntentionModal() {
@@ -374,17 +408,6 @@
       function closeParticipantsModal() {
         els.participantsModal.classList.remove("open");
         els.participantsModal.setAttribute("aria-hidden", "true");
-      }
-
-      function openListenModal() {
-        els.listenModal.classList.add("open");
-        els.listenModal.setAttribute("aria-hidden", "false");
-      }
-
-      function closeListenModal() {
-        els.listenModal.classList.remove("open");
-        els.listenModal.setAttribute("aria-hidden", "true");
-        els.listenAudio.pause();
       }
 
       function loadStoredIntention() {
@@ -453,12 +476,12 @@
       }
 
       async function loadReadingModalContent() {
-        if (readingModalLoaded) return;
         els.readingModalContent.innerHTML = "<p>Loading today's gospel...</p>";
         const response = await fetch(`${projectUrl}/functions/v1/daily-readings`);
         const payload = await response.json();
         if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to load daily gospel.");
         const reading = payload.reading || {};
+        currentReadingDate = reading.pubDate ? new Date(reading.pubDate).toISOString().slice(0, 10) : currentReadingDate;
         els.readingModalContent.innerHTML = `
           <h3>${reading.title || "Today's Reading"}</h3>
           <p>${reading.pubDate || ""}</p>
@@ -467,20 +490,21 @@
         readingModalLoaded = true;
       }
 
-      async function loadListeningModalContent() {
+      async function loadLatestRecording() {
         const groupSlug = selectedGroupSlug();
         if (!groupSlug) {
-          throw new Error("Choose your active community in Settings first.");
+          els.sharedAudio.removeAttribute("src");
+          els.sharedAudio.load();
+          setRecordingStatus("Choose your active community in Settings before using recordings.", true);
+          return;
         }
 
-        els.listenStatus.textContent = "Loading today's recording...";
-        els.listenStatus.classList.remove("error");
-        els.listenAudio.hidden = true;
-        els.listenAudio.pause();
-        els.listenAudio.removeAttribute("src");
-        els.listenAudio.load();
+        setRecordingStatus("Loading today's recording...");
+        els.sharedAudio.pause();
+        els.sharedAudio.removeAttribute("src");
+        els.sharedAudio.load();
 
-        const response = await authedFetch(`/functions/v1/daily-reading-recordings?readingDate=${currentLocalDate()}&groupSlug=${encodeURIComponent(groupSlug)}`, {
+        const response = await authedFetch(`/functions/v1/daily-reading-recordings?readingDate=${currentReadingDate}&groupSlug=${encodeURIComponent(groupSlug)}`, {
           method: "GET",
         });
         const payload = await response.json();
@@ -488,19 +512,114 @@
 
         const recording = payload.recording;
         if (!recording) {
-          els.listenStatus.textContent = "No recordings today.";
+          els.sharedAudio.removeAttribute("src");
+          els.sharedAudio.load();
+          setRecordingStatus("No recordings today.");
           return;
         }
 
-        els.listenStatus.textContent = `${recording.createdBy || "Someone"} submitted a daily reading today.`;
-        els.listenAudio.src = recording.audioUrl;
-        els.listenAudio.hidden = false;
+        setRecordingStatus(`${recording.createdBy || "Someone"} submitted a daily reading today.`);
+        els.sharedAudio.src = recording.audioUrl;
+      }
 
-        try {
-          await els.listenAudio.play();
-        } catch {
-          // Autoplay is best-effort on mobile browsers.
+      async function uploadRecording(blob, durationMs) {
+        const session = await getSession();
+        const groupSlug = selectedGroupSlug();
+        if (!session) {
+          throw new Error("Sign in on the home page before uploading a reading.");
         }
+        if (!groupSlug) {
+          throw new Error("Choose your active community in Settings first.");
+        }
+
+        const extension = blob.type.includes("mp4") ? "m4a" : "webm";
+        const file = new File([blob], `reading-${currentReadingDate}.${extension}`, {
+          type: blob.type || "audio/webm",
+        });
+
+        const form = new FormData();
+        form.append("audio", file);
+        form.append("groupSlug", groupSlug);
+        form.append("readingDate", currentReadingDate);
+        form.append("durationMs", String(durationMs));
+
+        const response = await fetch(`${projectUrl}/functions/v1/daily-reading-recordings`, {
+          method: "POST",
+          headers: {
+            apikey: anonKey,
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: form,
+        });
+
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error || "Failed to upload recording.");
+        }
+
+        const pushResult = payload.pushResult || {};
+        if (pushResult.attempted === 0) {
+          setRecordingStatus("Recording uploaded. Push attempted 0 subscriptions for recipients.", true);
+        } else {
+          setRecordingStatus(`Recording uploaded. Push sent ${pushResult.sent || 0} of ${pushResult.attempted || 0} attempted subscriptions.`);
+        }
+        await loadLatestRecording();
+      }
+
+      async function startRecording() {
+        const session = await getSession();
+        if (!session) {
+          throw new Error("Sign in on the home page before recording.");
+        }
+
+        if (!selectedGroupSlug()) {
+          throw new Error("Choose your active community in Settings first.");
+        }
+
+        if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+          throw new Error("This device/browser does not support in-browser recording.");
+        }
+
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mimeType = preferredMimeType();
+        mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+        audioChunks = [];
+        recordingStartedAt = Date.now();
+
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data && event.data.size > 0) {
+            audioChunks.push(event.data);
+          }
+        };
+
+        mediaRecorder.onstop = async () => {
+          stream.getTracks().forEach((track) => track.stop());
+          try {
+            const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || "audio/webm" });
+            const durationMs = Math.max(0, Date.now() - (recordingStartedAt || Date.now()));
+            await uploadRecording(blob, durationMs);
+          } catch (error) {
+            setRecordingStatus(error.message || "Failed to process recording.", true);
+          } finally {
+            mediaRecorder = null;
+            recordingStartedAt = null;
+            audioChunks = [];
+            updateRecordingButtons();
+          }
+        };
+
+        mediaRecorder.start();
+        updateRecordingButtons();
+        setRecordingStatus("Recording in progress. Tap Stop when you finish.");
+      }
+
+      function stopRecording() {
+        if (!mediaRecorder || mediaRecorder.state !== "recording") {
+          return;
+        }
+
+        mediaRecorder.stop();
+        setRecordingStatus("Uploading recording...");
       }
 
       function renderParticipants() {
@@ -546,6 +665,8 @@
           els.prayButton.disabled = true;
           currentPrayerState = { othersInPrayerCount: 0, ownActiveCount: 0 };
           updateBannerAndButton();
+          updateRecordingButtons();
+          setRecordingStatus("Choose your active community in Settings before using recordings.", true);
           setStatus("Choose your active community in Settings before starting prayer.", true);
           return;
         }
@@ -553,6 +674,7 @@
           localStorage.setItem(SELECTED_GROUP_STORAGE_KEY, activeGroup.slug);
         }
         els.prayButton.disabled = false;
+        updateRecordingButtons();
         await refreshPrayerState(true);
       }
 
@@ -649,6 +771,18 @@
         }
       }
 
+      async function wrapRecording(fn, button) {
+        try {
+          button.disabled = true;
+          await fn();
+        } catch (error) {
+          setRecordingStatus(error.message || "Request failed.", true);
+        } finally {
+          button.disabled = false;
+          updateRecordingButtons();
+        }
+      }
+
       els.prayButton.addEventListener("click", () => {
         if ((currentPrayerState.ownActiveCount || 0) > 0) {
           wrap(stopPrayer, els.prayButton);
@@ -656,14 +790,20 @@
         }
         openPrayModal();
       });
-      els.openReadingModal.addEventListener("click", () => wrap(async () => {
+      els.openReadingModal.addEventListener("click", async () => {
+        els.openReadingModal.disabled = true;
         openReadingModal();
-        await loadReadingModalContent();
-      }, els.openReadingModal));
-      els.openListenModal.addEventListener("click", () => wrap(async () => {
-        openListenModal();
-        await loadListeningModalContent();
-      }, els.openListenModal));
+        try {
+          await loadReadingModalContent();
+          await loadLatestRecording();
+          updateRecordingButtons();
+        } catch (error) {
+          setRecordingStatus(error.message || "Failed to load recording tools.", true);
+          els.readingModalContent.innerHTML = `<p>${error.message || "Failed to load daily gospel."}</p>`;
+        } finally {
+          els.openReadingModal.disabled = false;
+        }
+      });
       els.openIntentionModal.addEventListener("click", openIntentionModal);
       els.openParticipantsModal.addEventListener("click", () => {
         renderParticipants();
@@ -672,8 +812,10 @@
       els.closePrayModal.addEventListener("click", closePrayModal);
       els.closeReadingModal.addEventListener("click", closeReadingModal);
       els.closeIntentionModal.addEventListener("click", closeIntentionModal);
-      els.closeListenModal.addEventListener("click", closeListenModal);
       els.closeParticipantsModal.addEventListener("click", closeParticipantsModal);
+      els.recordButton.addEventListener("click", () => wrapRecording(startRecording, els.recordButton));
+      els.stopButton.addEventListener("click", stopRecording);
+      els.refreshAudioButton.addEventListener("click", () => wrapRecording(loadLatestRecording, els.refreshAudioButton));
       els.saveIntention.addEventListener("click", () => wrap(saveIntentionFromSideRail, els.saveIntention));
       els.skipIntention.addEventListener("click", closeIntentionModal);
       els.sendPrayer.addEventListener("click", () => wrap(() => {
@@ -694,9 +836,6 @@
       });
       els.intentionModal.addEventListener("click", (event) => {
         if (event.target === els.intentionModal) closeIntentionModal();
-      });
-      els.listenModal.addEventListener("click", (event) => {
-        if (event.target === els.listenModal) closeListenModal();
       });
       els.participantsModal.addEventListener("click", (event) => {
         if (event.target === els.participantsModal) closeParticipantsModal();
