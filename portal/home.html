@@ -45,8 +45,8 @@
       .mobile-nav-button span::before, .mobile-nav-button span::after { content:""; position:absolute; left:0; width:20px; height:2px; background:var(--cream); }
       .mobile-nav-button span::before { top:-6px; }
       .mobile-nav-button span::after { top:6px; }
-      .mobile-action-strip { display:flex; gap:10px; overflow:hidden; max-width:0; opacity:0; transform:translateX(-8px); transition:max-width .22s ease, opacity .18s ease, transform .18s ease; }
-      .mobile-action-strip.open { max-width:240px; opacity:1; transform:translateX(0); }
+      .mobile-action-strip { position:absolute; top:58px; left:0; display:flex; flex-direction:column; gap:10px; overflow:hidden; max-height:0; opacity:0; transform:translateY(-8px); transition:max-height .24s ease, opacity .18s ease, transform .18s ease; }
+      .mobile-action-strip.open { max-height:360px; opacity:1; transform:translateY(0); }
       .hero-card { min-height:calc(100vh - 140px); display:grid; align-content:space-between; gap:22px; padding:24px 18px 24px; text-align:center; }
       .prayer-banner { width:fit-content; max-width:100%; margin:0 auto; padding:8px 16px; border-radius:999px; background:rgba(248,241,223,.13); border:1px solid rgba(248,241,223,.16); font-size:.92rem; font-weight:700; letter-spacing:.02em; }
       .hero-stack { display:grid; gap:18px; justify-items:center; align-content:end; min-height:100%; }
@@ -89,6 +89,24 @@
       .profile-menu-actions .ghost { color:var(--cream); }
       .participants-list { display:grid; gap:10px; }
       .participant-item { padding:12px 14px; border-radius:14px; background:rgba(35,68,87,.08); color:#1d1b18; }
+      .group-list { display:grid; gap:10px; }
+      .group-button { width:100%; justify-content:space-between; text-align:left; border-radius:18px; background:rgba(35,68,87,.08); color:#234457; border:1px solid rgba(35,68,87,.12); display:flex; align-items:center; gap:10px; }
+      .group-button.active { background:rgba(200,146,61,.18); border-color:rgba(200,146,61,.34); }
+      .group-meta { display:grid; gap:2px; }
+      .group-name { font-weight:700; }
+      .group-slug { font-size:.84rem; color:#6f675d; }
+      .feed-shell { max-height:min(56vh, 560px); overflow:auto; padding-right:4px; }
+      .feed-shell::-webkit-scrollbar { width:8px; }
+      .feed-shell::-webkit-scrollbar-thumb { background:rgba(35,68,87,.22); border-radius:999px; }
+      .feed-empty { padding:14px 16px; border-radius:20px; border:1px solid rgba(35,68,87,.12); background:rgba(35,68,87,.06); color:#4f4a42; }
+      .feed-list { display:grid; gap:14px; }
+      .feed-card { padding:16px 16px 14px; border-radius:22px; background:rgba(35,68,87,.08); border:1px solid rgba(35,68,87,.08); }
+      .feed-card.prayer-event { background:rgba(200,146,61,.12); border-color:rgba(200,146,61,.2); }
+      .feed-meta { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; }
+      .feed-author { font-size:.98rem; font-weight:700; color:#1d1b18; }
+      .feed-date { font-size:.84rem; color:#6f675d; }
+      .feed-body, .feed-event-copy { margin:0; color:#1d1b18; }
+      .feed-event-copy { font-weight:600; }
       .reading-card { display:grid; gap:10px; }
       .reading-card h3 { margin:0; font-size:1.1rem; }
       .reading-card p { color:#1d1b18; }
@@ -102,7 +120,7 @@
       .reading-sheet-scroll::-webkit-scrollbar-thumb { background:rgba(35,68,87,.22); border-radius:999px; }
       @media (max-width:720px) {
         .topnav { display:none; }
-        .mobile-action-cluster { position:absolute; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:10px; }
+        .mobile-action-cluster { position:absolute; left:14px; top:calc(env(safe-area-inset-top, 0px) + 12px); display:flex; align-items:flex-start; gap:10px; z-index:3; }
       }
       @media (max-width:719px) {
         body { background:#234457 url("./home-mobile-bg.svg") center -12px / cover no-repeat fixed; }
@@ -118,8 +136,7 @@
         .hero-stack { padding-top:0; padding-bottom:0; margin-top:auto; }
         .prayer-banner, .status { backdrop-filter:blur(8px); background:rgba(24,44,58,.34); }
         .topbar-wrap { padding-bottom:0; }
-        .topbar { padding:calc(env(safe-area-inset-top, 0px) + 12px) 14px 0; }
-        .mobile-action-cluster { left:14px; transform:none; }
+        .topbar { padding:calc(env(safe-area-inset-top, 0px) + 12px) 14px 0 72px; min-height:60px; }
         .profile-menu-shell { margin-left:auto; }
         .profile-menu-panel { right:0; top:56px; }
       }
@@ -140,6 +157,12 @@
               </button>
               <button id="open-participants-modal" class="rail-button" aria-label="Open participants list">
                 <svg viewBox="0 0 24 24"><path d="M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M16.5 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/><path d="M3.5 19a4.5 4.5 0 0 1 9 0"/><path d="M13 19a3.5 3.5 0 0 1 7 0"/></svg>
+              </button>
+              <button id="open-group-modal" class="rail-button" aria-label="Select community">
+                <svg viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M7 4v6"/><path d="M17 4v6"/><rect x="4" y="7" width="16" height="13" rx="2"/><path d="M8 12h8"/><path d="M8 16h5"/></svg>
+              </button>
+              <button id="open-feed-modal" class="rail-button" aria-label="Open prayer feed">
+                <svg viewBox="0 0 24 24"><path d="M5 6.5h14"/><path d="M5 12h14"/><path d="M5 17.5h9"/></svg>
               </button>
             </div>
           </div>
@@ -245,6 +268,34 @@
         </div>
       </div>
 
+      <div id="group-modal" class="modal-backdrop center-modal" aria-hidden="true">
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="group-modal-title">
+          <div class="modal-header">
+            <div class="modal-title" id="group-modal-title">Select Community</div>
+            <button id="close-group-modal" class="modal-close" aria-label="Close community dialog">&times;</button>
+          </div>
+          <p class="modal-copy">Choose which community Home should use for prayer, readings, and recordings.</p>
+          <div id="group-list" class="group-list">
+            <button class="group-button" type="button" disabled>Loading communities...</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="feed-modal" class="modal-backdrop top-sheet" aria-hidden="true">
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="feed-modal-title">
+          <div class="modal-header">
+            <div class="modal-title" id="feed-modal-title">Prayer Feed</div>
+            <button id="close-feed-modal" class="modal-close" aria-label="Close prayer feed dialog">&times;</button>
+          </div>
+          <div class="modal-body-scroll">
+            <div id="feed-empty" class="feed-empty" hidden>No prayer activity yet.</div>
+            <div class="feed-shell">
+              <div id="prayer-feed" class="feed-list"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </main>
 
     <script type="module">
@@ -261,10 +312,18 @@
         closeReadingModal: document.querySelector("#close-reading-modal"),
         closeIntentionModal: document.querySelector("#close-intention-modal"),
         closeParticipantsModal: document.querySelector("#close-participants-modal"),
+        closeFeedModal: document.querySelector("#close-feed-modal"),
+        closeGroupModal: document.querySelector("#close-group-modal"),
         editIntentionBody: document.querySelector("#edit-intention-body"),
+        feedEmpty: document.querySelector("#feed-empty"),
+        feedModal: document.querySelector("#feed-modal"),
+        groupList: document.querySelector("#group-list"),
+        groupModal: document.querySelector("#group-modal"),
         intentionBody: document.querySelector("#intention-body"),
         intentionModal: document.querySelector("#intention-modal"),
         mobileActionStrip: document.querySelector("#mobile-action-strip"),
+        openFeedModal: document.querySelector("#open-feed-modal"),
+        openGroupModal: document.querySelector("#open-group-modal"),
         openIntentionModal: document.querySelector("#open-intention-modal"),
         openParticipantsModal: document.querySelector("#open-participants-modal"),
         openReadingModal: document.querySelector("#open-reading-modal"),
@@ -278,6 +337,7 @@
         profileMenuToggle: document.querySelector("#profile-menu-toggle"),
         prayButton: document.querySelector("#pray-button"),
         prayModal: document.querySelector("#pray-modal"),
+        prayerFeed: document.querySelector("#prayer-feed"),
         prayerBanner: document.querySelector("#prayer-banner"),
         recordButton: document.querySelector("#record-button"),
         recordingStatus: document.querySelector("#recording-status"),
@@ -302,6 +362,8 @@
       let recordingStartedAt = null;
       let audioChunks = [];
       let currentSessionUser = null;
+      let currentGroups = [];
+      let currentPrayerFeed = [];
 
       function intentionStorageKey() {
         return `prayerboxPrayerIntention:${selectedGroupSlug()}`;
@@ -333,6 +395,27 @@
           badge.hidden = !count;
           badge.textContent = count > 99 ? "99+" : String(count || 0);
         });
+      }
+
+      function escapeHtml(value) {
+        return String(value || "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#39;");
+      }
+
+      function formatFeedDate(value) {
+        try {
+          return new Intl.DateTimeFormat(undefined, {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          }).format(new Date(value));
+        } catch {
+          return "";
+        }
       }
 
       function selectedGroupSlug() {
@@ -450,6 +533,27 @@
       function closeIntentionModal() {
         els.intentionModal.classList.remove("open");
         els.intentionModal.setAttribute("aria-hidden", "true");
+      }
+
+      function openGroupModal() {
+        renderGroupList();
+        els.groupModal.classList.add("open");
+        els.groupModal.setAttribute("aria-hidden", "false");
+      }
+
+      function closeGroupModal() {
+        els.groupModal.classList.remove("open");
+        els.groupModal.setAttribute("aria-hidden", "true");
+      }
+
+      function openFeedModal() {
+        els.feedModal.classList.add("open");
+        els.feedModal.setAttribute("aria-hidden", "false");
+      }
+
+      function closeFeedModal() {
+        els.feedModal.classList.remove("open");
+        els.feedModal.setAttribute("aria-hidden", "true");
       }
 
       function openParticipantsModal() {
@@ -755,6 +859,102 @@
           .join("");
       }
 
+      function renderGroupList() {
+        if (!currentGroups.length) {
+          els.groupList.innerHTML = `<button class="group-button" type="button" disabled>No communities available.</button>`;
+          return;
+        }
+
+        const activeSlug = selectedGroupSlug();
+        els.groupList.innerHTML = currentGroups.map((group) => `
+          <button class="group-button ${group.slug === activeSlug ? "active" : ""}" type="button" data-group-slug="${escapeHtml(group.slug)}">
+            <span class="group-meta">
+              <span class="group-name">${escapeHtml(group.name || group.slug)}</span>
+              <span class="group-slug">${escapeHtml(group.slug)}</span>
+            </span>
+            <span>${group.slug === activeSlug ? "Active" : "Use"}</span>
+          </button>
+        `).join("");
+
+        els.groupList.querySelectorAll("[data-group-slug]").forEach((button) => {
+          button.addEventListener("click", () => {
+            const nextSlug = button.getAttribute("data-group-slug") || "";
+            if (nextSlug) {
+              selectGroup(nextSlug).catch((error) => setStatus(error.message || "Failed to change community.", true));
+            }
+          });
+        });
+      }
+
+      function renderPrayerFeed() {
+        const groupSlug = selectedGroupSlug();
+        if (!groupSlug) {
+          els.prayerFeed.innerHTML = "";
+          els.feedEmpty.hidden = false;
+          els.feedEmpty.textContent = "Choose your active community in Settings before viewing the prayer feed.";
+          return;
+        }
+
+        if (!currentPrayerFeed.length) {
+          els.prayerFeed.innerHTML = "";
+          els.feedEmpty.hidden = false;
+          els.feedEmpty.textContent = "No prayer activity yet.";
+          return;
+        }
+
+        els.feedEmpty.hidden = true;
+        els.prayerFeed.innerHTML = currentPrayerFeed.map((item) => {
+          if (item.type === "prayer_event") {
+            return `
+              <article class="feed-card prayer-event">
+                <div class="feed-meta">
+                  <span class="feed-author">${escapeHtml(item.createdBy)}</span>
+                  <span class="feed-date">${escapeHtml(formatFeedDate(item.createdAt))}</span>
+                </div>
+                <p class="feed-event-copy">${escapeHtml(item.body)}</p>
+              </article>
+            `;
+          }
+
+          return `
+            <article class="feed-card">
+              <div class="feed-meta">
+                <span class="feed-author">${escapeHtml(item.createdBy)}</span>
+                <span class="feed-date">${escapeHtml(formatFeedDate(item.createdAt))}</span>
+              </div>
+              <p class="feed-body">${escapeHtml(item.body)}</p>
+            </article>
+          `;
+        }).join("");
+      }
+
+      async function loadPrayerFeed() {
+        const groupSlug = selectedGroupSlug();
+        if (!groupSlug) {
+          currentPrayerFeed = [];
+          renderPrayerFeed();
+          return;
+        }
+
+        const response = await authedFetch(`/functions/v1/prayer-feed?groupSlug=${encodeURIComponent(groupSlug)}`, {
+          method: "GET",
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to load prayer feed.");
+
+        currentPrayerFeed = payload.items || [];
+        renderPrayerFeed();
+      }
+
+      async function selectGroup(groupSlug) {
+        localStorage.setItem(SELECTED_GROUP_STORAGE_KEY, groupSlug);
+        closeGroupModal();
+        closeActionStrip();
+        await loadGroups();
+        await loadPrayerFeed();
+        setStatus("Community updated.");
+      }
+
       async function saveIntentionFromSideRail() {
         const groupSlug = selectedGroupSlug();
         const body = els.editIntentionBody.value.trim();
@@ -773,6 +973,7 @@
         if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to save intention.");
         saveStoredIntention({ body, id: payload.intentionId || saved?.id || null });
         closeIntentionModal();
+        await loadPrayerFeed();
         setStatus(saved?.id ? "Updated your intention." : "Shared your intention.");
       }
 
@@ -781,6 +982,7 @@
         const payload = await response.json();
         if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to load communities.");
         const groups = payload.groups || [];
+        currentGroups = groups;
         const savedGroupSlug = selectedGroupSlug();
         const activeGroup = groups.find((group) => group.slug === savedGroupSlug) || groups[0] || null;
         if (!activeGroup) {
@@ -797,7 +999,9 @@
         }
         els.prayButton.disabled = false;
         updateRecordingButtons();
+        renderGroupList();
         await refreshPrayerState(true);
+        await loadPrayerFeed();
       }
 
       async function startPrayer(intention = "") {
@@ -816,6 +1020,7 @@
 
         closePrayModal();
         await refreshPrayerState();
+        await loadPrayerFeed();
         const pushResult = payload.pushResult || {};
         if (intention) {
           saveStoredIntention({ body: intention, id: payload.intentionId || null });
@@ -849,6 +1054,7 @@
 
         saveStoredIntention(null);
         await refreshPrayerState();
+        await loadPrayerFeed();
         const pushResult = payload.pushResult || {};
         if (pushResult.attempted === 0) {
           setStatus("Prayer ended. Push attempted 0 subscriptions for recipients.", true);
@@ -870,10 +1076,12 @@
           await loadGroups();
           refreshTimer = window.setInterval(() => {
             refreshPrayerState().catch(() => {});
+            loadPrayerFeed().catch(() => {});
           }, 15000);
           document.addEventListener("visibilitychange", () => {
             if (!document.hidden) {
               refreshPrayerState().catch(() => {});
+              loadPrayerFeed().catch(() => {});
               refreshNotificationBadge().catch(() => {});
               loadProfileShortcut().catch(() => {});
             }
@@ -953,10 +1161,24 @@
         renderParticipants();
         openParticipantsModal();
       });
+      els.openGroupModal.addEventListener("click", () => {
+        closeActionStrip();
+        closeProfileMenu();
+        openGroupModal();
+      });
+      els.openFeedModal.addEventListener("click", () => {
+        closeActionStrip();
+        closeProfileMenu();
+        loadPrayerFeed()
+          .catch((error) => setStatus(error.message || "Failed to load prayer feed.", true))
+          .finally(() => openFeedModal());
+      });
       els.closePrayModal.addEventListener("click", closePrayModal);
       els.closeReadingModal.addEventListener("click", closeReadingModal);
       els.closeIntentionModal.addEventListener("click", closeIntentionModal);
       els.closeParticipantsModal.addEventListener("click", closeParticipantsModal);
+      els.closeGroupModal.addEventListener("click", closeGroupModal);
+      els.closeFeedModal.addEventListener("click", closeFeedModal);
       els.recordButton.addEventListener("click", () => wrapRecording(startRecording, els.recordButton));
       els.stopButton.addEventListener("click", stopRecording);
       els.refreshAudioButton.addEventListener("click", () => wrapRecording(loadLatestRecording, els.refreshAudioButton));
@@ -983,6 +1205,12 @@
       });
       els.participantsModal.addEventListener("click", (event) => {
         if (event.target === els.participantsModal) closeParticipantsModal();
+      });
+      els.groupModal.addEventListener("click", (event) => {
+        if (event.target === els.groupModal) closeGroupModal();
+      });
+      els.feedModal.addEventListener("click", (event) => {
+        if (event.target === els.feedModal) closeFeedModal();
       });
       document.addEventListener("click", (event) => {
         if (!els.profileMenuPanel.contains(event.target) && !els.profileMenuToggle.contains(event.target)) {
