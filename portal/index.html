@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>PRayerbox</title>
+    <title>Prayerbox</title>
     <meta name="theme-color" content="#0d6b57">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <link rel="manifest" href="./site.webmanifest">
@@ -11,79 +11,259 @@
     <script src="./config.js"></script>
     <script type="module" src="./pwa.js"></script>
     <style>
-      :root { --bg:#f3efe4; --panel:#fffaf0; --ink:#1b1a17; --muted:#6f675d; --accent:#0d6b57; --accent-strong:#084c3e; --line:#d8cfbf; --danger:#a12828; }
+      :root {
+        --bg:#234457;
+        --bg-deep:#193140;
+        --bg-soft:#2f5568;
+        --panel:rgba(17,35,46,.82);
+        --panel-strong:rgba(12,27,37,.92);
+        --ink:#f7efdd;
+        --muted:rgba(247,239,221,.76);
+        --accent:#c8923d;
+        --accent-strong:#ddb46e;
+        --line:rgba(247,239,221,.14);
+        --line-strong:rgba(247,239,221,.22);
+        --danger:#ffd6cf;
+      }
       * { box-sizing:border-box; }
-      body { margin:0; min-height:100vh; font-family:Georgia,"Times New Roman",serif; color:var(--ink); background:radial-gradient(circle at top left, rgba(13,107,87,.12), transparent 30%), linear-gradient(180deg, #efe7d6 0%, var(--bg) 100%); }
-      main { max-width:520px; min-height:100vh; margin:0 auto; padding:32px 20px 64px; display:grid; align-content:center; }
-      h1 { margin:0 0 8px; font-size:clamp(2rem,5vw,3.4rem); line-height:1; }
-      p { color:var(--muted); line-height:1.5; }
-      a { color:var(--accent-strong); }
-      button { padding:12px 16px; border:0; border-radius:999px; font:inherit; font-weight:600; color:#fff; background:var(--accent); cursor:pointer; }
-      button.ghost { background:#fff; color:var(--accent-strong); border:1px solid var(--line); }
-      button:disabled { opacity:.6; cursor:wait; }
-      input { width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:12px; font:inherit; background:#fff; color:var(--ink); }
-      label { display:block; font-size:.92rem; margin-bottom:6px; color:var(--muted); }
-      .status { margin-top:16px; padding:12px 14px; border-radius:12px; background:rgba(13,107,87,.08); color:var(--ink); white-space:pre-wrap; }
-      .status.error { background:rgba(161,40,40,.1); color:var(--danger); }
-      .auth-card { padding:28px; border:1px solid var(--line); border-radius:24px; background:color-mix(in srgb, var(--panel) 90%, white 10%); box-shadow:0 20px 46px rgba(27,26,23,.12); }
-      .auth-brand { margin-bottom:20px; }
-      .auth-tabs { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:18px 0; padding:6px; border-radius:18px; background:rgba(13,107,87,.08); }
-      .auth-tab { border-radius:14px; background:transparent; color:var(--accent-strong); }
-      .auth-tab.active { background:var(--accent); color:#fff; }
-      .auth-grid { display:grid; gap:12px; }
-      .auth-grid.two { grid-template-columns:1fr 1fr; }
-      .actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:16px; }
-      .auth-helper { margin-top:16px; font-size:.95rem; }
+      html { background:#234457; }
+      body {
+        margin:0;
+        min-height:100vh;
+        font-family:Georgia,"Times New Roman",serif;
+        color:var(--ink);
+        background:
+          radial-gradient(circle at top, rgba(255,255,255,.07), transparent 34%),
+          linear-gradient(180deg, #31596d 0%, var(--bg) 40%, var(--bg-deep) 100%);
+        position:relative;
+        overflow-x:hidden;
+      }
+      body::before {
+        content:"";
+        position:fixed;
+        inset:auto 50% 14vh;
+        width:min(84vw, 520px);
+        aspect-ratio:1 / 1.14;
+        transform:translateX(-50%);
+        pointer-events:none;
+        opacity:.34;
+        background:
+          radial-gradient(circle at 50% 40%, rgba(255,255,255,.92) 0 10%, rgba(255,243,212,.88) 10.5% 14.5%, transparent 15%),
+          radial-gradient(circle at 50% 40%, rgba(247,215,143,.42) 0 23%, transparent 24%),
+          repeating-conic-gradient(from -90deg at 50% 40%, rgba(217,179,107,.5) 0 1deg, transparent 1deg 6deg);
+        filter:drop-shadow(0 0 18px rgba(248,221,160,.14));
+      }
+      body::after {
+        content:"";
+        position:fixed;
+        left:50%;
+        top:54%;
+        width:min(28vw, 132px);
+        height:min(24vh, 200px);
+        transform:translateX(-50%);
+        pointer-events:none;
+        opacity:.28;
+        background:
+          linear-gradient(180deg, transparent 0 18%, rgba(200,146,61,.78) 18% 84%, transparent 84%),
+          radial-gradient(circle at 50% 8%, rgba(200,146,61,.82) 0 18%, transparent 19%),
+          radial-gradient(circle at 50% 100%, rgba(200,146,61,.82) 0 20%, transparent 21%);
+        mask:
+          linear-gradient(180deg, transparent 0 10%, #000 10% 100%),
+          radial-gradient(circle at 50% 100%, #000 0 38%, transparent 39%);
+      }
+      main {
+        max-width:560px;
+        min-height:100vh;
+        margin:0 auto;
+        padding:32px 18px 44px;
+        display:grid;
+        align-content:center;
+        position:relative;
+        z-index:1;
+      }
+      h1 {
+        margin:0;
+        font-size:clamp(2.3rem, 6vw, 4rem);
+        line-height:.96;
+        letter-spacing:.02em;
+      }
+      p {
+        margin:0;
+        color:var(--muted);
+        line-height:1.55;
+      }
+      a {
+        color:var(--ink);
+        text-underline-offset:3px;
+      }
+      button {
+        padding:13px 18px;
+        border:0;
+        border-radius:999px;
+        font:inherit;
+        font-weight:700;
+        color:#173241;
+        background:linear-gradient(160deg, var(--accent-strong) 0%, var(--accent) 100%);
+        box-shadow:0 8px 20px rgba(6,12,16,.22);
+        cursor:pointer;
+      }
+      button.ghost {
+        background:rgba(247,239,221,.08);
+        color:var(--ink);
+        border:1px solid var(--line);
+        box-shadow:none;
+      }
+      button:disabled {
+        opacity:.6;
+        cursor:wait;
+      }
+      input {
+        width:100%;
+        padding:13px 14px;
+        border:1px solid var(--line);
+        border-radius:16px;
+        font:inherit;
+        background:rgba(255,250,242,.96);
+        color:#1d1b18;
+      }
+      input::placeholder { color:rgba(29,27,24,.58); }
+      label {
+        display:block;
+        font-size:.9rem;
+        margin-bottom:7px;
+        color:var(--muted);
+        letter-spacing:.01em;
+      }
+      .auth-shell {
+        display:grid;
+        gap:18px;
+      }
+      .auth-card {
+        padding:26px 22px 22px;
+        border:1px solid var(--line);
+        border-radius:30px;
+        background:linear-gradient(180deg, rgba(20,40,53,.92) 0%, rgba(14,31,41,.92) 100%);
+        box-shadow:0 24px 56px rgba(7,13,18,.3);
+        backdrop-filter:blur(14px);
+      }
+      .auth-brand {
+        display:grid;
+        gap:10px;
+        margin-bottom:22px;
+      }
+      .auth-kicker {
+        color:rgba(221,180,110,.92);
+        font-size:.88rem;
+        letter-spacing:.18em;
+        text-transform:uppercase;
+      }
+      .auth-tabs {
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:8px;
+        margin:0 0 18px;
+        padding:6px;
+        border-radius:18px;
+        background:rgba(247,239,221,.08);
+        border:1px solid rgba(247,239,221,.06);
+      }
+      .auth-tab {
+        border-radius:14px;
+        background:transparent;
+        color:var(--ink);
+        box-shadow:none;
+      }
+      .auth-tab.active {
+        background:linear-gradient(160deg, var(--accent-strong) 0%, var(--accent) 100%);
+        color:#173241;
+      }
+      .auth-grid {
+        display:grid;
+        gap:12px;
+      }
+      .auth-grid.two {
+        grid-template-columns:1fr 1fr;
+      }
+      .actions {
+        display:flex;
+        flex-wrap:wrap;
+        gap:12px;
+        margin-top:18px;
+      }
+      .status {
+        margin-top:16px;
+        padding:13px 14px;
+        border-radius:18px;
+        background:rgba(247,239,221,.08);
+        color:var(--ink);
+        white-space:pre-wrap;
+        border:1px solid var(--line);
+      }
+      .status.error {
+        background:rgba(127,30,19,.28);
+        color:var(--danger);
+      }
+      .auth-helper {
+        margin-top:16px;
+        padding-top:14px;
+        border-top:1px solid var(--line);
+        font-size:.95rem;
+      }
       @media (max-width:720px) {
+        main { padding:22px 14px 32px; }
+        .auth-card { padding:22px 18px 18px; border-radius:26px; }
         .auth-grid.two { grid-template-columns:1fr; }
       }
     </style>
   </head>
   <body>
     <main>
-      <section class="auth-card">
-        <div class="auth-brand">
-          <h1>PRayerbox</h1>
-          <p>Log in to join your community, share intentions, and keep your lights in sync.</p>
-        </div>
+      <section class="auth-shell">
+        <section class="auth-card">
+          <div class="auth-brand">
+            <div class="auth-kicker">Prayerbox</div>
+            <h1>Welcome</h1>
+            <p>Enter the app, join your community, and pray together in the same dark blue and gold space as Home and Settings.</p>
+          </div>
 
-        <div class="auth-tabs">
-          <button id="mode-signin" class="auth-tab active" type="button">Log In</button>
-          <button id="mode-signup" class="auth-tab" type="button">Sign Up</button>
-        </div>
+          <div class="auth-tabs">
+            <button id="mode-signin" class="auth-tab active" type="button">Log In</button>
+            <button id="mode-signup" class="auth-tab" type="button">Sign Up</button>
+          </div>
 
-        <div class="auth-grid two" id="signup-name-row" hidden>
-          <div>
-            <label for="auth-first-name">First Name</label>
-            <input id="auth-first-name" placeholder="Jane">
+          <div class="auth-grid two" id="signup-name-row" hidden>
+            <div>
+              <label for="auth-first-name">First Name</label>
+              <input id="auth-first-name" placeholder="Jane">
+            </div>
+            <div>
+              <label for="auth-last-name">Last Name</label>
+              <input id="auth-last-name" placeholder="Doe">
+            </div>
           </div>
-          <div>
-            <label for="auth-last-name">Last Name</label>
-            <input id="auth-last-name" placeholder="Doe">
-          </div>
-        </div>
 
-        <div class="auth-grid" style="margin-top:12px;">
-          <div>
-            <label for="auth-email">Email</label>
-            <input id="auth-email" type="email" placeholder="you@example.com">
+          <div class="auth-grid" style="margin-top:12px;">
+            <div>
+              <label for="auth-email">Email</label>
+              <input id="auth-email" type="email" placeholder="you@example.com">
+            </div>
+            <div>
+              <label for="auth-password">Password</label>
+              <input id="auth-password" type="password" placeholder="Password">
+            </div>
+            <div id="signup-confirm-row" hidden>
+              <label for="auth-confirm-password">Confirm Password</label>
+              <input id="auth-confirm-password" type="password" placeholder="Confirm Password">
+            </div>
           </div>
-          <div>
-            <label for="auth-password">Password</label>
-            <input id="auth-password" type="password" placeholder="Password">
-          </div>
-          <div id="signup-confirm-row" hidden>
-            <label for="auth-confirm-password">Confirm Password</label>
-            <input id="auth-confirm-password" type="password" placeholder="Confirm Password">
-          </div>
-        </div>
 
-        <div class="actions">
-          <button id="auth-submit">Log In</button>
-          <button id="auth-switch" class="ghost" type="button">Need an account? Sign Up</button>
-        </div>
-        <div id="auth-status" class="status">Welcome. Sign in to continue.</div>
-        <div class="auth-helper">Need help getting a box online? Read the <a href="./setup.html">Setup Guide</a>. Admins can still use <a href="./admin.html">Admin</a> for device provisioning.</div>
+          <div class="actions">
+            <button id="auth-submit">Log In</button>
+            <button id="auth-switch" class="ghost" type="button">Need an account? Sign Up</button>
+          </div>
+          <div id="auth-status" class="status">Welcome. Sign in to continue.</div>
+          <div class="auth-helper">Need help getting a box online? Read the <a href="./setup.html">Setup Guide</a>. Admins can still use <a href="./admin.html">Admin</a> for device provisioning.</div>
+        </section>
       </section>
     </main>
 
@@ -144,7 +324,7 @@
         }
         els.authSubmit.textContent = isSignup ? "Create Account" : "Log In";
         els.authSwitch.textContent = isSignup ? "Already have an account? Log In" : "Need an account? Sign Up";
-        setAuthStatus(isSignup ? "Create your account to join PRayerbox." : "Welcome back. Log in to continue.");
+        setAuthStatus(isSignup ? "Create your account to join Prayerbox." : "Welcome back. Log in to continue.");
       }
 
       async function updateProfileNames(userId, emailFallback) {
