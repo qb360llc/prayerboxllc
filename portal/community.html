@@ -68,11 +68,20 @@
       .heart-button { width:42px; height:42px; padding:0; border-radius:999px; background:#fff; border:1px solid rgba(216,207,191,.9); color:#b55b5b; font-size:1.2rem; line-height:1; box-shadow:none; }
       .heart-button.active { background:#fde7e7; border-color:#d45a5a; color:#c62828; }
       .heart-count { font-size:.95rem; color:var(--muted); }
+      .action-row { display:flex; align-items:center; gap:14px; margin-top:14px; flex-wrap:wrap; }
+      .text-action { padding:0; border:0; background:transparent; color:var(--accent-strong); font-size:.92rem; font-weight:600; text-decoration:underline; min-width:auto; box-shadow:none; }
+      .text-action:hover { background:transparent; color:var(--accent); }
       .empty { color:var(--muted); }
       .edit-bar { display:grid; gap:10px; margin-top:12px; }
       .edit-link { margin-top:10px; padding:0; border:0; background:transparent; color:var(--accent-strong); font-size:.92rem; font-weight:600; text-decoration:underline; min-width:auto; box-shadow:none; }
       .edit-link:hover { background:transparent; color:var(--accent); }
       .edit-actions { display:flex; gap:10px; margin-top:0; }
+      .comments-shell { margin-top:14px; padding-top:14px; border-top:1px solid rgba(216,207,191,.8); }
+      .comments-list { display:grid; gap:12px; }
+      .comment-item { padding:12px 14px; border-radius:16px; background:rgba(13,107,87,.05); }
+      .comment-author { font-size:.92rem; font-weight:700; color:var(--ink); }
+      .comment-meta { margin-top:2px; font-size:.8rem; color:var(--muted); }
+      .comment-body { margin:8px 0 0; color:var(--ink); line-height:1.5; }
       .floating-status { margin-top:14px; font-size:.92rem; }
       .status[hidden] { display:none; }
       .modal-backdrop { position:fixed; inset:0; display:none; align-items:flex-end; justify-content:center; padding:20px 16px; background:rgba(27,26,23,.42); z-index:80; }
@@ -145,7 +154,6 @@
         <div class="section-title">
           <div class="section-heading">
             <div class="section-kicker">Prayer Feed</div>
-            <h2>Community Feed</h2>
           </div>
           <button id="refresh-feed" class="refresh-link" aria-label="Refresh feed" title="Refresh feed">&#x21bb;</button>
         </div>
@@ -169,6 +177,21 @@
           </div>
         </div>
       </div>
+
+      <div id="comment-modal" class="modal-backdrop" aria-hidden="true">
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="comment-modal-title">
+          <div class="modal-header">
+            <div class="modal-title" id="comment-modal-title">Add Comment</div>
+            <button id="close-comment" class="modal-close" aria-label="Close comment dialog">&times;</button>
+          </div>
+          <p class="modal-copy">Write a comment to encourage or respond to this intention.</p>
+          <textarea id="comment-body" class="modal-textarea" placeholder="Write a comment..."></textarea>
+          <div class="modal-actions">
+            <button id="cancel-comment" class="secondary">Cancel</button>
+            <button id="share-comment">Share</button>
+          </div>
+        </div>
+      </div>
     </main>
 
     <script type="module">
@@ -183,17 +206,25 @@
         feed: document.querySelector("#feed"),
         feedEmpty: document.querySelector("#feed-empty"),
         intentionBody: document.querySelector("#intention-body"),
+        commentBody: document.querySelector("#comment-body"),
         composeModal: document.querySelector("#compose-modal"),
+        commentModal: document.querySelector("#comment-modal"),
         openCompose: document.querySelector("#open-compose"),
         closeCompose: document.querySelector("#close-compose"),
         cancelCompose: document.querySelector("#cancel-compose"),
+        closeComment: document.querySelector("#close-comment"),
+        cancelComment: document.querySelector("#cancel-comment"),
         postIntention: document.querySelector("#post-intention"),
+        shareComment: document.querySelector("#share-comment"),
         refreshFeed: document.querySelector("#refresh-feed"),
         status: document.querySelector("#status"),
       };
 
       let supabase = null;
       let editingIntentionId = null;
+      let activeCommentIntentionId = null;
+      const openCommentIntentions = new Set();
+      const commentCache = new Map();
 
       function setStatus(message, isError = false) {
         els.status.hidden = !message;
@@ -210,6 +241,19 @@
       function closeComposeModal() {
         els.composeModal.classList.remove("open");
         els.composeModal.setAttribute("aria-hidden", "true");
+      }
+
+      function openCommentModal(intentionId) {
+        activeCommentIntentionId = intentionId;
+        els.commentModal.classList.add("open");
+        els.commentModal.setAttribute("aria-hidden", "false");
+        requestAnimationFrame(() => els.commentBody.focus());
+      }
+
+      function closeCommentModal() {
+        activeCommentIntentionId = null;
+        els.commentModal.classList.remove("open");
+        els.commentModal.setAttribute("aria-hidden", "true");
       }
 
       function escapeHtml(value) {
@@ -250,6 +294,10 @@
 
       function selectedGroupSlug() {
         return localStorage.getItem(SELECTED_GROUP_STORAGE_KEY) || "";
+      }
+
+      function formatDate(value) {
+        return new Date(value).toLocaleDateString();
       }
 
       async function authedFetch(path, options = {}) {
@@ -311,7 +359,7 @@
               <div class="avatar">${escapeHtml(initialsForName(item.createdBy))}</div>
               <div class="author-meta">
                 <div class="author-name">${escapeHtml(item.createdBy)}</div>
-                <div class="meta">${new Date(item.createdAt).toLocaleString()}</div>
+                <div class="meta">${formatDate(item.createdAt)}</div>
               </div>
             </div>
             <p class="intention-body">${escapeHtml(item.body)}</p>
@@ -327,7 +375,23 @@
             <div class="reaction-row">
               <button class="heart-button react ${(item.loveCount > 0 || item.userReaction === "love") ? "active" : ""}" aria-label="Love this intention" data-intention-id="${item.id}" data-reaction="love">${(item.loveCount > 0 || item.userReaction === "love") ? "&#9829;" : "&#9825;"}</button>
               <span class="heart-count">${item.loveCount} ${item.loveCount === 1 ? "person loves" : "people love"} this</span>
-            </div>`;
+            </div>
+            <div class="action-row">
+              <button class="text-action open-comment" data-intention-id="${item.id}">Comment</button>
+              <button class="text-action toggle-comments" data-intention-id="${item.id}">${openCommentIntentions.has(item.id) ? "Hide Comments" : `View Comments${item.commentCount ? ` (${item.commentCount})` : ""}`}</button>
+            </div>
+            ${openCommentIntentions.has(item.id) ? `
+              <div class="comments-shell">
+                <div class="comments-list">${(commentCache.get(item.id) || []).length
+                  ? (commentCache.get(item.id) || []).map((comment) => `
+                    <div class="comment-item">
+                      <div class="comment-author">${escapeHtml(comment.createdBy)}</div>
+                      <div class="comment-meta">${formatDate(comment.createdAt)}</div>
+                      <p class="comment-body">${escapeHtml(comment.body)}</p>
+                    </div>`).join("")
+                  : `<div class="empty">No comments yet.</div>`}
+                </div>
+              </div>` : ""}`;
           els.feed.appendChild(card);
         });
 
@@ -363,6 +427,17 @@
             button,
           ));
         });
+
+        els.feed.querySelectorAll(".open-comment").forEach((button) => {
+          button.addEventListener("click", () => openCommentModal(button.dataset.intentionId || ""));
+        });
+
+        els.feed.querySelectorAll(".toggle-comments").forEach((button) => {
+          button.addEventListener("click", () => wrap(
+            () => toggleComments(button.dataset.intentionId || ""),
+            button,
+          ));
+        });
       }
 
       async function loadGroups() {
@@ -383,6 +458,33 @@
         const payload = await response.json();
         if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to load intentions.");
         renderFeed(payload.intentions || []);
+      }
+
+      async function loadComments(intentionId) {
+        const groupSlug = selectedGroupSlug();
+        if (!groupSlug || !intentionId) {
+          return [];
+        }
+
+        const response = await authedFetch(`/functions/v1/community-intentions?groupSlug=${encodeURIComponent(groupSlug)}&intentionId=${encodeURIComponent(intentionId)}`, { method: "GET" });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to load comments.");
+        const comments = payload.comments || [];
+        commentCache.set(intentionId, comments);
+        return comments;
+      }
+
+      async function toggleComments(intentionId) {
+        if (!intentionId) throw new Error("Unknown intention.");
+        if (openCommentIntentions.has(intentionId)) {
+          openCommentIntentions.delete(intentionId);
+          await loadFeed();
+          return;
+        }
+
+        await loadComments(intentionId);
+        openCommentIntentions.add(intentionId);
+        await loadFeed();
       }
 
       async function postIntention() {
@@ -426,6 +528,28 @@
         editingIntentionId = null;
         renderFeed(payload.intentions || []);
         setStatus("Updated your intention.");
+      }
+
+      async function postComment() {
+        const groupSlug = selectedGroupSlug();
+        const body = els.commentBody.value.trim();
+        if (!groupSlug) throw new Error("Choose a community first.");
+        if (!activeCommentIntentionId) throw new Error("Choose an intention first.");
+        if (!body) throw new Error("Enter a comment first.");
+
+        const response = await authedFetch("/functions/v1/community-intentions", {
+          body: JSON.stringify({ action: "comment", body, groupSlug, intentionId: activeCommentIntentionId }),
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to share comment.");
+        els.commentBody.value = "";
+        commentCache.set(activeCommentIntentionId, payload.comments || []);
+        openCommentIntentions.add(activeCommentIntentionId);
+        closeCommentModal();
+        renderFeed(payload.intentions || []);
+        setStatus("Shared your comment.");
       }
 
       async function reactToIntention(intentionId, reactionType) {
@@ -483,12 +607,20 @@
 
       els.refreshFeed.addEventListener("click", () => wrap(loadFeed, els.refreshFeed));
       els.postIntention.addEventListener("click", () => wrap(postIntention, els.postIntention));
+      els.shareComment.addEventListener("click", () => wrap(postComment, els.shareComment));
       els.openCompose.addEventListener("click", openComposeModal);
       els.closeCompose.addEventListener("click", closeComposeModal);
       els.cancelCompose.addEventListener("click", closeComposeModal);
+      els.closeComment.addEventListener("click", closeCommentModal);
+      els.cancelComment.addEventListener("click", closeCommentModal);
       els.composeModal.addEventListener("click", (event) => {
         if (event.target === els.composeModal) {
           closeComposeModal();
+        }
+      });
+      els.commentModal.addEventListener("click", (event) => {
+        if (event.target === els.commentModal) {
+          closeCommentModal();
         }
       });
 

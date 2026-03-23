@@ -4,7 +4,8 @@ import { sendPushToUsers } from "../_shared/web-push.ts";
 type PostBody =
   | { action?: "create"; body?: string; groupSlug?: string }
   | { action: "edit"; body?: string; intentionId?: string; groupSlug?: string }
-  | { action: "react"; intentionId?: string; reactionType?: "like" | "love"; groupSlug?: string };
+  | { action: "react"; intentionId?: string; reactionType?: "like" | "love"; groupSlug?: string }
+  | { action: "comment"; body?: string; intentionId?: string; groupSlug?: string };
 
 function corsHeaders(request: Request) {
   const allowedOrigin = Deno.env.get("PRAYERBOX_PORTAL_ORIGIN");
@@ -333,6 +334,24 @@ async function fetchIntentions(
     });
   }
 
+  let commentCountByIntention = new Map<string, number>();
+  if (intentionIds.length) {
+    const { data: comments, error: commentsError } = await supabase
+      .from("community_intention_comments")
+      .select("intention_id")
+      .in("intention_id", intentionIds);
+
+    if (commentsError) {
+      throw commentsError;
+    }
+
+    commentCountByIntention = new Map(intentionIds.map((id) => [id, 0]));
+    (comments ?? []).forEach((comment: Record<string, unknown>) => {
+      const intentionId = String(comment.intention_id);
+      commentCountByIntention.set(intentionId, (commentCountByIntention.get(intentionId) ?? 0) + 1);
+    });
+  }
+
   return (intentions ?? []).map((item: Record<string, unknown>) => {
     const profile = authorsById.get(String(item.created_by_user_id)) ?? null;
     const fullName = [profile?.first_name, profile?.last_name]
@@ -354,7 +373,103 @@ async function fetchIntentions(
       isOwn: String(item.created_by_user_id) === userId,
       likeCount: reactionState.likeCount,
       loveCount: reactionState.loveCount,
+      commentCount: commentCountByIntention.get(String(item.id)) ?? 0,
       userReaction: reactionState.userReaction,
+    };
+  });
+}
+
+async function getIntentionForGroup(
+  supabase: ReturnType<typeof createClient>,
+  groupId: string,
+  intentionId: string,
+) {
+  const { data: intention, error } = await supabase
+    .from("community_intentions")
+    .select("id, body, group_id, created_by_user_id")
+    .eq("id", intentionId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!intention || intention.group_id !== groupId) {
+    throw new Error("Unknown intention for this group.");
+  }
+
+  return intention;
+}
+
+async function fetchCommentsForIntention(
+  supabase: ReturnType<typeof createClient>,
+  groupId: string,
+  intentionId: string,
+) {
+  const intention = await getIntentionForGroup(supabase, groupId, intentionId);
+
+  const { data: comments, error: commentsError } = await supabase
+    .from("community_intention_comments")
+    .select("id, body, created_at, created_by_user_id")
+    .eq("intention_id", intention.id)
+    .order("created_at", { ascending: true })
+    .limit(200);
+
+  if (commentsError) {
+    throw commentsError;
+  }
+
+  const authorIds = Array.from(
+    new Set((comments ?? []).map((item: Record<string, unknown>) => String(item.created_by_user_id))),
+  );
+
+  let authorsById = new Map<
+    string,
+    {
+      display_name?: string | null;
+      email?: string | null;
+      first_name?: string | null;
+      last_name?: string | null;
+    }
+  >();
+
+  if (authorIds.length) {
+    const { data: authors, error: authorsError } = await supabase
+      .from("profiles")
+      .select("id, first_name, last_name, display_name, email")
+      .in("id", authorIds);
+
+    if (authorsError) {
+      throw authorsError;
+    }
+
+    authorsById = new Map(
+      (authors ?? []).map((author: Record<string, unknown>) => [
+        String(author.id),
+        {
+          display_name: typeof author.display_name === "string" ? author.display_name : null,
+          email: typeof author.email === "string" ? author.email : null,
+          first_name: typeof author.first_name === "string" ? author.first_name : null,
+          last_name: typeof author.last_name === "string" ? author.last_name : null,
+        },
+      ]),
+    );
+  }
+
+  return (comments ?? []).map((item: Record<string, unknown>) => {
+    const profile = authorsById.get(String(item.created_by_user_id)) ?? null;
+    const fullName = [profile?.first_name, profile?.last_name]
+      .map((value) => (typeof value === "string" ? value.trim() : ""))
+      .filter(Boolean)
+      .join(" ");
+
+    return {
+      body: item.body,
+      createdAt: item.created_at,
+      createdBy: fullName || profile?.display_name || profile?.email || "Community member",
+      createdByUserId: item.created_by_user_id,
+      id: item.id,
+      intentionId: intention.id,
     };
   });
 }
@@ -371,11 +486,25 @@ Deno.serve(async (request) => {
     if (request.method === "GET") {
       const url = new URL(request.url);
       const groupSlug = url.searchParams.get("groupSlug")?.trim();
+      const intentionId = url.searchParams.get("intentionId")?.trim();
       if (!groupSlug) {
         return json(request, 400, { error: "groupSlug is required.", ok: false });
       }
 
       const group = await getGroupForUser(supabase, user.id, groupSlug);
+      if (intentionId) {
+        const comments = await fetchCommentsForIntention(supabase, group.id, intentionId);
+        return json(request, 200, {
+          comments,
+          group: {
+            groupId: group.id,
+            name: group.name,
+            slug: group.slug,
+          },
+          intentionId,
+          ok: true,
+        });
+      }
       const intentions = await fetchIntentions(supabase, user.id, group);
 
       return json(request, 200, {
@@ -554,13 +683,7 @@ Deno.serve(async (request) => {
 
       if (reactionType === "love" && existingReaction?.reaction_type !== "love") {
         const actorName = await getActorName(supabase, user.id);
-        const { data: targetIntention, error: targetIntentionError } = await supabase
-          .from("community_intentions")
-          .select("created_by_user_id, body")
-          .eq("id", intentionId)
-          .single();
-
-        if (targetIntentionError) throw targetIntentionError;
+        const targetIntention = await getIntentionForGroup(supabase, group.id, intentionId);
 
         const intentionPreview = String(targetIntention.body)
           .replace(/\s+/g, " ")
@@ -594,6 +717,41 @@ Deno.serve(async (request) => {
           pushResult,
         });
       }
+    } else if (action === "comment") {
+      const intentionId = body.intentionId?.trim();
+      const commentBody = body.body?.trim();
+
+      if (!intentionId || !commentBody) {
+        return json(request, 400, { error: "intentionId and body are required.", ok: false });
+      }
+
+      const intention = await getIntentionForGroup(supabase, group.id, intentionId);
+
+      const { error: insertCommentError } = await supabase
+        .from("community_intention_comments")
+        .insert({
+          body: commentBody,
+          created_by_user_id: user.id,
+          intention_id: intention.id,
+        });
+
+      if (insertCommentError) {
+        throw insertCommentError;
+      }
+
+      const comments = await fetchCommentsForIntention(supabase, group.id, intention.id);
+      const intentions = await fetchIntentions(supabase, user.id, group);
+      return json(request, 200, {
+        comments,
+        group: {
+          groupId: group.id,
+          name: group.name,
+          slug: group.slug,
+        },
+        intentionId: intention.id,
+        intentions,
+        ok: true,
+      });
     } else {
       return json(request, 400, { error: "Unknown action.", ok: false });
     }
