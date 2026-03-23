@@ -26,6 +26,7 @@ type DeviceRow = {
 };
 
 type PrayerParticipant = {
+  avatarUrl?: string | null;
   startedAt: string;
   userId: string;
   name: string;
@@ -239,14 +240,14 @@ async function getPrayerParticipants(
 
   const { data: profiles, error: profilesError } = await supabase
     .from("profiles")
-    .select("id, first_name, last_name, display_name, email")
+    .select("id, first_name, last_name, display_name, email, avatar_url")
     .in("id", userIds);
 
   if (profilesError) {
     throw profilesError;
   }
 
-  const namesByUserId = new Map(
+  const participantsByUserId = new Map(
     (profiles ?? []).map((profile: Record<string, unknown>) => {
       const fullName = [profile.first_name, profile.last_name]
         .map((value) => (typeof value === "string" ? value.trim() : ""))
@@ -255,15 +256,19 @@ async function getPrayerParticipants(
 
       return [
         String(profile.id),
-        fullName || String(profile.display_name || profile.email || "Community member"),
+        {
+          avatarUrl: typeof profile.avatar_url === "string" ? profile.avatar_url.trim() : null,
+          name: fullName || String(profile.display_name || profile.email || "Community member"),
+        },
       ];
     }),
   );
 
   return rows.map((row) => ({
+    avatarUrl: participantsByUserId.get(row.user_id)?.avatarUrl || null,
     startedAt: row.started_at,
     userId: row.user_id,
-    name: namesByUserId.get(row.user_id) || "Community member",
+    name: participantsByUserId.get(row.user_id)?.name || "Community member",
   }));
 }
 
