@@ -58,23 +58,32 @@
       .status.error { color:var(--danger); background:rgba(127,30,19,.28); border-color:rgba(255,209,201,.2); }
       .modal-backdrop { position:fixed; inset:0; display:none; align-items:flex-end; justify-content:center; padding:20px 16px; background:rgba(10,18,24,.54); z-index:80; }
       .modal-backdrop.open { display:flex; }
+      .modal-backdrop.center-modal { align-items:center; }
+      .modal-backdrop.top-sheet { align-items:flex-start; padding:0; }
       .modal-card { width:min(100%, 560px); padding:20px 18px; border-radius:28px 28px 20px 20px; background:rgba(255,250,240,.98); box-shadow:0 24px 48px rgba(10,18,24,.3); color:#1d1b18; }
+      .modal-backdrop.center-modal .modal-card { border-radius:28px; }
+      .modal-backdrop.top-sheet .modal-card { width:min(100%, 760px); min-height:100vh; margin:0 auto; padding:18px 18px 28px; border-radius:0 0 30px 30px; }
       .modal-header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
       .modal-title { font-size:1.2rem; font-weight:700; }
       .modal-close { padding:0; border:0; background:transparent; color:#6f675d; font-size:1.9rem; line-height:1; min-width:auto; box-shadow:none; }
       .modal-copy { margin:0 0 12px; font-size:.96rem; color:#6f675d; }
       .modal-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:14px; }
+      .modal-actions.centered { justify-content:center; }
       .modal-body-scroll { max-height:52vh; overflow:auto; padding-right:4px; }
+      .modal-backdrop.top-sheet .modal-body-scroll { max-height:calc(100vh - 110px); }
       .modal-body-scroll::-webkit-scrollbar { width:8px; }
       .modal-body-scroll::-webkit-scrollbar-thumb { background:rgba(35,68,87,.22); border-radius:999px; }
       .side-rail { display:none; }
-      .rail-button { width:48px; height:48px; border-radius:14px; background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.16); display:inline-flex; align-items:center; justify-content:center; padding:0; backdrop-filter:blur(8px) grayscale(1); }
-      .rail-button svg { width:22px; height:22px; stroke:#f3f0eb; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+      .rail-button { width:48px; height:48px; border-radius:15px; background:rgba(201,146,61,.2); border:1px solid rgba(248,241,223,.22); display:inline-flex; align-items:center; justify-content:center; padding:0; backdrop-filter:blur(10px); box-shadow:0 12px 28px rgba(10,18,24,.22); }
+      .rail-button svg { width:22px; height:22px; stroke:#f8f1df; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
       .participants-list { display:grid; gap:10px; }
       .participant-item { padding:12px 14px; border-radius:14px; background:rgba(35,68,87,.08); color:#1d1b18; }
       .reading-card { display:grid; gap:10px; }
       .reading-card h3 { margin:0; font-size:1.1rem; }
       .reading-card p { color:#1d1b18; }
+      .listen-status-banner { padding:12px 14px; border-radius:16px; background:rgba(35,68,87,.08); color:#1d1b18; }
+      .listen-status-banner.error { color:#9f2715; background:rgba(181,58,35,.12); }
+      .listen-player { width:100%; margin-top:12px; }
       @media (max-width:720px) {
         .topnav { display:none; }
         .mobile-nav-button { display:flex; }
@@ -88,10 +97,12 @@
         .hero-card { min-height:calc(100vh - 110px); padding:18px 10px 8px; display:flex; flex-direction:column; justify-content:flex-end; gap:14px; }
         .pray-button { width:100%; max-width:280px; }
         .modal-backdrop { padding:12px; }
+        .modal-backdrop.top-sheet { padding:0; }
+        .modal-backdrop.top-sheet .modal-card { width:100%; min-height:100vh; border-radius:0 0 24px 24px; }
         .hero-card { background:transparent; border-color:transparent; box-shadow:none; }
         .hero-stack { padding-top:0; padding-bottom:0; margin-top:auto; }
         .prayer-banner, .status { backdrop-filter:blur(8px); background:rgba(24,44,58,.34); }
-        .side-rail { position:fixed; right:12px; top:34%; display:grid; gap:10px; z-index:35; }
+        .side-rail { position:fixed; right:12px; top:calc(env(safe-area-inset-top, 0px) + 18px); display:grid; gap:10px; z-index:35; }
       }
     </style>
   </head>
@@ -147,6 +158,9 @@
         <button id="open-participants-modal" class="rail-button" aria-label="Open participants list">
           <svg viewBox="0 0 24 24"><path d="M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M16.5 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/><path d="M3.5 19a4.5 4.5 0 0 1 9 0"/><path d="M13 19a3.5 3.5 0 0 1 7 0"/></svg>
         </button>
+        <button id="open-listen-modal" class="rail-button" aria-label="Play daily reading recording">
+          <svg viewBox="0 0 24 24"><path d="M15 8a5 5 0 1 1-4.9 6"/><path d="M15.5 5.5v13"/><path d="m10 9 7-3.5"/><path d="m10 15 7 3.5"/></svg>
+        </button>
       </div>
 
       <div id="pray-modal" class="modal-backdrop" aria-hidden="true">
@@ -164,7 +178,7 @@
         </div>
       </div>
 
-      <div id="reading-modal" class="modal-backdrop" aria-hidden="true">
+      <div id="reading-modal" class="modal-backdrop top-sheet" aria-hidden="true">
         <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="reading-modal-title">
           <div class="modal-header">
             <div class="modal-title" id="reading-modal-title">Daily Gospel</div>
@@ -178,7 +192,7 @@
         </div>
       </div>
 
-      <div id="intention-modal" class="modal-backdrop" aria-hidden="true">
+      <div id="intention-modal" class="modal-backdrop center-modal" aria-hidden="true">
         <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="intention-modal-title">
           <div class="modal-header">
             <div class="modal-title" id="intention-modal-title">Prayer Intention</div>
@@ -186,20 +200,36 @@
           </div>
           <p class="modal-copy">Add an intention to the prayer feed, or update the one you already shared.</p>
           <textarea id="edit-intention-body" placeholder="Write an intention to share with your community..."></textarea>
-          <div class="modal-actions">
-            <button id="save-intention" class="secondary">Save</button>
+          <div class="modal-actions centered">
+            <button id="skip-intention" class="secondary">Skip</button>
+            <button id="save-intention">Share</button>
           </div>
         </div>
       </div>
 
-      <div id="participants-modal" class="modal-backdrop" aria-hidden="true">
+      <div id="participants-modal" class="modal-backdrop top-sheet" aria-hidden="true">
         <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="participants-modal-title">
           <div class="modal-header">
             <div class="modal-title" id="participants-modal-title">In Prayer Now</div>
             <button id="close-participants-modal" class="modal-close" aria-label="Close participants dialog">&times;</button>
           </div>
-          <div id="participants-list" class="participants-list">
-            <div class="participant-item">Loading participants...</div>
+          <div class="modal-body-scroll">
+            <div id="participants-list" class="participants-list">
+              <div class="participant-item">Loading participants...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="listen-modal" class="modal-backdrop top-sheet" aria-hidden="true">
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="listen-modal-title">
+          <div class="modal-header">
+            <div class="modal-title" id="listen-modal-title">Daily Reading Recording</div>
+            <button id="close-listen-modal" class="modal-close" aria-label="Close daily reading recording dialog">&times;</button>
+          </div>
+          <div class="modal-body-scroll">
+            <div id="listen-status" class="listen-status-banner">Loading today's recording...</div>
+            <audio id="listen-audio" class="listen-player" controls hidden></audio>
           </div>
         </div>
       </div>
@@ -217,13 +247,18 @@
         closePrayModal: document.querySelector("#close-pray-modal"),
         closeReadingModal: document.querySelector("#close-reading-modal"),
         closeIntentionModal: document.querySelector("#close-intention-modal"),
+        closeListenModal: document.querySelector("#close-listen-modal"),
         closeParticipantsModal: document.querySelector("#close-participants-modal"),
         editIntentionBody: document.querySelector("#edit-intention-body"),
         intentionBody: document.querySelector("#intention-body"),
         intentionModal: document.querySelector("#intention-modal"),
         openIntentionModal: document.querySelector("#open-intention-modal"),
+        openListenModal: document.querySelector("#open-listen-modal"),
         openParticipantsModal: document.querySelector("#open-participants-modal"),
         openReadingModal: document.querySelector("#open-reading-modal"),
+        listenAudio: document.querySelector("#listen-audio"),
+        listenModal: document.querySelector("#listen-modal"),
+        listenStatus: document.querySelector("#listen-status"),
         participantsList: document.querySelector("#participants-list"),
         participantsModal: document.querySelector("#participants-modal"),
         prayButton: document.querySelector("#pray-button"),
@@ -233,6 +268,7 @@
         readingModalContent: document.querySelector("#reading-modal-content"),
         saveIntention: document.querySelector("#save-intention"),
         sendPrayer: document.querySelector("#send-prayer"),
+        skipIntention: document.querySelector("#skip-intention"),
         skipPrayer: document.querySelector("#skip-prayer"),
         status: document.querySelector("#status"),
       };
@@ -276,6 +312,14 @@
         const textarea = document.createElement("textarea");
         textarea.innerHTML = input || "";
         return textarea.value;
+      }
+
+      function currentLocalDate() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, "0");
+        const day = String(now.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
       }
 
       function updateBannerAndButton() {
@@ -330,6 +374,17 @@
       function closeParticipantsModal() {
         els.participantsModal.classList.remove("open");
         els.participantsModal.setAttribute("aria-hidden", "true");
+      }
+
+      function openListenModal() {
+        els.listenModal.classList.add("open");
+        els.listenModal.setAttribute("aria-hidden", "false");
+      }
+
+      function closeListenModal() {
+        els.listenModal.classList.remove("open");
+        els.listenModal.setAttribute("aria-hidden", "true");
+        els.listenAudio.pause();
       }
 
       function loadStoredIntention() {
@@ -410,6 +465,42 @@
           <div>${decodeHtmlEntities(reading.descriptionEncoded || "")}</div>
         `;
         readingModalLoaded = true;
+      }
+
+      async function loadListeningModalContent() {
+        const groupSlug = selectedGroupSlug();
+        if (!groupSlug) {
+          throw new Error("Choose your active community in Settings first.");
+        }
+
+        els.listenStatus.textContent = "Loading today's recording...";
+        els.listenStatus.classList.remove("error");
+        els.listenAudio.hidden = true;
+        els.listenAudio.pause();
+        els.listenAudio.removeAttribute("src");
+        els.listenAudio.load();
+
+        const response = await authedFetch(`/functions/v1/daily-reading-recordings?readingDate=${currentLocalDate()}&groupSlug=${encodeURIComponent(groupSlug)}`, {
+          method: "GET",
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to load recording.");
+
+        const recording = payload.recording;
+        if (!recording) {
+          els.listenStatus.textContent = "No recordings today.";
+          return;
+        }
+
+        els.listenStatus.textContent = `${recording.createdBy || "Someone"} submitted a daily reading today.`;
+        els.listenAudio.src = recording.audioUrl;
+        els.listenAudio.hidden = false;
+
+        try {
+          await els.listenAudio.play();
+        } catch {
+          // Autoplay is best-effort on mobile browsers.
+        }
       }
 
       function renderParticipants() {
@@ -569,6 +660,10 @@
         openReadingModal();
         await loadReadingModalContent();
       }, els.openReadingModal));
+      els.openListenModal.addEventListener("click", () => wrap(async () => {
+        openListenModal();
+        await loadListeningModalContent();
+      }, els.openListenModal));
       els.openIntentionModal.addEventListener("click", openIntentionModal);
       els.openParticipantsModal.addEventListener("click", () => {
         renderParticipants();
@@ -577,8 +672,10 @@
       els.closePrayModal.addEventListener("click", closePrayModal);
       els.closeReadingModal.addEventListener("click", closeReadingModal);
       els.closeIntentionModal.addEventListener("click", closeIntentionModal);
+      els.closeListenModal.addEventListener("click", closeListenModal);
       els.closeParticipantsModal.addEventListener("click", closeParticipantsModal);
       els.saveIntention.addEventListener("click", () => wrap(saveIntentionFromSideRail, els.saveIntention));
+      els.skipIntention.addEventListener("click", closeIntentionModal);
       els.sendPrayer.addEventListener("click", () => wrap(() => {
         const intention = els.intentionBody.value.trim();
         if (!intention) {
@@ -597,6 +694,9 @@
       });
       els.intentionModal.addEventListener("click", (event) => {
         if (event.target === els.intentionModal) closeIntentionModal();
+      });
+      els.listenModal.addEventListener("click", (event) => {
+        if (event.target === els.listenModal) closeListenModal();
       });
       els.participantsModal.addEventListener("click", (event) => {
         if (event.target === els.participantsModal) closeParticipantsModal();
