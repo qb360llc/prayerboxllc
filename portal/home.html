@@ -147,7 +147,7 @@
       .reading-sheet-scroll::-webkit-scrollbar-thumb { background:rgba(35,68,87,.22); border-radius:999px; }
       @media (max-width:720px) {
         .topnav { display:none; }
-        .mobile-action-cluster { position:absolute; left:14px; top:calc(env(safe-area-inset-top, 0px) + 32px); display:flex; align-items:flex-start; gap:10px; z-index:3; }
+        .mobile-action-cluster { position:absolute; left:14px; top:calc(env(safe-area-inset-top, 0px) + 12px); display:flex; align-items:flex-start; gap:10px; z-index:3; }
       }
       @media (max-width:719px) {
         body { background:#234457 url("./home-mobile-bg.svg") center -12px / cover no-repeat fixed; }
@@ -162,6 +162,7 @@
         .hero-card { background:transparent; border-color:transparent; box-shadow:none; }
         .hero-stack { padding-top:0; padding-bottom:0; margin-top:auto; }
         .hero-presence { margin-top:4px; }
+        .mobile-action-strip { top:calc(58px + 10vh); }
         .status, .hero-avatar { backdrop-filter:blur(8px); background:rgba(24,44,58,.34); }
         .hero-avatars { width:min(100%, 308px); min-height:116px; gap:8px 6px; }
         .topbar-wrap { padding-bottom:0; }
