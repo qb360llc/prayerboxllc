@@ -1195,7 +1195,6 @@
         toggleInfoPanel();
       });
       els.prayButton.addEventListener("click", () => {
-        closeActionStrip();
         closeProfileMenu();
         closeInfoPanel();
         if ((currentPrayerState.ownActiveCount || 0) > 0) {
@@ -1205,7 +1204,6 @@
         openPrayModal();
       });
       els.openReadingModal.addEventListener("click", async () => {
-        closeActionStrip();
         closeProfileMenu();
         closeInfoPanel();
         els.openReadingModal.disabled = true;
@@ -1222,26 +1220,22 @@
         }
       });
       els.openIntentionModal.addEventListener("click", () => {
-        closeActionStrip();
         closeProfileMenu();
         closeInfoPanel();
         openIntentionModal();
       });
       els.openParticipantsModal.addEventListener("click", () => {
-        closeActionStrip();
         closeProfileMenu();
         closeInfoPanel();
         renderParticipants();
         openParticipantsModal();
       });
       els.openGroupModal.addEventListener("click", () => {
-        closeActionStrip();
         closeProfileMenu();
         closeInfoPanel();
         openGroupModal();
       });
       els.openFeedModal.addEventListener("click", () => {
-        closeActionStrip();
         closeProfileMenu();
         closeInfoPanel();
         loadPrayerFeed()
@@ -1290,9 +1284,6 @@
       document.addEventListener("click", (event) => {
         if (!els.profileMenuPanel.contains(event.target) && !els.profileMenuToggle.contains(event.target)) {
           closeProfileMenu();
-        }
-        if (!els.mobileActionStrip.contains(event.target) && !els.actionMenuToggle.contains(event.target)) {
-          closeActionStrip();
         }
         if (!els.infoPanel.contains(event.target) && !els.infoFab.contains(event.target)) {
           closeInfoPanel();
