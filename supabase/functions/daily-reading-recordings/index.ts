@@ -264,11 +264,14 @@ Deno.serve(async (request) => {
         throw signedError;
       }
 
+      const createdBy = await getActorName(supabase, String(row.created_by_user_id));
+
       return json(request, 200, {
         ok: true,
         recording: {
           audioUrl: signed.signedUrl,
           createdAt: row.created_at,
+          createdBy,
           createdByUserId: row.created_by_user_id,
           groupSlug: group.slug,
           id: row.id,
@@ -359,6 +362,7 @@ Deno.serve(async (request) => {
       recording: {
         audioUrl: signed.signedUrl,
         createdAt: inserted.created_at,
+        createdBy: actorName,
         groupSlug: group.slug,
         id: inserted.id,
         readingDate: inserted.reading_date,
