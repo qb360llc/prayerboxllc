@@ -78,12 +78,12 @@
         body { background:#234457 url("./home-mobile-bg.svg") center -12px / cover no-repeat fixed; }
         body::before, body::after { display:none; }
         main { padding:12px 14px 48px; }
-        .hero-card { min-height:calc(100vh - 110px); padding:18px 10px 8px; }
+        .hero-card { min-height:calc(100vh - 110px); padding:18px 10px 8px; display:flex; flex-direction:column; justify-content:flex-end; gap:14px; }
         .pray-button { width:100%; max-width:280px; }
         .modal-backdrop { padding:12px; }
         .topbar-wrap { background:linear-gradient(180deg, rgba(35,68,87,.86) 0%, rgba(35,68,87,.54) 74%, rgba(35,68,87,0) 100%); }
         .hero-card { background:transparent; border-color:transparent; box-shadow:none; }
-        .hero-stack { padding-top:0; padding-bottom:14px; }
+        .hero-stack { padding-top:0; padding-bottom:0; margin-top:auto; }
         .prayer-banner, .status { backdrop-filter:blur(8px); background:rgba(24,44,58,.34); }
       }
     </style>
@@ -125,10 +125,10 @@
       </aside>
 
       <section class="hero-card">
-        <div id="prayer-banner" class="prayer-banner" hidden>0 people in prayer</div>
         <div class="hero-stack">
           <button id="pray-button" class="pray-button">Pray</button>
         </div>
+        <div id="prayer-banner" class="prayer-banner" hidden>0 people in prayer</div>
         <div id="status" class="status">Choose your active community in Settings before starting prayer.</div>
       </section>
 
