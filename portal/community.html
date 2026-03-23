@@ -44,8 +44,6 @@
       .mobile-drawer nav { display:grid; gap:10px; }
       .mobile-drawer a { display:block; padding:12px 14px; border-radius:14px; text-decoration:none; background:rgba(13,107,87,.08); }
       .panel { margin-top:14px; padding:18px 18px 20px; border:1px solid rgba(216,207,191,.9); border-radius:24px; background:rgba(255,250,240,.92); box-shadow:0 18px 36px rgba(27,26,23,.08); }
-      .group-pill { display:inline-flex; align-items:center; gap:8px; padding:9px 14px; border-radius:999px; background:rgba(13,107,87,.1); color:var(--accent-strong); font-size:.92rem; font-weight:700; }
-      .group-pill.empty { background:rgba(13,107,87,.06); color:var(--muted); }
       .composer-card { padding:18px; border-radius:24px; background:rgba(255,255,255,.98); }
       .composer-trigger { display:inline-flex; align-items:center; justify-content:center; min-width:168px; background:linear-gradient(160deg, var(--accent) 0%, var(--accent-strong) 100%); box-shadow:0 12px 22px rgba(13,107,87,.2); }
       .feed-panel { padding-top:16px; }
@@ -139,7 +137,6 @@
         </nav>
       </aside>
       <section class="panel composer-card">
-        <div id="active-group" class="group-pill empty">Loading your selected community...</div>
         <button id="open-compose" class="composer-trigger">Share Intention</button>
         <div id="status" class="status floating-status" hidden></div>
       </section>
@@ -183,7 +180,6 @@
       const SELECTED_GROUP_STORAGE_KEY = "prayerboxSelectedGroupSlug";
       const HOME_URL = "./index.html";
       const els = {
-        activeGroup: document.querySelector("#active-group"),
         feed: document.querySelector("#feed"),
         feedEmpty: document.querySelector("#feed-empty"),
         intentionBody: document.querySelector("#intention-body"),
@@ -289,16 +285,14 @@
         els.postIntention.disabled = !activeGroup;
         els.refreshFeed.disabled = !activeGroup;
         if (!activeGroup) {
-          els.activeGroup.textContent = "Choose your active community in Settings first.";
-          els.activeGroup.classList.add("empty");
+          setStatus("Choose your active community in Settings first.", true);
           els.feedEmpty.textContent = "Join or create a community in Settings before posting intentions.";
           return;
         }
         if (activeGroup.slug !== savedGroupSlug) {
           localStorage.setItem(SELECTED_GROUP_STORAGE_KEY, activeGroup.slug);
         }
-        els.activeGroup.textContent = activeGroup.name;
-        els.activeGroup.classList.remove("empty");
+        setStatus("");
       }
 
       function renderFeed(intentions) {
