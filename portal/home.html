@@ -76,6 +76,9 @@
       .side-rail { display:none; }
       .rail-button { width:48px; height:48px; border-radius:15px; background:rgba(201,146,61,.2); border:1px solid rgba(248,241,223,.22); display:inline-flex; align-items:center; justify-content:center; padding:0; backdrop-filter:blur(10px); box-shadow:0 12px 28px rgba(10,18,24,.22); }
       .rail-button svg { width:22px; height:22px; stroke:#f8f1df; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+      .profile-shortcut { width:48px; height:48px; border-radius:50%; overflow:hidden; text-decoration:none; color:var(--cream); font-weight:700; letter-spacing:.03em; }
+      .profile-shortcut img { width:100%; height:100%; object-fit:cover; display:block; }
+      .profile-fallback { width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:linear-gradient(160deg, rgba(248,241,223,.94) 0%, #d9b36b 100%); color:#173241; font-size:.88rem; }
       .participants-list { display:grid; gap:10px; }
       .participant-item { padding:12px 14px; border-radius:14px; background:rgba(35,68,87,.08); color:#1d1b18; }
       .reading-card { display:grid; gap:10px; }
@@ -108,7 +111,7 @@
         .hero-card { background:transparent; border-color:transparent; box-shadow:none; }
         .hero-stack { padding-top:0; padding-bottom:0; margin-top:auto; }
         .prayer-banner, .status { backdrop-filter:blur(8px); background:rgba(24,44,58,.34); }
-        .side-rail { position:fixed; right:12px; top:calc(env(safe-area-inset-top, 0px) + 18px); display:grid; gap:10px; z-index:35; }
+        .side-rail { position:fixed; left:50%; top:calc(env(safe-area-inset-top, 0px) + 18px); transform:translateX(-50%); display:flex; gap:10px; z-index:35; align-items:center; justify-content:center; }
       }
     </style>
   </head>
@@ -164,6 +167,9 @@
         <button id="open-participants-modal" class="rail-button" aria-label="Open participants list">
           <svg viewBox="0 0 24 24"><path d="M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M16.5 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/><path d="M3.5 19a4.5 4.5 0 0 1 9 0"/><path d="M13 19a3.5 3.5 0 0 1 7 0"/></svg>
         </button>
+        <a id="profile-shortcut" class="rail-button profile-shortcut" href="./settings.html" aria-label="Open settings profile">
+          <span id="profile-fallback" class="profile-fallback">PB</span>
+        </a>
       </div>
 
       <div id="pray-modal" class="modal-backdrop" aria-hidden="true">
@@ -256,6 +262,8 @@
         openReadingModal: document.querySelector("#open-reading-modal"),
         participantsList: document.querySelector("#participants-list"),
         participantsModal: document.querySelector("#participants-modal"),
+        profileFallback: document.querySelector("#profile-fallback"),
+        profileShortcut: document.querySelector("#profile-shortcut"),
         prayButton: document.querySelector("#pray-button"),
         prayModal: document.querySelector("#pray-modal"),
         prayerBanner: document.querySelector("#prayer-banner"),
@@ -322,6 +330,15 @@
         const textarea = document.createElement("textarea");
         textarea.innerHTML = input || "";
         return textarea.value;
+      }
+
+      function initialsForName(name) {
+        const parts = String(name || "")
+          .trim()
+          .split(/\s+/)
+          .filter(Boolean);
+        if (!parts.length) return "PB";
+        return parts.slice(0, 2).map((part) => part[0]?.toUpperCase() || "").join("");
       }
 
       function currentLocalDate() {
@@ -450,6 +467,44 @@
           setNotificationBadge(payload.unreadCount || 0);
         } catch {
           setNotificationBadge(0);
+        }
+      }
+
+      function renderProfileShortcut(profile, fallbackEmail = "") {
+        const name = [profile?.first_name, profile?.last_name]
+          .map((value) => (typeof value === "string" ? value.trim() : ""))
+          .filter(Boolean)
+          .join(" ")
+          || profile?.display_name
+          || fallbackEmail.split("@")[0]
+          || "PRayerbox";
+
+        const avatarUrl = typeof profile?.avatar_url === "string" ? profile.avatar_url.trim() : "";
+        if (avatarUrl) {
+          els.profileShortcut.innerHTML = `<img src="${avatarUrl}" alt="${name}">`;
+          return;
+        }
+
+        els.profileShortcut.innerHTML = `<span id="profile-fallback" class="profile-fallback">${initialsForName(name)}</span>`;
+      }
+
+      async function loadProfileShortcut() {
+        try {
+          const client = getClient();
+          const session = await getSession();
+          const user = session?.user;
+          if (!user) return;
+
+          const { data, error } = await client
+            .from("profiles")
+            .select("first_name, last_name, display_name, avatar_url")
+            .eq("id", user.id)
+            .maybeSingle();
+
+          if (error) throw error;
+          renderProfileShortcut(data, user.email || "");
+        } catch {
+          renderProfileShortcut(null, "");
         }
       }
 
@@ -743,6 +798,7 @@
             window.location.replace(AUTH_URL);
             return;
           }
+          await loadProfileShortcut();
           await refreshNotificationBadge();
           await loadGroups();
           refreshTimer = window.setInterval(() => {
@@ -752,6 +808,7 @@
             if (!document.hidden) {
               refreshPrayerState().catch(() => {});
               refreshNotificationBadge().catch(() => {});
+              loadProfileShortcut().catch(() => {});
             }
           });
         } catch (error) {
