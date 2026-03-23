@@ -220,6 +220,45 @@ Deno.serve(async (request) => {
 
       const ownActiveCount = (userDevices ?? []).filter((device: Record<string, unknown>) => Boolean(device.is_active)).length;
 
+      const { data: activeDevices, error: activeDevicesError } = await supabase
+        .from("devices")
+        .select("owner_user_id")
+        .eq("group_id", group.id)
+        .eq("is_active", true)
+        .not("owner_user_id", "is", null);
+
+      if (activeDevicesError) {
+        throw activeDevicesError;
+      }
+
+      const participantIds = Array.from(
+        new Set((activeDevices ?? []).map((device: Record<string, unknown>) => String(device.owner_user_id))),
+      );
+
+      let participants: Array<{ userId: string; name: string }> = [];
+      if (participantIds.length) {
+        const { data: profiles, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id, first_name, last_name, display_name, email")
+          .in("id", participantIds);
+
+        if (profilesError) {
+          throw profilesError;
+        }
+
+        participants = (profiles ?? []).map((profile: Record<string, unknown>) => {
+          const fullName = [profile.first_name, profile.last_name]
+            .map((value) => (typeof value === "string" ? value.trim() : ""))
+            .filter(Boolean)
+            .join(" ");
+
+          return {
+            name: fullName || String(profile.display_name || profile.email || "Community member"),
+            userId: String(profile.id),
+          };
+        });
+      }
+
       const { data: groupActivityData, error: activityError } = await supabase
         .from("group_activity")
         .select("slug, active_count, lighting_mode")
@@ -241,8 +280,9 @@ Deno.serve(async (request) => {
         prayerState: {
           activeCount: groupActivity.active_count,
           lightingMode: groupActivity.lighting_mode,
-          othersInPrayerCount: Math.max(0, groupActivity.active_count - ownActiveCount),
+          othersInPrayerCount: participants.filter((participant) => participant.userId !== user.id).length,
           ownActiveCount,
+          participants,
         },
       });
     }

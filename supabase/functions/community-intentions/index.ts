@@ -577,6 +577,7 @@ Deno.serve(async (request) => {
           name: group.name,
           slug: group.slug,
         },
+        intentionId: insertedIntention.id,
         intentions,
         ok: true,
         pushResult,
@@ -763,6 +764,7 @@ Deno.serve(async (request) => {
         name: group.name,
         slug: group.slug,
       },
+      intentionId,
       intentions,
       ok: true,
     });

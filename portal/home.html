@@ -64,10 +64,20 @@
       .modal-close { padding:0; border:0; background:transparent; color:#6f675d; font-size:1.9rem; line-height:1; min-width:auto; box-shadow:none; }
       .modal-copy { margin:0 0 12px; font-size:.96rem; color:#6f675d; }
       .modal-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:14px; }
+      .modal-body-scroll { max-height:52vh; overflow:auto; padding-right:4px; }
+      .modal-body-scroll::-webkit-scrollbar { width:8px; }
+      .modal-body-scroll::-webkit-scrollbar-thumb { background:rgba(35,68,87,.22); border-radius:999px; }
+      .side-rail { display:none; }
+      .rail-button { width:48px; height:48px; border-radius:14px; background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.16); display:inline-flex; align-items:center; justify-content:center; padding:0; backdrop-filter:blur(8px) grayscale(1); }
+      .rail-button svg { width:22px; height:22px; stroke:#f3f0eb; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+      .participants-list { display:grid; gap:10px; }
+      .participant-item { padding:12px 14px; border-radius:14px; background:rgba(35,68,87,.08); color:#1d1b18; }
+      .reading-card { display:grid; gap:10px; }
+      .reading-card h3 { margin:0; font-size:1.1rem; }
+      .reading-card p { color:#1d1b18; }
       @media (max-width:720px) {
         .topnav { display:none; }
         .mobile-nav-button { display:flex; }
-        .notify-link { margin-left:auto; }
         .nav-toggle:checked ~ .mobile-overlay { display:block; position:fixed; inset:0; background:rgba(10,18,24,.46); z-index:55; }
         .nav-toggle:checked ~ .mobile-drawer { transform:translateX(0); }
       }
@@ -81,6 +91,7 @@
         .hero-card { background:transparent; border-color:transparent; box-shadow:none; }
         .hero-stack { padding-top:0; padding-bottom:0; margin-top:auto; }
         .prayer-banner, .status { backdrop-filter:blur(8px); background:rgba(24,44,58,.34); }
+        .side-rail { position:fixed; right:12px; top:34%; display:grid; gap:10px; z-index:35; }
       }
     </style>
   </head>
@@ -126,6 +137,18 @@
         <div id="status" class="status">Choose your active community in Settings before starting prayer.</div>
       </section>
 
+      <div class="side-rail" aria-label="Quick actions">
+        <button id="open-reading-modal" class="rail-button" aria-label="Open daily gospel">
+          <svg viewBox="0 0 24 24"><path d="M6 4.5h9.5A2.5 2.5 0 0 1 18 7v12.5a1 1 0 0 0-1-1H6.5A2.5 2.5 0 0 0 4 21V7a2.5 2.5 0 0 1 2-2.5Z"/><path d="M8 7.5h6"/><path d="M8 11h6"/><path d="M8 14.5h4"/></svg>
+        </button>
+        <button id="open-intention-modal" class="rail-button" aria-label="Open intention editor">
+          <svg viewBox="0 0 24 24"><path d="M12 21c4.2-3.2 7-6.5 7-10a4 4 0 0 0-7-2.4A4 4 0 0 0 5 11c0 3.5 2.8 6.8 7 10Z"/><path d="M12 7v6"/><path d="M9 10h6"/></svg>
+        </button>
+        <button id="open-participants-modal" class="rail-button" aria-label="Open participants list">
+          <svg viewBox="0 0 24 24"><path d="M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M16.5 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/><path d="M3.5 19a4.5 4.5 0 0 1 9 0"/><path d="M13 19a3.5 3.5 0 0 1 7 0"/></svg>
+        </button>
+      </div>
+
       <div id="pray-modal" class="modal-backdrop" aria-hidden="true">
         <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="pray-modal-title">
           <div class="modal-header">
@@ -137,6 +160,46 @@
           <div class="modal-actions">
             <button id="skip-prayer" class="secondary">Skip</button>
             <button id="send-prayer">Send</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="reading-modal" class="modal-backdrop" aria-hidden="true">
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="reading-modal-title">
+          <div class="modal-header">
+            <div class="modal-title" id="reading-modal-title">Daily Gospel</div>
+            <button id="close-reading-modal" class="modal-close" aria-label="Close gospel dialog">&times;</button>
+          </div>
+          <div class="modal-body-scroll">
+            <div id="reading-modal-content" class="reading-card">
+              <p>Loading today's gospel...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="intention-modal" class="modal-backdrop" aria-hidden="true">
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="intention-modal-title">
+          <div class="modal-header">
+            <div class="modal-title" id="intention-modal-title">Prayer Intention</div>
+            <button id="close-intention-modal" class="modal-close" aria-label="Close intention dialog">&times;</button>
+          </div>
+          <p class="modal-copy">Add an intention to the prayer feed, or update the one you already shared.</p>
+          <textarea id="edit-intention-body" placeholder="Write an intention to share with your community..."></textarea>
+          <div class="modal-actions">
+            <button id="save-intention" class="secondary">Save</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="participants-modal" class="modal-backdrop" aria-hidden="true">
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="participants-modal-title">
+          <div class="modal-header">
+            <div class="modal-title" id="participants-modal-title">In Prayer Now</div>
+            <button id="close-participants-modal" class="modal-close" aria-label="Close participants dialog">&times;</button>
+          </div>
+          <div id="participants-list" class="participants-list">
+            <div class="participant-item">Loading participants...</div>
           </div>
         </div>
       </div>
@@ -152,10 +215,23 @@
       const AUTH_URL = "./index.html";
       const els = {
         closePrayModal: document.querySelector("#close-pray-modal"),
+        closeReadingModal: document.querySelector("#close-reading-modal"),
+        closeIntentionModal: document.querySelector("#close-intention-modal"),
+        closeParticipantsModal: document.querySelector("#close-participants-modal"),
+        editIntentionBody: document.querySelector("#edit-intention-body"),
         intentionBody: document.querySelector("#intention-body"),
+        intentionModal: document.querySelector("#intention-modal"),
+        openIntentionModal: document.querySelector("#open-intention-modal"),
+        openParticipantsModal: document.querySelector("#open-participants-modal"),
+        openReadingModal: document.querySelector("#open-reading-modal"),
+        participantsList: document.querySelector("#participants-list"),
+        participantsModal: document.querySelector("#participants-modal"),
         prayButton: document.querySelector("#pray-button"),
         prayModal: document.querySelector("#pray-modal"),
         prayerBanner: document.querySelector("#prayer-banner"),
+        readingModal: document.querySelector("#reading-modal"),
+        readingModalContent: document.querySelector("#reading-modal-content"),
+        saveIntention: document.querySelector("#save-intention"),
         sendPrayer: document.querySelector("#send-prayer"),
         skipPrayer: document.querySelector("#skip-prayer"),
         status: document.querySelector("#status"),
@@ -163,7 +239,12 @@
 
       let supabase = null;
       let refreshTimer = null;
-      let currentPrayerState = { othersInPrayerCount: 0, ownActiveCount: 0 };
+      let currentPrayerState = { othersInPrayerCount: 0, ownActiveCount: 0, participants: [] };
+      let readingModalLoaded = false;
+
+      function intentionStorageKey() {
+        return `prayerboxPrayerIntention:${selectedGroupSlug()}`;
+      }
 
       function getClient() {
         if (!projectUrl || !anonKey) {
@@ -191,6 +272,12 @@
         return localStorage.getItem(SELECTED_GROUP_STORAGE_KEY) || "";
       }
 
+      function decodeHtmlEntities(input) {
+        const textarea = document.createElement("textarea");
+        textarea.innerHTML = input || "";
+        return textarea.value;
+      }
+
       function updateBannerAndButton() {
         const others = currentPrayerState.othersInPrayerCount || 0;
         const ownActive = (currentPrayerState.ownActiveCount || 0) > 0;
@@ -210,6 +297,56 @@
         els.prayModal.classList.remove("open");
         els.prayModal.setAttribute("aria-hidden", "true");
         els.intentionBody.value = "";
+      }
+
+      function openReadingModal() {
+        els.readingModal.classList.add("open");
+        els.readingModal.setAttribute("aria-hidden", "false");
+      }
+
+      function closeReadingModal() {
+        els.readingModal.classList.remove("open");
+        els.readingModal.setAttribute("aria-hidden", "true");
+      }
+
+      function openIntentionModal() {
+        const saved = loadStoredIntention();
+        els.editIntentionBody.value = saved?.body || "";
+        els.intentionModal.classList.add("open");
+        els.intentionModal.setAttribute("aria-hidden", "false");
+        requestAnimationFrame(() => els.editIntentionBody.focus());
+      }
+
+      function closeIntentionModal() {
+        els.intentionModal.classList.remove("open");
+        els.intentionModal.setAttribute("aria-hidden", "true");
+      }
+
+      function openParticipantsModal() {
+        els.participantsModal.classList.add("open");
+        els.participantsModal.setAttribute("aria-hidden", "false");
+      }
+
+      function closeParticipantsModal() {
+        els.participantsModal.classList.remove("open");
+        els.participantsModal.setAttribute("aria-hidden", "true");
+      }
+
+      function loadStoredIntention() {
+        try {
+          const raw = localStorage.getItem(intentionStorageKey());
+          return raw ? JSON.parse(raw) : null;
+        } catch {
+          return null;
+        }
+      }
+
+      function saveStoredIntention(value) {
+        if (!value) {
+          localStorage.removeItem(intentionStorageKey());
+          return;
+        }
+        localStorage.setItem(intentionStorageKey(), JSON.stringify(value));
       }
 
       async function authedFetch(path, options = {}) {
@@ -251,10 +388,60 @@
         if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to load prayer state.");
 
         currentPrayerState = payload.prayerState || { othersInPrayerCount: 0, ownActiveCount: 0 };
+        if ((currentPrayerState.ownActiveCount || 0) < 1) {
+          saveStoredIntention(null);
+        }
         updateBannerAndButton();
         if (showReadyMessage) {
           setStatus(currentPrayerState.ownActiveCount > 0 ? "You are already in prayer." : "When you're ready, tap Pray.");
         }
+      }
+
+      async function loadReadingModalContent() {
+        if (readingModalLoaded) return;
+        els.readingModalContent.innerHTML = "<p>Loading today's gospel...</p>";
+        const response = await fetch(`${projectUrl}/functions/v1/daily-readings`);
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to load daily gospel.");
+        const reading = payload.reading || {};
+        els.readingModalContent.innerHTML = `
+          <h3>${reading.title || "Today's Reading"}</h3>
+          <p>${reading.pubDate || ""}</p>
+          <div>${decodeHtmlEntities(reading.descriptionEncoded || "")}</div>
+        `;
+        readingModalLoaded = true;
+      }
+
+      function renderParticipants() {
+        const participants = currentPrayerState.participants || [];
+        if (!participants.length) {
+          els.participantsList.innerHTML = `<div class="participant-item">No one is in prayer right now.</div>`;
+          return;
+        }
+        els.participantsList.innerHTML = participants
+          .map((participant) => `<div class="participant-item">${participant.name}</div>`)
+          .join("");
+      }
+
+      async function saveIntentionFromSideRail() {
+        const groupSlug = selectedGroupSlug();
+        const body = els.editIntentionBody.value.trim();
+        if (!groupSlug) throw new Error("Choose your active community in Settings first.");
+        if (!body) throw new Error("Enter an intention first.");
+
+        const saved = loadStoredIntention();
+        const response = await authedFetch("/functions/v1/community-intentions", {
+          body: JSON.stringify(saved?.id
+            ? { action: "edit", body, groupSlug, intentionId: saved.id }
+            : { action: "create", body, groupSlug }),
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to save intention.");
+        saveStoredIntention({ body, id: payload.intentionId || saved?.id || null });
+        closeIntentionModal();
+        setStatus(saved?.id ? "Updated your intention." : "Shared your intention.");
       }
 
       async function loadGroups() {
@@ -296,14 +483,17 @@
         await refreshPrayerState();
         const pushResult = payload.pushResult || {};
         if (intention) {
+          saveStoredIntention({ body: intention, id: payload.intentionId || null });
           if (pushResult.attempted === 0) {
             setStatus("Prayer started and your intention was shared. Push attempted 0 subscriptions for recipients.", true);
           } else {
             setStatus(`Prayer started and your intention was shared. Push sent ${pushResult.sent || 0} of ${pushResult.attempted || 0} attempted subscriptions.`);
           }
         } else if (pushResult.attempted === 0) {
+          saveStoredIntention(null);
           setStatus("Prayer started. Push attempted 0 subscriptions for recipients.", true);
         } else {
+          saveStoredIntention(null);
           setStatus(`Prayer started. Push sent ${pushResult.sent || 0} of ${pushResult.attempted || 0} attempted subscriptions.`);
         }
       }
@@ -351,7 +541,20 @@
         }
         openPrayModal();
       });
+      els.openReadingModal.addEventListener("click", () => wrap(async () => {
+        openReadingModal();
+        await loadReadingModalContent();
+      }, els.openReadingModal));
+      els.openIntentionModal.addEventListener("click", openIntentionModal);
+      els.openParticipantsModal.addEventListener("click", () => {
+        renderParticipants();
+        openParticipantsModal();
+      });
       els.closePrayModal.addEventListener("click", closePrayModal);
+      els.closeReadingModal.addEventListener("click", closeReadingModal);
+      els.closeIntentionModal.addEventListener("click", closeIntentionModal);
+      els.closeParticipantsModal.addEventListener("click", closeParticipantsModal);
+      els.saveIntention.addEventListener("click", () => wrap(saveIntentionFromSideRail, els.saveIntention));
       els.sendPrayer.addEventListener("click", () => wrap(() => {
         const intention = els.intentionBody.value.trim();
         if (!intention) {
@@ -364,6 +567,15 @@
         if (event.target === els.prayModal) {
           closePrayModal();
         }
+      });
+      els.readingModal.addEventListener("click", (event) => {
+        if (event.target === els.readingModal) closeReadingModal();
+      });
+      els.intentionModal.addEventListener("click", (event) => {
+        if (event.target === els.intentionModal) closeIntentionModal();
+      });
+      els.participantsModal.addEventListener("click", (event) => {
+        if (event.target === els.participantsModal) closeParticipantsModal();
       });
       window.addEventListener("beforeunload", () => {
         if (refreshTimer) window.clearInterval(refreshTimer);
