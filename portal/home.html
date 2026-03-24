@@ -265,6 +265,21 @@
         box-shadow:none;
       }
       .chat-status { margin:0; flex:1; }
+      .chat-preview {
+        display:grid;
+        gap:10px;
+        padding:12px 14px;
+        border-radius:22px;
+        background:rgba(248,241,223,.08);
+        border:1px solid rgba(248,241,223,.12);
+      }
+      .chat-preview[hidden] { display:none; }
+      .chat-preview audio { width:100%; }
+      .chat-preview-actions {
+        display:flex;
+        justify-content:flex-end;
+        gap:10px;
+      }
       .reading-card { display:grid; gap:10px; min-width:0; overflow-x:hidden; }
       .reading-card h3 { margin:0; font-size:1.1rem; }
       .reading-card p { color:#1d1b18; }
@@ -509,6 +524,12 @@
                   <div id="chat-recording-status" class="status chat-status">Voice chat is ready when your group is active.</div>
                   <button id="refresh-chat" class="chat-refresh-button" type="button">Refresh</button>
                 </div>
+                <div id="chat-preview" class="chat-preview" hidden>
+                  <audio id="chat-preview-audio" controls preload="metadata"></audio>
+                  <div class="chat-preview-actions">
+                    <button id="discard-chat-audio" class="secondary" type="button">Discard</button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -538,10 +559,13 @@
         chatEmpty: document.querySelector("#chat-empty"),
         chatList: document.querySelector("#chat-list"),
         chatModal: document.querySelector("#chat-modal"),
+        chatPreview: document.querySelector("#chat-preview"),
+        chatPreviewAudio: document.querySelector("#chat-preview-audio"),
         chatRecordingStatus: document.querySelector("#chat-recording-status"),
         chatShell: document.querySelector("#chat-shell"),
         chatSendIcon: document.querySelector("#chat-send-icon"),
         chatText: document.querySelector("#chat-text"),
+        discardChatAudio: document.querySelector("#discard-chat-audio"),
         editIntentionBody: document.querySelector("#edit-intention-body"),
         feedEmpty: document.querySelector("#feed-empty"),
         feedModal: document.querySelector("#feed-modal"),
@@ -604,6 +628,9 @@
       let chatRecorder = null;
       let chatRecordingStartedAt = null;
       let chatAudioChunks = [];
+      let pendingChatAudioBlob = null;
+      let pendingChatAudioDurationMs = 0;
+      let pendingChatAudioUrl = "";
       let latestInfoMessage = "";
 
       function intentionStorageKey() {
@@ -742,6 +769,28 @@
         els.chatRecordingStatus.classList.toggle("error", isError);
       }
 
+      function clearPendingChatRecording() {
+        pendingChatAudioBlob = null;
+        pendingChatAudioDurationMs = 0;
+        if (pendingChatAudioUrl) {
+          URL.revokeObjectURL(pendingChatAudioUrl);
+          pendingChatAudioUrl = "";
+        }
+        els.chatPreviewAudio.pause();
+        els.chatPreviewAudio.removeAttribute("src");
+        els.chatPreviewAudio.load();
+        els.chatPreview.hidden = true;
+      }
+
+      function setPendingChatRecording(blob, durationMs) {
+        clearPendingChatRecording();
+        pendingChatAudioBlob = blob;
+        pendingChatAudioDurationMs = durationMs;
+        pendingChatAudioUrl = URL.createObjectURL(blob);
+        els.chatPreviewAudio.src = pendingChatAudioUrl;
+        els.chatPreview.hidden = false;
+      }
+
       function preferredMimeType() {
         const candidates = [
           "audio/webm;codecs=opus",
@@ -766,6 +815,7 @@
 
       function updateChatComposerState(hasGroup, hasRecorder, isRecording) {
         const hasText = Boolean(els.chatText.value.trim());
+        const hasPendingVoice = Boolean(pendingChatAudioBlob);
         let mode = "record";
         let label = "Record voice message";
         let icon = "\u{1F399}";
@@ -774,6 +824,10 @@
           mode = "stop";
           label = "Stop recording";
           icon = "\u25A0";
+        } else if (hasPendingVoice) {
+          mode = "send";
+          label = "Send voice message";
+          icon = "\u2191";
         } else if (hasText) {
           mode = "send";
           label = "Send message";
@@ -795,9 +849,15 @@
         const hasGroup = Boolean(selectedGroupSlug());
         const hasRecorder = Boolean(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
         const isRecording = Boolean(chatRecorder && chatRecorder.state === "recording");
-        els.chatText.disabled = !hasGroup || isRecording;
-        els.chatText.placeholder = isRecording ? "Recording voice message..." : "Send a message to your community...";
-        els.refreshChat.disabled = !hasGroup || isRecording;
+        const hasPendingVoice = Boolean(pendingChatAudioBlob);
+        els.chatText.disabled = !hasGroup || isRecording || hasPendingVoice;
+        els.chatText.placeholder = isRecording
+          ? "Recording voice message..."
+          : hasPendingVoice
+            ? "Voice message ready to send..."
+            : "Send a message to your community...";
+        els.refreshChat.disabled = !hasGroup || isRecording || hasPendingVoice;
+        els.discardChatAudio.disabled = !hasPendingVoice || isRecording;
         updateChatComposerState(hasGroup, hasRecorder, isRecording);
       }
 
@@ -1474,6 +1534,7 @@
         const payload = await response.json();
         if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to send chat message.");
         els.chatText.value = "";
+        clearPendingChatRecording();
         updateChatRecorderButtons();
         renderChat(payload.messages || []);
         const pushResult = payload.pushResult || {};
@@ -1511,6 +1572,8 @@
 
         const payload = await response.json();
         if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to upload voice message.");
+        clearPendingChatRecording();
+        updateChatRecorderButtons();
         renderChat(payload.messages || []);
         const pushResult = payload.pushResult || {};
         if (pushResult.attempted === 0) {
@@ -1529,6 +1592,7 @@
           throw new Error("This device/browser does not support voice recording.");
         }
 
+        clearPendingChatRecording();
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         const mimeType = preferredMimeType();
         chatRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
@@ -1541,13 +1605,13 @@
           }
         };
 
-        chatRecorder.onstop = async () => {
+        chatRecorder.onstop = () => {
           stream.getTracks().forEach((track) => track.stop());
           try {
             const blob = new Blob(chatAudioChunks, { type: chatRecorder.mimeType || "audio/webm" });
             const durationMs = Math.max(0, Date.now() - (chatRecordingStartedAt || Date.now()));
-            setChatRecordingStatus("Uploading voice message...");
-            await uploadChatRecording(blob, durationMs);
+            setPendingChatRecording(blob, durationMs);
+            setChatRecordingStatus("Preview your voice message, then tap send.");
           } catch (error) {
             setChatRecordingStatus(error.message || "Failed to process voice message.", true);
           } finally {
@@ -1571,6 +1635,10 @@
       async function handleChatPrimaryAction() {
         const mode = els.sendChat.dataset.mode || "record";
         if (mode === "send") {
+          if (pendingChatAudioBlob) {
+            await uploadChatRecording(pendingChatAudioBlob, pendingChatAudioDurationMs);
+            return;
+          }
           await sendChatMessage();
           return;
         }
@@ -1852,6 +1920,11 @@
       els.refreshAudioButton.addEventListener("click", () => wrapRecording(loadLatestRecording, els.refreshAudioButton));
       els.refreshChat.addEventListener("click", () => wrap(loadChat, els.refreshChat));
       els.sendChat.addEventListener("click", () => wrap(handleChatPrimaryAction, els.sendChat));
+      els.discardChatAudio.addEventListener("click", () => {
+        clearPendingChatRecording();
+        setChatRecordingStatus("Voice message discarded.");
+        updateChatRecorderButtons();
+      });
       els.chatText.addEventListener("input", updateChatRecorderButtons);
       els.chatText.addEventListener("keydown", (event) => {
         if (event.key === "Enter" && !event.shiftKey) {
