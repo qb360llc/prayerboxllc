@@ -116,6 +116,7 @@
           <div class="audio-tools">
             <button id="record-button" class="icon-button" aria-label="Record reading" title="Record reading">●</button>
             <button id="stop-button" class="secondary icon-button" aria-label="Stop recording" title="Stop recording" disabled>■</button>
+            <button id="delete-audio" class="secondary icon-button" aria-label="Delete recording" title="Delete recording" hidden>⌫</button>
             <button id="refresh-audio" class="secondary icon-button" aria-label="Refresh latest audio" title="Refresh latest audio">↻</button>
           </div>
         </div>
@@ -142,6 +143,7 @@
       const officialLinkEl = document.querySelector("#official-link");
       const recordButton = document.querySelector("#record-button");
       const stopButton = document.querySelector("#stop-button");
+      const deleteAudioButton = document.querySelector("#delete-audio");
       const recordingStatusEl = document.querySelector("#recording-status");
       const recordingMetaEl = document.querySelector("#recording-meta");
       const sharedAudioEl = document.querySelector("#shared-audio");
@@ -152,6 +154,7 @@
       let recordingStartedAt = null;
       let audioChunks = [];
       let recordingLocked = false;
+      let recordingCanManage = false;
 
       function decodeHtmlEntities(input) {
         const textarea = document.createElement("textarea");
@@ -214,8 +217,12 @@
         const hasGroup = Boolean(selectedGroupSlug());
         const hasRecorder = Boolean(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
         const isRecording = Boolean(mediaRecorder && mediaRecorder.state === "recording");
-        recordButton.disabled = !hasGroup || !hasRecorder || isRecording || recordingLocked;
+        recordButton.disabled = !hasGroup || !hasRecorder || isRecording || (recordingLocked && !recordingCanManage);
         stopButton.disabled = !isRecording;
+        deleteAudioButton.hidden = !recordingLocked || !recordingCanManage;
+        deleteAudioButton.disabled = isRecording || !recordingLocked || !recordingCanManage;
+        recordButton.title = recordingLocked && recordingCanManage ? "Replace recording" : "Record reading";
+        recordButton.setAttribute("aria-label", recordingLocked && recordingCanManage ? "Replace recording" : "Record reading");
       }
 
       function renderGroups(groups) {
@@ -273,6 +280,7 @@
         const groupSlug = selectedGroupSlug();
         if (!groupSlug) {
           recordingLocked = false;
+          recordingCanManage = false;
           sharedAudioEl.removeAttribute("src");
           sharedAudioEl.load();
           recordingMetaEl.textContent = "";
@@ -294,6 +302,7 @@
           const recording = payload.recording;
           if (!recording) {
             recordingLocked = false;
+            recordingCanManage = false;
             sharedAudioEl.removeAttribute("src");
             sharedAudioEl.load();
             recordingMetaEl.textContent = "";
@@ -303,15 +312,46 @@
           }
 
           recordingLocked = true;
+          recordingCanManage = Boolean(recording.canManage);
           sharedAudioEl.src = recording.audioUrl;
           recordingMetaEl.textContent = "";
-          setRecordingStatus(`${recording.createdBy || "Someone"} submitted a daily reading today.`);
+          setRecordingStatus(recordingCanManage
+            ? "You submitted today's daily reading. You can replace or delete it."
+            : `${recording.createdBy || "Someone"} submitted a daily reading today.`);
           updateRecordingButtons();
         } catch (error) {
           recordingLocked = false;
+          recordingCanManage = false;
           setRecordingStatus(error.message || "Failed to load daily reading audio.", true);
           updateRecordingButtons();
         }
+      }
+
+      async function deleteRecording() {
+        const groupSlug = selectedGroupSlug();
+        if (!groupSlug) {
+          throw new Error("Choose a community group first.");
+        }
+        if (!recordingLocked || !recordingCanManage) {
+          throw new Error("You can only delete your own recording.");
+        }
+
+        const response = await authedFetch(`/functions/v1/daily-reading-recordings?readingDate=${currentReadingDate}&groupSlug=${encodeURIComponent(groupSlug)}`, {
+          method: "DELETE",
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error || "Failed to delete recording.");
+        }
+
+        recordingLocked = false;
+        recordingCanManage = false;
+        sharedAudioEl.pause();
+        sharedAudioEl.removeAttribute("src");
+        sharedAudioEl.load();
+        recordingMetaEl.textContent = "";
+        setRecordingStatus("Recording deleted. Another member can now record today's reading.");
+        updateRecordingButtons();
       }
 
       async function uploadRecording(blob, durationMs) {
@@ -455,6 +495,13 @@
       });
 
       stopButton.addEventListener("click", stopRecording);
+      deleteAudioButton.addEventListener("click", async () => {
+        try {
+          await deleteRecording();
+        } catch (error) {
+          setRecordingStatus(error.message || "Failed to delete recording.", true);
+        }
+      });
       refreshAudioButton.addEventListener("click", loadLatestRecording);
 
       await loadReading();

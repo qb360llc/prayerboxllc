@@ -303,6 +303,7 @@
               <div class="audio-tools">
                 <button id="record-button" class="icon-button" aria-label="Record reading" title="Record reading">●</button>
                 <button id="stop-button" class="secondary icon-button" aria-label="Stop recording" title="Stop recording" disabled>■</button>
+                <button id="delete-audio" class="secondary icon-button" aria-label="Delete recording" title="Delete recording" hidden>⌫</button>
                 <button id="refresh-audio" class="secondary icon-button" aria-label="Refresh latest audio" title="Refresh latest audio">↻</button>
               </div>
             </div>
@@ -429,6 +430,7 @@
         skipIntention: document.querySelector("#skip-intention"),
         skipPrayer: document.querySelector("#skip-prayer"),
         stopButton: document.querySelector("#stop-button"),
+        deleteAudioButton: document.querySelector("#delete-audio"),
         status: document.querySelector("#status"),
       };
 
@@ -441,6 +443,7 @@
       let recordingStartedAt = null;
       let audioChunks = [];
       let recordingLocked = false;
+      let recordingCanManage = false;
       let currentSessionUser = null;
       let currentGroups = [];
       let currentPrayerFeed = [];
@@ -591,8 +594,12 @@
         const hasGroup = Boolean(selectedGroupSlug());
         const hasRecorder = Boolean(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
         const isRecording = Boolean(mediaRecorder && mediaRecorder.state === "recording");
-        els.recordButton.disabled = !hasGroup || !hasRecorder || isRecording || recordingLocked;
+        els.recordButton.disabled = !hasGroup || !hasRecorder || isRecording || (recordingLocked && !recordingCanManage);
         els.stopButton.disabled = !isRecording;
+        els.deleteAudioButton.hidden = !recordingLocked || !recordingCanManage;
+        els.deleteAudioButton.disabled = isRecording || !recordingLocked || !recordingCanManage;
+        els.recordButton.title = recordingLocked && recordingCanManage ? "Replace recording" : "Record reading";
+        els.recordButton.setAttribute("aria-label", recordingLocked && recordingCanManage ? "Replace recording" : "Record reading");
       }
 
       function updateBannerAndButton() {
@@ -867,6 +874,7 @@
         const groupSlug = selectedGroupSlug();
         if (!groupSlug) {
           recordingLocked = false;
+          recordingCanManage = false;
           els.sharedAudio.removeAttribute("src");
           els.sharedAudio.load();
           setRecordingStatus("Choose your active community in Settings before using recordings.", true);
@@ -878,26 +886,63 @@
         els.sharedAudio.pause();
         els.sharedAudio.removeAttribute("src");
         els.sharedAudio.load();
+        try {
+          const response = await authedFetch(`/functions/v1/daily-reading-recordings?readingDate=${currentReadingDate}&groupSlug=${encodeURIComponent(groupSlug)}`, {
+            method: "GET",
+          });
+          const payload = await response.json();
+          if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to load recording.");
 
-        const response = await authedFetch(`/functions/v1/daily-reading-recordings?readingDate=${currentReadingDate}&groupSlug=${encodeURIComponent(groupSlug)}`, {
-          method: "GET",
-        });
-        const payload = await response.json();
-        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to load recording.");
+          const recording = payload.recording;
+          if (!recording) {
+            recordingLocked = false;
+            recordingCanManage = false;
+            els.sharedAudio.removeAttribute("src");
+            els.sharedAudio.load();
+            setRecordingStatus("No recordings today.");
+            updateRecordingButtons();
+            return;
+          }
 
-        const recording = payload.recording;
-        if (!recording) {
-          recordingLocked = false;
-          els.sharedAudio.removeAttribute("src");
-          els.sharedAudio.load();
-          setRecordingStatus("No recordings today.");
+          recordingLocked = true;
+          recordingCanManage = Boolean(recording.canManage);
+          setRecordingStatus(recordingCanManage
+            ? "You submitted today's daily reading. You can replace or delete it."
+            : `${recording.createdBy || "Someone"} submitted a daily reading today.`);
+          els.sharedAudio.src = recording.audioUrl;
           updateRecordingButtons();
-          return;
+        } catch (error) {
+          recordingLocked = false;
+          recordingCanManage = false;
+          setRecordingStatus(error.message || "Failed to load recording.", true);
+          updateRecordingButtons();
+          throw error;
+        }
+      }
+
+      async function deleteRecording() {
+        const groupSlug = selectedGroupSlug();
+        if (!groupSlug) {
+          throw new Error("Choose your active community in Settings first.");
+        }
+        if (!recordingLocked || !recordingCanManage) {
+          throw new Error("You can only delete your own recording.");
         }
 
-        recordingLocked = true;
-        setRecordingStatus(`${recording.createdBy || "Someone"} submitted a daily reading today.`);
-        els.sharedAudio.src = recording.audioUrl;
+        const response = await authedFetch(`/functions/v1/daily-reading-recordings?readingDate=${currentReadingDate}&groupSlug=${encodeURIComponent(groupSlug)}`, {
+          method: "DELETE",
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error || "Failed to delete recording.");
+        }
+
+        recordingLocked = false;
+        recordingCanManage = false;
+        els.sharedAudio.pause();
+        els.sharedAudio.removeAttribute("src");
+        els.sharedAudio.load();
+        setRecordingStatus("Recording deleted. Another member can now record today's reading.");
         updateRecordingButtons();
       }
 
@@ -1352,6 +1397,7 @@
       els.closeFeedModal.addEventListener("click", closeFeedModal);
       els.recordButton.addEventListener("click", () => wrapRecording(startRecording, els.recordButton));
       els.stopButton.addEventListener("click", stopRecording);
+      els.deleteAudioButton.addEventListener("click", () => wrapRecording(deleteRecording, els.deleteAudioButton));
       els.refreshAudioButton.addEventListener("click", () => wrapRecording(loadLatestRecording, els.refreshAudioButton));
       els.saveIntention.addEventListener("click", () => wrap(saveIntentionFromSideRail, els.saveIntention));
       els.skipIntention.addEventListener("click", closeIntentionModal);

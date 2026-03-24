@@ -12,7 +12,7 @@ function corsHeaders(request: Request) {
 
   return {
     "Access-Control-Allow-Headers": "authorization, content-type, x-client-info, apikey",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Methods": "DELETE, GET, POST, OPTIONS",
     "Access-Control-Allow-Origin": origin,
     Vary: "Origin",
   };
@@ -240,6 +240,14 @@ async function getExistingRecording(
   return data;
 }
 
+function canManageRecording(
+  isAdmin: boolean,
+  recording: { created_by_user_id?: string | null } | null,
+  userId: string,
+) {
+  return Boolean(isAdmin || (recording?.created_by_user_id && String(recording.created_by_user_id) === userId));
+}
+
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders(request) });
@@ -250,6 +258,7 @@ Deno.serve(async (request) => {
 
     if (request.method === "GET") {
       const user = await getAuthedUser(request, supabase);
+      const profile = await getProfile(supabase, user.id);
       const url = new URL(request.url);
       const readingDate = normalizeReadingDate(url.searchParams.get("readingDate"));
       const groupSlug = url.searchParams.get("groupSlug")?.trim();
@@ -280,6 +289,7 @@ Deno.serve(async (request) => {
         ok: true,
         recording: {
           audioUrl: signed.signedUrl,
+          canManage: canManageRecording(Boolean(profile?.is_admin), row, user.id),
           createdAt: row.created_at,
           createdBy,
           createdByUserId: row.created_by_user_id,
@@ -290,11 +300,54 @@ Deno.serve(async (request) => {
       });
     }
 
+    if (request.method === "DELETE") {
+      const user = await getAuthedUser(request, supabase);
+      const profile = await getProfile(supabase, user.id);
+      const url = new URL(request.url);
+      const readingDate = normalizeReadingDate(url.searchParams.get("readingDate"));
+      const groupSlug = url.searchParams.get("groupSlug")?.trim();
+
+      if (!groupSlug) {
+        return json(request, 400, { error: "groupSlug is required.", ok: false });
+      }
+
+      const group = await getGroupForUser(supabase, user.id, groupSlug);
+      const existingRecording = await getExistingRecording(supabase, group.id, readingDate);
+
+      if (!existingRecording) {
+        return json(request, 200, { ok: true, removed: false });
+      }
+
+      if (!canManageRecording(Boolean(profile?.is_admin), existingRecording, user.id)) {
+        return json(request, 403, { error: "Only the original reader can delete today's recording.", ok: false });
+      }
+
+      const { error: storageError } = await supabase.storage
+        .from(BUCKET)
+        .remove([existingRecording.storage_path]);
+
+      if (storageError) {
+        throw storageError;
+      }
+
+      const { error: deleteError } = await supabase
+        .from("daily_reading_recordings")
+        .delete()
+        .eq("id", existingRecording.id);
+
+      if (deleteError) {
+        throw deleteError;
+      }
+
+      return json(request, 200, { ok: true, removed: true });
+    }
+
     if (request.method !== "POST") {
       return json(request, 405, { error: "Method not allowed.", ok: false });
     }
 
     const user = await getAuthedUser(request, supabase);
+    const profile = await getProfile(supabase, user.id);
     const form = await request.formData();
     const file = form.get("audio");
     const readingDate = normalizeReadingDate(form.get("readingDate")?.toString() ?? null);
@@ -312,11 +365,21 @@ Deno.serve(async (request) => {
     const group = await getGroupForUser(supabase, user.id, groupSlug);
     const existingRecording = await getExistingRecording(supabase, group.id, readingDate);
     if (existingRecording) {
+      if (!canManageRecording(Boolean(profile?.is_admin), existingRecording, user.id)) {
+        const existingActorName = await getActorName(supabase, String(existingRecording.created_by_user_id));
+        return json(request, 409, {
+          error: `${existingActorName} already submitted today's reading for ${group.name}.`,
+          ok: false,
+        });
+      }
+    }
+
+    const isReplacement = Boolean(existingRecording);
+    if (existingRecording) {
       const existingActorName = await getActorName(supabase, String(existingRecording.created_by_user_id));
-      return json(request, 409, {
-        error: `${existingActorName} already submitted today's reading for ${group.name}.`,
-        ok: false,
-      });
+      if (!existingActorName) {
+        throw new Error("Unable to verify the original recording owner.");
+      }
     }
 
     const extension = file.name.includes(".") ? file.name.split(".").pop() : "webm";
@@ -335,21 +398,41 @@ Deno.serve(async (request) => {
       throw uploadError;
     }
 
-    const { data: inserted, error: insertError } = await supabase
-      .from("daily_reading_recordings")
-      .insert({
-        content_type: file.type || "audio/webm",
-        created_by_user_id: user.id,
-        duration_ms: Number.isFinite(durationMs) ? durationMs : null,
-        group_id: group.id,
-        reading_date: readingDate,
-        storage_path: storagePath,
-      })
+    const writePayload = {
+      content_type: file.type || "audio/webm",
+      created_at: new Date().toISOString(),
+      created_by_user_id: user.id,
+      duration_ms: Number.isFinite(durationMs) ? durationMs : null,
+      group_id: group.id,
+      reading_date: readingDate,
+      storage_path: storagePath,
+    };
+
+    const writeQuery = existingRecording
+      ? supabase
+        .from("daily_reading_recordings")
+        .update(writePayload)
+        .eq("id", existingRecording.id)
+      : supabase
+        .from("daily_reading_recordings")
+        .insert(writePayload);
+
+    const { data: inserted, error: insertError } = await writeQuery
       .select("id, reading_date, created_at")
       .single();
 
     if (insertError) {
       throw insertError;
+    }
+
+    if (existingRecording?.storage_path) {
+      const { error: removeOldError } = await supabase.storage
+        .from(BUCKET)
+        .remove([existingRecording.storage_path]);
+
+      if (removeOldError) {
+        throw removeOldError;
+      }
     }
 
     const { data: signed, error: signedError } = await supabase.storage
@@ -365,8 +448,10 @@ Deno.serve(async (request) => {
       supabase,
       group.id,
       user.id,
-      "New daily reading recording",
-      `${actorName} uploaded a new daily reading recording in ${group.name}.`,
+      isReplacement ? "Updated daily reading recording" : "New daily reading recording",
+      isReplacement
+        ? `${actorName} updated today's daily reading recording in ${group.name}.`
+        : `${actorName} uploaded a new daily reading recording in ${group.name}.`,
       {
         groupName: group.name,
         groupSlug: group.slug,
@@ -379,6 +464,7 @@ Deno.serve(async (request) => {
       pushResult,
       recording: {
         audioUrl: signed.signedUrl,
+        canManage: true,
         createdAt: inserted.created_at,
         createdBy: actorName,
         groupSlug: group.slug,
