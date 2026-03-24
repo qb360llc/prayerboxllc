@@ -388,7 +388,6 @@
               </button>
               <button id="open-intention-modal" class="rail-button" aria-label="Open intention editor">
                 <svg viewBox="0 0 24 24"><path d="M12 21c4.2-3.2 7-6.5 7-10a4 4 0 0 0-7-2.4A4 4 0 0 0 5 11c0 3.5 2.8 6.8 7 10Z"/><path d="M12 7v6"/><path d="M9 10h6"/></svg>
-                <span id="intention-badge" class="rail-badge" hidden>0</span>
               </button>
               <button id="open-chat-modal" class="rail-button" aria-label="Open community chat">
                 <svg viewBox="0 0 24 24"><path d="M5 7.5A2.5 2.5 0 0 1 7.5 5h9A2.5 2.5 0 0 1 19 7.5v6A2.5 2.5 0 0 1 16.5 16H11l-4 3v-3H7.5A2.5 2.5 0 0 1 5 13.5Z"/></svg>
@@ -399,6 +398,7 @@
               </button>
               <button id="open-feed-modal" class="rail-button" aria-label="Open prayer feed">
                 <svg viewBox="0 0 24 24"><path d="M5 6.5h14"/><path d="M5 12h14"/><path d="M5 17.5h9"/></svg>
+                <span id="feed-badge" class="rail-badge" hidden>0</span>
               </button>
             </div>
           </div>
@@ -614,13 +614,13 @@
         discardChatAudio: document.querySelector("#discard-chat-audio"),
         editIntentionBody: document.querySelector("#edit-intention-body"),
         feedEmpty: document.querySelector("#feed-empty"),
+        feedBadge: document.querySelector("#feed-badge"),
         feedModal: document.querySelector("#feed-modal"),
         groupList: document.querySelector("#group-list"),
         groupModal: document.querySelector("#group-modal"),
         infoFab: document.querySelector("#info-fab"),
         infoPanel: document.querySelector("#info-panel"),
         infoPanelBody: document.querySelector("#info-panel-body"),
-        intentionBadge: document.querySelector("#intention-badge"),
         intentionBody: document.querySelector("#intention-body"),
         intentionModal: document.querySelector("#intention-modal"),
         mobileActionStrip: document.querySelector("#mobile-action-strip"),
@@ -800,20 +800,20 @@
       function markIntentionsSeen() {
         const groupSlug = selectedGroupSlug();
         if (!groupSlug) {
-          updateRailBadge(els.intentionBadge, 0);
+          updateRailBadge(els.feedBadge, 0);
           return;
         }
         const latest = currentPrayerFeed
           .filter((item) => item.type === "intention")
           .reduce((max, item) => Math.max(max, Date.parse(item.createdAt || "") || 0), 0);
         localStorage.setItem(intentionSeenStorageKey(groupSlug), String(latest));
-        updateRailBadge(els.intentionBadge, 0);
+        updateRailBadge(els.feedBadge, 0);
       }
 
       function syncIntentionUnreadBadge() {
         const groupSlug = selectedGroupSlug();
         if (!groupSlug) {
-          updateRailBadge(els.intentionBadge, 0);
+          updateRailBadge(els.feedBadge, 0);
           return;
         }
         const seenAt = storedSeenTimestamp(intentionSeenStorageKey(groupSlug));
@@ -821,7 +821,7 @@
           .filter((item) => item.type === "intention")
           .filter((item) => (Date.parse(item.createdAt || "") || 0) > seenAt)
           .length;
-        updateRailBadge(els.intentionBadge, unreadCount);
+        updateRailBadge(els.feedBadge, unreadCount);
       }
 
       function decodeHtmlEntities(input) {
@@ -2052,7 +2052,6 @@
       els.openIntentionModal.addEventListener("click", () => {
         closeProfileMenu();
         closeInfoPanel();
-        markIntentionsSeen();
         openIntentionModal();
       });
       els.openChatModal.addEventListener("click", () => {
