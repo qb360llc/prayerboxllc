@@ -11,6 +11,7 @@ type FeedItem =
     body: string;
     amenCount: number;
     userHasAmen: boolean;
+    commentCount: number;
   }
   | {
     id: string;
@@ -199,6 +200,27 @@ Deno.serve(async (request) => {
       }
     }
 
+    const commentCountByIntention = new Map<string, number>();
+    if (intentionIds.length) {
+      const { data: comments, error: commentsError } = await supabase
+        .from("community_intention_comments")
+        .select("intention_id")
+        .in("intention_id", intentionIds);
+
+      if (commentsError) {
+        throw commentsError;
+      }
+
+      for (const intentionId of intentionIds) {
+        commentCountByIntention.set(intentionId, 0);
+      }
+
+      for (const comment of comments ?? []) {
+        const intentionId = String((comment as Record<string, unknown>).intention_id);
+        commentCountByIntention.set(intentionId, (commentCountByIntention.get(intentionId) ?? 0) + 1);
+      }
+    }
+
     const feedItems: FeedItem[] = [
       ...(intentions ?? []).map((item: Record<string, unknown>) => {
         const intentionId = String(item.id);
@@ -207,6 +229,7 @@ Deno.serve(async (request) => {
           amenCount: reactionState.amenCount,
           avatarUrl: profileAvatar(authorsById.get(String(item.created_by_user_id))),
           body: String(item.body || ""),
+          commentCount: commentCountByIntention.get(intentionId) ?? 0,
           createdAt: String(item.created_at),
           createdBy: profileName(authorsById.get(String(item.created_by_user_id))),
           id: `intention:${intentionId}`,

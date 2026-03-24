@@ -196,6 +196,15 @@
       .feed-body, .feed-event-copy { margin:0; color:#1d1b18; }
       .feed-event-copy { font-weight:600; }
       .feed-actions { display:flex; align-items:center; gap:10px; margin-top:12px; }
+      .feed-link-button {
+        min-width:0;
+        padding:0;
+        border:none;
+        border-radius:0;
+        background:none;
+        box-shadow:none;
+        color:rgba(248,241,223,.82);
+      }
       .feed-amen-button {
         min-width:0;
         padding:0;
@@ -235,6 +244,13 @@
       .feed-surface .feed-amen-button .heart { color:rgba(248,241,223,.68); }
       .feed-surface .feed-amen-button.active .heart { color:#ef9a95; }
       .feed-surface .feed-amen-button .amen-count { color:rgba(248,241,223,.66); }
+      .feed-surface .feed-link-button { color:rgba(248,241,223,.82); }
+      .comments-shell { margin-top:14px; padding-top:14px; border-top:1px solid rgba(248,241,223,.14); }
+      .comments-list { display:grid; gap:12px; }
+      .comment-item { padding:12px 14px; border-radius:16px; background:rgba(248,241,223,.06); }
+      .comment-author { font-size:.92rem; font-weight:700; color:var(--cream); }
+      .comment-meta { margin-top:2px; font-size:.8rem; color:rgba(248,241,223,.62); }
+      .comment-body { margin:8px 0 0; color:var(--cream); line-height:1.5; }
       .chat-modal-card { background:linear-gradient(180deg, #294d61 0%, var(--bg) 42%, var(--bg-deep) 100%); color:var(--cream); }
       .chat-modal-card .modal-title,
       .chat-modal-card .modal-close { color:var(--cream); }
@@ -537,6 +553,21 @@
         </div>
       </div>
 
+      <div id="comment-modal" class="modal-backdrop center-modal" aria-hidden="true">
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="comment-modal-title">
+          <div class="modal-header">
+            <div class="modal-title" id="comment-modal-title">Add Comment</div>
+            <button id="close-comment-modal" class="modal-close" aria-label="Close comment dialog">&times;</button>
+          </div>
+          <p class="modal-copy">Write a comment to encourage or respond to this intention.</p>
+          <textarea id="comment-body" placeholder="Write a comment..."></textarea>
+          <div class="modal-actions centered">
+            <button id="cancel-comment" class="secondary">Cancel</button>
+            <button id="share-comment">Share</button>
+          </div>
+        </div>
+      </div>
+
       <div id="participants-modal" class="modal-backdrop top-sheet" aria-hidden="true">
         <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="participants-modal-title">
           <div class="modal-header">
@@ -629,7 +660,9 @@
       const INTENTION_SEEN_STORAGE_PREFIX = "prayerboxHomeIntentionSeen:";
       const els = {
         actionMenuToggle: document.querySelector("#action-menu-toggle"),
+        cancelComment: document.querySelector("#cancel-comment"),
         closePrayModal: document.querySelector("#close-pray-modal"),
+        closeCommentModal: document.querySelector("#close-comment-modal"),
         closeReadingModal: document.querySelector("#close-reading-modal"),
         closeIntentionModal: document.querySelector("#close-intention-modal"),
         closeParticipantsModal: document.querySelector("#close-participants-modal"),
@@ -647,6 +680,8 @@
         chatShell: document.querySelector("#chat-shell"),
         chatSendIcon: document.querySelector("#chat-send-icon"),
         chatText: document.querySelector("#chat-text"),
+        commentBody: document.querySelector("#comment-body"),
+        commentModal: document.querySelector("#comment-modal"),
         discardChatAudio: document.querySelector("#discard-chat-audio"),
         editIntentionBody: document.querySelector("#edit-intention-body"),
         feedEmpty: document.querySelector("#feed-empty"),
@@ -686,6 +721,7 @@
         readingModalContent: document.querySelector("#reading-modal-content"),
         refreshChat: document.querySelector("#refresh-chat"),
         saveIntention: document.querySelector("#save-intention"),
+        shareComment: document.querySelector("#share-comment"),
         sendChat: document.querySelector("#send-chat"),
         sendPrayer: document.querySelector("#send-prayer"),
         sharedAudio: document.querySelector("#shared-audio"),
@@ -709,6 +745,9 @@
       let currentSessionUser = null;
       let currentGroups = [];
       let currentPrayerFeed = [];
+      let activeCommentIntentionId = null;
+      const openCommentIntentions = new Set();
+      const commentCache = new Map();
       let currentChatMessages = [];
       let chatRecorder = null;
       let chatRecordingStartedAt = null;
@@ -1117,6 +1156,19 @@
       function closeIntentionModal() {
         els.intentionModal.classList.remove("open");
         els.intentionModal.setAttribute("aria-hidden", "true");
+      }
+
+      function openCommentModal(intentionId) {
+        activeCommentIntentionId = intentionId;
+        els.commentModal.classList.add("open");
+        els.commentModal.setAttribute("aria-hidden", "false");
+        requestAnimationFrame(() => els.commentBody.focus());
+      }
+
+      function closeCommentModal() {
+        activeCommentIntentionId = null;
+        els.commentModal.classList.remove("open");
+        els.commentModal.setAttribute("aria-hidden", "true");
       }
 
       function openGroupModal() {
@@ -1611,7 +1663,21 @@
                   <span class="amen-label">Amen</span>
                   <span class="amen-count">${item.amenCount || 0}</span>
                 </button>
+                <button class="feed-link-button open-feed-comment" type="button" data-feed-intention-id="${escapeHtml(item.intentionId)}">Comment</button>
+                <button class="feed-link-button toggle-feed-comments" type="button" data-feed-intention-id="${escapeHtml(item.intentionId)}">${openCommentIntentions.has(item.intentionId) ? "Hide Comments" : `View Comments${item.commentCount ? ` (${item.commentCount})` : ""}`}</button>
               </div>
+              ${openCommentIntentions.has(item.intentionId) ? `
+                <div class="comments-shell">
+                  <div class="comments-list">${(commentCache.get(item.intentionId) || []).length
+                    ? (commentCache.get(item.intentionId) || []).map((comment) => `
+                      <div class="comment-item">
+                        <div class="comment-author">${escapeHtml(comment.createdBy)}</div>
+                        <div class="comment-meta">${escapeHtml(formatFeedDate(comment.createdAt))}</div>
+                        <p class="comment-body">${escapeHtml(comment.body)}</p>
+                      </div>`).join("")
+                    : `<div class="feed-empty">No comments yet.</div>`}
+                  </div>
+                </div>` : ""}
             </article>
           `;
         }).join("");
@@ -1625,6 +1691,17 @@
             const intentionId = button.getAttribute("data-feed-intention-id") || "";
             if (intentionId) {
               wrap(() => toggleFeedAmen(intentionId), button);
+            }
+          });
+        });
+        els.prayerFeed.querySelectorAll(".open-feed-comment").forEach((button) => {
+          button.addEventListener("click", () => openCommentModal(button.getAttribute("data-feed-intention-id") || ""));
+        });
+        els.prayerFeed.querySelectorAll(".toggle-feed-comments").forEach((button) => {
+          button.addEventListener("click", () => {
+            const intentionId = button.getAttribute("data-feed-intention-id") || "";
+            if (intentionId) {
+              wrap(() => toggleFeedComments(intentionId), button);
             }
           });
         });
@@ -1918,6 +1995,58 @@
         await loadPrayerFeed();
       }
 
+      async function loadFeedComments(intentionId) {
+        const groupSlug = selectedGroupSlug();
+        if (!groupSlug || !intentionId) {
+          return [];
+        }
+
+        const response = await authedFetch(`/functions/v1/community-intentions?groupSlug=${encodeURIComponent(groupSlug)}&intentionId=${encodeURIComponent(intentionId)}`, { method: "GET" });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error || "Failed to load comments.");
+        }
+        const comments = payload.comments || [];
+        commentCache.set(intentionId, comments);
+        return comments;
+      }
+
+      async function toggleFeedComments(intentionId) {
+        if (!intentionId) {
+          throw new Error("Unknown intention.");
+        }
+        if (openCommentIntentions.has(intentionId)) {
+          openCommentIntentions.delete(intentionId);
+          renderPrayerFeed();
+          return;
+        }
+        await loadFeedComments(intentionId);
+        openCommentIntentions.add(intentionId);
+        renderPrayerFeed();
+      }
+
+      async function postFeedComment() {
+        const groupSlug = selectedGroupSlug();
+        const body = els.commentBody.value.trim();
+        if (!groupSlug) throw new Error("Choose your active community in Settings first.");
+        if (!activeCommentIntentionId) throw new Error("Choose an intention first.");
+        if (!body) throw new Error("Enter a comment first.");
+
+        const response = await authedFetch("/functions/v1/community-intentions", {
+          body: JSON.stringify({ action: "comment", body, groupSlug, intentionId: activeCommentIntentionId }),
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to share comment.");
+        els.commentBody.value = "";
+        commentCache.set(activeCommentIntentionId, payload.comments || []);
+        openCommentIntentions.add(activeCommentIntentionId);
+        closeCommentModal();
+        await loadPrayerFeed();
+        setInfoMessage("Shared your comment.");
+      }
+
       async function saveIntentionFromSideRail() {
         const groupSlug = selectedGroupSlug();
         const body = els.editIntentionBody.value.trim();
@@ -2168,6 +2297,8 @@
       els.closePrayModal.addEventListener("click", closePrayModal);
       els.closeReadingModal.addEventListener("click", closeReadingModal);
       els.closeIntentionModal.addEventListener("click", closeIntentionModal);
+      els.closeCommentModal.addEventListener("click", closeCommentModal);
+      els.cancelComment.addEventListener("click", closeCommentModal);
       els.closeParticipantsModal.addEventListener("click", closeParticipantsModal);
       els.closeGroupModal.addEventListener("click", closeGroupModal);
       els.closeFeedModal.addEventListener("click", closeFeedModal);
@@ -2192,6 +2323,7 @@
         }
       });
       els.saveIntention.addEventListener("click", () => wrap(saveIntentionFromSideRail, els.saveIntention));
+      els.shareComment.addEventListener("click", () => wrap(postFeedComment, els.shareComment));
       els.skipIntention.addEventListener("click", closeIntentionModal);
       els.sendPrayer.addEventListener("click", () => wrap(() => {
         const intention = els.intentionBody.value.trim();
@@ -2211,6 +2343,9 @@
       });
       els.intentionModal.addEventListener("click", (event) => {
         if (event.target === els.intentionModal) closeIntentionModal();
+      });
+      els.commentModal.addEventListener("click", (event) => {
+        if (event.target === els.commentModal) closeCommentModal();
       });
       els.participantsModal.addEventListener("click", (event) => {
         if (event.target === els.participantsModal) closeParticipantsModal();
