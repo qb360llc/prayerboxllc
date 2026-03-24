@@ -40,11 +40,22 @@
       .topnav { display:flex; flex-wrap:wrap; gap:10px; }
       .topnav a { display:inline-block; padding:10px 14px; border-radius:999px; text-decoration:none; background:rgba(248,241,223,.1); color:var(--cream); }
       .mobile-action-cluster { display:none; }
-      .mobile-nav-button { width:48px; height:48px; border-radius:14px; background:transparent; cursor:pointer; align-items:center; justify-content:center; box-shadow:none; padding:0; }
+      .mobile-nav-button { position:relative; width:48px; height:48px; border-radius:14px; background:transparent; cursor:pointer; align-items:center; justify-content:center; box-shadow:none; padding:0; }
       .mobile-nav-button span { display:block; width:20px; height:2px; background:var(--cream); position:relative; }
       .mobile-nav-button span::before, .mobile-nav-button span::after { content:""; position:absolute; left:0; width:20px; height:2px; background:var(--cream); }
       .mobile-nav-button span::before { top:-6px; }
       .mobile-nav-button span::after { top:6px; }
+      .menu-dot {
+        position:absolute;
+        top:8px;
+        right:8px;
+        width:9px;
+        height:9px;
+        border-radius:999px;
+        background:#c43a34;
+        box-shadow:0 0 0 2px rgba(35,68,87,.7);
+      }
+      .menu-dot[hidden] { display:none; }
       .mobile-action-strip { position:absolute; top:58px; left:0; display:flex; flex-direction:column; gap:10px; overflow:hidden; max-height:0; opacity:0; transform:translateY(-8px); transition:max-height .24s ease, opacity .18s ease, transform .18s ease; }
       .mobile-action-strip.open { max-height:360px; opacity:1; transform:translateY(0); }
       .hero-card { min-height:calc(100vh - 140px); display:grid; align-content:space-between; gap:16px; padding:18px 18px 20px; text-align:center; }
@@ -346,7 +357,7 @@
         .mobile-action-cluster { position:absolute; left:14px; top:calc(env(safe-area-inset-top, 0px) + 12px); display:flex; align-items:flex-start; gap:10px; z-index:3; }
       }
       @media (max-width:719px) {
-        body { background:#234457 url("./home-mobile-bg.svg") center -12px / cover no-repeat fixed; }
+        body { background:#234457 url("./home-mobile-bg.svg") center 24px / cover no-repeat fixed; }
         body::before, body::after { display:none; }
         main { padding:12px 14px 48px; }
         .hero-card { min-height:calc(100vh - 110px); padding:12px 10px 2px; display:flex; flex-direction:column; justify-content:flex-end; gap:12px; }
@@ -381,7 +392,7 @@
       <div class="topbar-wrap">
         <div class="topbar">
           <div class="mobile-action-cluster">
-            <button id="action-menu-toggle" class="mobile-nav-button" type="button" aria-label="Open home actions" aria-expanded="false"><span></span></button>
+            <button id="action-menu-toggle" class="mobile-nav-button" type="button" aria-label="Open home actions" aria-expanded="false"><span></span><span id="menu-dot" class="menu-dot" hidden></span></button>
             <div id="mobile-action-strip" class="mobile-action-strip" aria-label="Home quick actions">
               <button id="open-reading-modal" class="rail-button" aria-label="Open daily gospel">
                 <svg viewBox="0 0 24 24"><path d="M6 4.5h9.5A2.5 2.5 0 0 1 18 7v12.5a1 1 0 0 0-1-1H6.5A2.5 2.5 0 0 0 4 21V7a2.5 2.5 0 0 1 2-2.5Z"/><path d="M8 7.5h6"/><path d="M8 11h6"/><path d="M8 14.5h4"/></svg>
@@ -624,6 +635,7 @@
         intentionBody: document.querySelector("#intention-body"),
         intentionModal: document.querySelector("#intention-modal"),
         mobileActionStrip: document.querySelector("#mobile-action-strip"),
+        menuDot: document.querySelector("#menu-dot"),
         openChatModal: document.querySelector("#open-chat-modal"),
         openFeedModal: document.querySelector("#open-feed-modal"),
         openGroupModal: document.querySelector("#open-group-modal"),
@@ -769,10 +781,19 @@
         if (!count) {
           element.hidden = true;
           element.textContent = "0";
+          updateMenuDot();
           return;
         }
         element.hidden = false;
         element.textContent = count > 99 ? "99+" : String(count);
+        updateMenuDot();
+      }
+
+      function updateMenuDot() {
+        const hasUnreadChat = els.chatBadge && !els.chatBadge.hidden;
+        const hasUnreadFeed = els.feedBadge && !els.feedBadge.hidden;
+        const hasReading = els.openReadingModal?.classList.contains("has-recording");
+        els.menuDot.hidden = !(hasUnreadChat || hasUnreadFeed || hasReading);
       }
 
       function markChatSeen() {
@@ -892,6 +913,7 @@
 
       function setReadingAvailabilityBadge(hasRecording) {
         els.openReadingModal.classList.toggle("has-recording", Boolean(hasRecording));
+        updateMenuDot();
       }
 
       function clearPendingChatRecording() {
