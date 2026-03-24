@@ -163,6 +163,33 @@
       .feed-surface .feed-event-copy { color:var(--cream); }
       .feed-surface .feed-author-avatar { background:rgba(248,241,223,.1); border-color:rgba(248,241,223,.14); color:var(--cream); }
       .feed-surface .feed-date { color:rgba(248,241,223,.66); }
+      .chat-modal-card { background:linear-gradient(180deg, #294d61 0%, var(--bg) 42%, var(--bg-deep) 100%); color:var(--cream); }
+      .chat-modal-card .modal-title,
+      .chat-modal-card .modal-close { color:var(--cream); }
+      .chat-modal-card .modal-copy { color:rgba(248,241,223,.72); }
+      .chat-modal-body { max-height:calc(100vh - 94px); padding:0 2px 8px; }
+      .chat-surface { min-height:calc(100vh - 138px); display:grid; grid-template-rows:auto 1fr auto; gap:12px; padding:12px; border-radius:28px; background:rgba(18,35,46,.52); border:1px solid rgba(248,241,223,.12); }
+      .chat-summary { color:rgba(248,241,223,.74); font-size:.95rem; }
+      .chat-empty { padding:14px 16px; border-radius:20px; border:1px solid rgba(248,241,223,.1); background:rgba(248,241,223,.06); color:rgba(248,241,223,.72); }
+      .chat-shell { min-height:0; max-height:calc(100vh - 340px); overflow-y:auto; overflow-x:hidden; padding-right:4px; }
+      .chat-shell::-webkit-scrollbar { width:8px; }
+      .chat-shell::-webkit-scrollbar-thumb { background:rgba(248,241,223,.22); border-radius:999px; }
+      .chat-list { display:grid; gap:12px; }
+      .chat-row { display:flex; }
+      .chat-row.own { justify-content:flex-end; }
+      .chat-bubble { max-width:min(86%, 540px); padding:14px 16px; border-radius:20px; border:1px solid rgba(248,241,223,.12); background:rgba(248,241,223,.08); color:var(--cream); }
+      .chat-row.own .chat-bubble { background:rgba(200,146,61,.16); border-color:rgba(200,146,61,.24); }
+      .chat-author { margin-bottom:8px; color:rgba(248,241,223,.74); font-size:.86rem; }
+      .chat-text { white-space:pre-wrap; line-height:1.45; }
+      .chat-audio { width:100%; margin-top:8px; }
+      .chat-meta { margin-top:8px; color:rgba(248,241,223,.62); font-size:.82rem; }
+      .chat-composer { display:grid; gap:12px; padding-top:10px; border-top:1px solid rgba(248,241,223,.1); }
+      .chat-composer-row { display:flex; gap:10px; align-items:center; }
+      .chat-composer-row input { flex:1; width:auto; background:rgba(255,250,242,.96); }
+      .chat-send-button { width:46px; height:46px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:999px; font-size:1.25rem; line-height:1; }
+      .chat-voice-tools { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+      .chat-voice-tools button { min-width:0; }
+      .chat-status { margin:0; }
       .reading-card { display:grid; gap:10px; min-width:0; overflow-x:hidden; }
       .reading-card h3 { margin:0; font-size:1.1rem; }
       .reading-card p { color:#1d1b18; }
@@ -210,6 +237,9 @@
         .feed-surface { min-height:calc(100vh - 130px); padding:10px; border-radius:22px; }
         .feed-modal-card .modal-body-scroll { max-height:calc(100vh - 88px); }
         .feed-surface .feed-shell { max-height:calc(100vh - 178px); border-radius:20px; }
+        .chat-modal-body { max-height:calc(100vh - 88px); }
+        .chat-surface { min-height:calc(100vh - 128px); border-radius:22px; }
+        .chat-shell { max-height:calc(100vh - 332px); }
         .info-fab { right:14px; bottom:14px; }
         .info-panel { right:14px; bottom:70px; width:min(300px, calc(100vw - 24px)); }
       }
@@ -227,6 +257,9 @@
               </button>
               <button id="open-intention-modal" class="rail-button" aria-label="Open intention editor">
                 <svg viewBox="0 0 24 24"><path d="M12 21c4.2-3.2 7-6.5 7-10a4 4 0 0 0-7-2.4A4 4 0 0 0 5 11c0 3.5 2.8 6.8 7 10Z"/><path d="M12 7v6"/><path d="M9 10h6"/></svg>
+              </button>
+              <button id="open-chat-modal" class="rail-button" aria-label="Open community chat">
+                <svg viewBox="0 0 24 24"><path d="M5 7.5A2.5 2.5 0 0 1 7.5 5h9A2.5 2.5 0 0 1 19 7.5v6A2.5 2.5 0 0 1 16.5 16H11l-4 3v-3H7.5A2.5 2.5 0 0 1 5 13.5Z"/></svg>
               </button>
               <button id="open-group-modal" class="rail-button" aria-label="Select community">
                 <svg viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M7 4v6"/><path d="M17 4v6"/><rect x="4" y="7" width="16" height="13" rx="2"/><path d="M8 12h8"/><path d="M8 16h5"/></svg>
@@ -379,6 +412,36 @@
         </div>
       </div>
 
+      <div id="chat-modal" class="modal-backdrop top-sheet" aria-hidden="true">
+        <div class="modal-card chat-modal-card" role="dialog" aria-modal="true" aria-labelledby="chat-modal-title">
+          <div class="modal-header">
+            <div class="modal-title" id="chat-modal-title">Community Chat</div>
+            <button id="close-chat-modal" class="modal-close" aria-label="Close chat dialog">&times;</button>
+          </div>
+          <div class="modal-body-scroll chat-modal-body">
+            <div class="chat-surface">
+              <div id="chat-active-group" class="chat-summary">Choose your active community in Settings first.</div>
+              <div id="chat-empty" class="chat-empty">No chat messages yet.</div>
+              <div id="chat-shell" class="chat-shell">
+                <div id="chat-list" class="chat-list"></div>
+              </div>
+              <div class="chat-composer">
+                <div class="chat-composer-row">
+                  <input id="chat-text" type="text" placeholder="Send a message to your community...">
+                  <button id="send-chat" class="chat-send-button" aria-label="Send message" title="Send message">➜</button>
+                </div>
+                <div class="chat-voice-tools">
+                  <button id="record-chat" type="button">Record Voice</button>
+                  <button id="stop-chat" class="secondary" type="button" disabled>Stop</button>
+                  <button id="refresh-chat" class="secondary" type="button">Refresh</button>
+                </div>
+                <div id="chat-recording-status" class="status chat-status">Voice chat is ready when your group is active.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </main>
 
     <script type="module">
@@ -396,7 +459,15 @@
         closeIntentionModal: document.querySelector("#close-intention-modal"),
         closeParticipantsModal: document.querySelector("#close-participants-modal"),
         closeFeedModal: document.querySelector("#close-feed-modal"),
+        closeChatModal: document.querySelector("#close-chat-modal"),
         closeGroupModal: document.querySelector("#close-group-modal"),
+        chatActiveGroup: document.querySelector("#chat-active-group"),
+        chatEmpty: document.querySelector("#chat-empty"),
+        chatList: document.querySelector("#chat-list"),
+        chatModal: document.querySelector("#chat-modal"),
+        chatRecordingStatus: document.querySelector("#chat-recording-status"),
+        chatShell: document.querySelector("#chat-shell"),
+        chatText: document.querySelector("#chat-text"),
         editIntentionBody: document.querySelector("#edit-intention-body"),
         feedEmpty: document.querySelector("#feed-empty"),
         feedModal: document.querySelector("#feed-modal"),
@@ -408,6 +479,7 @@
         intentionBody: document.querySelector("#intention-body"),
         intentionModal: document.querySelector("#intention-modal"),
         mobileActionStrip: document.querySelector("#mobile-action-strip"),
+        openChatModal: document.querySelector("#open-chat-modal"),
         openFeedModal: document.querySelector("#open-feed-modal"),
         openGroupModal: document.querySelector("#open-group-modal"),
         openIntentionModal: document.querySelector("#open-intention-modal"),
@@ -430,11 +502,15 @@
         refreshAudioButton: document.querySelector("#refresh-audio"),
         readingModal: document.querySelector("#reading-modal"),
         readingModalContent: document.querySelector("#reading-modal-content"),
+        recordChat: document.querySelector("#record-chat"),
+        refreshChat: document.querySelector("#refresh-chat"),
         saveIntention: document.querySelector("#save-intention"),
+        sendChat: document.querySelector("#send-chat"),
         sendPrayer: document.querySelector("#send-prayer"),
         sharedAudio: document.querySelector("#shared-audio"),
         skipIntention: document.querySelector("#skip-intention"),
         skipPrayer: document.querySelector("#skip-prayer"),
+        stopChat: document.querySelector("#stop-chat"),
         stopButton: document.querySelector("#stop-button"),
         deleteAudioButton: document.querySelector("#delete-audio"),
         status: document.querySelector("#status"),
@@ -453,6 +529,9 @@
       let currentSessionUser = null;
       let currentGroups = [];
       let currentPrayerFeed = [];
+      let chatRecorder = null;
+      let chatRecordingStartedAt = null;
+      let chatAudioChunks = [];
       let latestInfoMessage = "";
 
       function intentionStorageKey() {
@@ -586,6 +665,11 @@
         els.recordingStatus.classList.toggle("error", isError);
       }
 
+      function setChatRecordingStatus(message, isError = false) {
+        els.chatRecordingStatus.textContent = message;
+        els.chatRecordingStatus.classList.toggle("error", isError);
+      }
+
       function preferredMimeType() {
         const candidates = [
           "audio/webm;codecs=opus",
@@ -606,6 +690,16 @@
         els.deleteAudioButton.disabled = isRecording || !recordingLocked || !recordingCanManage;
         els.recordButton.title = recordingLocked && recordingCanManage ? "Replace recording" : "Record reading";
         els.recordButton.setAttribute("aria-label", recordingLocked && recordingCanManage ? "Replace recording" : "Record reading");
+      }
+
+      function updateChatRecorderButtons() {
+        const hasGroup = Boolean(selectedGroupSlug());
+        const hasRecorder = Boolean(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
+        const isRecording = Boolean(chatRecorder && chatRecorder.state === "recording");
+        els.recordChat.disabled = !hasGroup || !hasRecorder || isRecording;
+        els.sendChat.disabled = !hasGroup;
+        els.refreshChat.disabled = !hasGroup;
+        els.stopChat.disabled = !isRecording;
       }
 
       function updateBannerAndButton() {
@@ -713,6 +807,17 @@
       function closeFeedModal() {
         els.feedModal.classList.remove("open");
         els.feedModal.setAttribute("aria-hidden", "true");
+      }
+
+      function openChatModal() {
+        els.chatModal.classList.add("open");
+        els.chatModal.setAttribute("aria-hidden", "false");
+        requestAnimationFrame(() => els.chatText.focus());
+      }
+
+      function closeChatModal() {
+        els.chatModal.classList.remove("open");
+        els.chatModal.setAttribute("aria-hidden", "true");
       }
 
       function openParticipantsModal() {
@@ -1141,6 +1246,59 @@
         }).join("");
       }
 
+      function renderChat(messages) {
+        els.chatList.innerHTML = "";
+        if (!messages.length) {
+          els.chatEmpty.hidden = false;
+          els.chatEmpty.textContent = "No chat messages yet.";
+          return;
+        }
+
+        els.chatEmpty.hidden = true;
+        messages.forEach((item) => {
+          const row = document.createElement("article");
+          row.className = `chat-row${item.isOwn ? " own" : ""}`;
+
+          const bubble = document.createElement("div");
+          bubble.className = "chat-bubble";
+
+          const author = document.createElement("div");
+          author.className = "chat-author";
+          author.textContent = item.isOwn
+            ? `You • ${new Date(item.createdAt).toLocaleString()}`
+            : `${item.createdBy} • ${new Date(item.createdAt).toLocaleString()}`;
+          bubble.appendChild(author);
+
+          if (item.messageType === "audio" && item.audioUrl) {
+            const audio = document.createElement("audio");
+            audio.className = "chat-audio";
+            audio.controls = true;
+            audio.preload = "none";
+            audio.src = item.audioUrl;
+            bubble.appendChild(audio);
+          } else {
+            const text = document.createElement("div");
+            text.className = "chat-text";
+            text.textContent = item.body || "";
+            bubble.appendChild(text);
+          }
+
+          if (item.durationMs) {
+            const meta = document.createElement("div");
+            meta.className = "chat-meta";
+            meta.textContent = `Voice message ${Math.max(1, Math.round(item.durationMs / 1000))} sec`;
+            bubble.appendChild(meta);
+          }
+
+          row.appendChild(bubble);
+          els.chatList.appendChild(row);
+        });
+
+        requestAnimationFrame(() => {
+          els.chatShell.scrollTop = els.chatShell.scrollHeight;
+        });
+      }
+
       async function loadPrayerFeed() {
         const groupSlug = selectedGroupSlug();
         if (!groupSlug) {
@@ -1157,6 +1315,134 @@
 
         currentPrayerFeed = payload.items || [];
         renderPrayerFeed();
+      }
+
+      async function loadChat() {
+        const groupSlug = selectedGroupSlug();
+        if (!groupSlug) {
+          els.chatActiveGroup.textContent = "Choose your active community in Settings first.";
+          renderChat([]);
+          updateChatRecorderButtons();
+          return;
+        }
+
+        const activeGroup = currentGroups.find((group) => group.slug === groupSlug) || null;
+        els.chatActiveGroup.textContent = activeGroup
+          ? `Chatting in ${activeGroup.name || activeGroup.slug}`
+          : `Chatting in ${groupSlug}`;
+
+        const response = await authedFetch(`/functions/v1/community-chat?groupSlug=${encodeURIComponent(groupSlug)}`, { method: "GET" });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to load chat.");
+        renderChat(payload.messages || []);
+        updateChatRecorderButtons();
+      }
+
+      async function sendChatMessage() {
+        const groupSlug = selectedGroupSlug();
+        const body = els.chatText.value.trim();
+        if (!groupSlug) throw new Error("Choose your active community in Settings first.");
+        if (!body) throw new Error("Enter a chat message first.");
+
+        const response = await authedFetch("/functions/v1/community-chat", {
+          body: JSON.stringify({ body, groupSlug }),
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to send chat message.");
+        els.chatText.value = "";
+        renderChat(payload.messages || []);
+        const pushResult = payload.pushResult || {};
+        if (pushResult.attempted === 0) {
+          setInfoMessage("Sent your chat message. Push attempted 0 subscriptions for recipients.");
+        } else {
+          setInfoMessage(`Sent your chat message. Push sent ${pushResult.sent || 0} of ${pushResult.attempted || 0} attempted subscriptions.`);
+        }
+      }
+
+      async function uploadChatRecording(blob, durationMs) {
+        const session = await getSession();
+        const groupSlug = selectedGroupSlug();
+        if (!session) throw new Error("Sign in on the home page before recording.");
+        if (!groupSlug) throw new Error("Choose your active community in Settings first.");
+
+        const extension = blob.type.includes("mp4") ? "m4a" : "webm";
+        const file = new File([blob], `chat-${Date.now()}.${extension}`, {
+          type: blob.type || "audio/webm",
+        });
+
+        const form = new FormData();
+        form.append("audio", file);
+        form.append("groupSlug", groupSlug);
+        form.append("durationMs", String(durationMs));
+
+        const response = await fetch(`${projectUrl}/functions/v1/community-chat`, {
+          method: "POST",
+          headers: {
+            apikey: anonKey,
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: form,
+        });
+
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to upload voice message.");
+        renderChat(payload.messages || []);
+        const pushResult = payload.pushResult || {};
+        if (pushResult.attempted === 0) {
+          setInfoMessage("Sent your voice message. Push attempted 0 subscriptions for recipients.");
+        } else {
+          setInfoMessage(`Sent your voice message. Push sent ${pushResult.sent || 0} of ${pushResult.attempted || 0} attempted subscriptions.`);
+        }
+        setChatRecordingStatus("Voice message sent.");
+      }
+
+      async function startChatRecording() {
+        const session = await getSession();
+        if (!session) throw new Error("Sign in on the home page before recording.");
+        if (!selectedGroupSlug()) throw new Error("Choose your active community in Settings first.");
+        if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+          throw new Error("This device/browser does not support voice recording.");
+        }
+
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mimeType = preferredMimeType();
+        chatRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+        chatAudioChunks = [];
+        chatRecordingStartedAt = Date.now();
+
+        chatRecorder.ondataavailable = (event) => {
+          if (event.data && event.data.size > 0) {
+            chatAudioChunks.push(event.data);
+          }
+        };
+
+        chatRecorder.onstop = async () => {
+          stream.getTracks().forEach((track) => track.stop());
+          try {
+            const blob = new Blob(chatAudioChunks, { type: chatRecorder.mimeType || "audio/webm" });
+            const durationMs = Math.max(0, Date.now() - (chatRecordingStartedAt || Date.now()));
+            setChatRecordingStatus("Uploading voice message...");
+            await uploadChatRecording(blob, durationMs);
+          } catch (error) {
+            setChatRecordingStatus(error.message || "Failed to process voice message.", true);
+          } finally {
+            chatRecorder = null;
+            chatRecordingStartedAt = null;
+            chatAudioChunks = [];
+            updateChatRecorderButtons();
+          }
+        };
+
+        chatRecorder.start();
+        updateChatRecorderButtons();
+        setChatRecordingStatus("Recording voice message...");
+      }
+
+      function stopChatRecording() {
+        if (!chatRecorder || chatRecorder.state !== "recording") return;
+        chatRecorder.stop();
       }
 
       async function selectGroup(groupSlug) {
@@ -1204,6 +1490,11 @@
           updateBannerAndButton();
           renderHeroAvatars();
           updateRecordingButtons();
+          updateChatRecorderButtons();
+          els.chatActiveGroup.textContent = "Choose your active community in Settings first.";
+          els.chatList.innerHTML = "";
+          els.chatEmpty.hidden = false;
+          els.chatEmpty.textContent = "Choose your active community in Settings first.";
           setRecordingStatus("Choose your active community in Settings before using recordings.", true);
           setStatus("Choose your active community in Settings before starting prayer.", true);
           return;
@@ -1213,9 +1504,11 @@
         }
         els.prayButton.disabled = false;
         updateRecordingButtons();
+        updateChatRecorderButtons();
         renderGroupList();
         await refreshPrayerState(true);
         await loadPrayerFeed();
+        await loadChat();
       }
 
       async function startPrayer(intention = "") {
@@ -1288,14 +1581,21 @@
           await loadProfileShortcut();
           await refreshNotificationBadge();
           await loadGroups();
+          setChatRecordingStatus("Voice chat is ready when your group is active.");
           refreshTimer = window.setInterval(() => {
             refreshPrayerState().catch(() => {});
             loadPrayerFeed().catch(() => {});
+            if (els.chatModal.classList.contains("open")) {
+              loadChat().catch(() => {});
+            }
           }, 15000);
           document.addEventListener("visibilitychange", () => {
             if (!document.hidden) {
               refreshPrayerState().catch(() => {});
               loadPrayerFeed().catch(() => {});
+              if (els.chatModal.classList.contains("open")) {
+                loadChat().catch(() => {});
+              }
               refreshNotificationBadge().catch(() => {});
               loadProfileShortcut().catch(() => {});
             }
@@ -1377,6 +1677,16 @@
         closeInfoPanel();
         openIntentionModal();
       });
+      els.openChatModal.addEventListener("click", () => {
+        closeProfileMenu();
+        closeInfoPanel();
+        loadChat()
+          .catch((error) => setChatRecordingStatus(error.message || "Failed to load chat.", true))
+          .finally(() => {
+            updateChatRecorderButtons();
+            openChatModal();
+          });
+      });
       els.openGroupModal.addEventListener("click", () => {
         closeProfileMenu();
         closeInfoPanel();
@@ -1395,10 +1705,27 @@
       els.closeParticipantsModal.addEventListener("click", closeParticipantsModal);
       els.closeGroupModal.addEventListener("click", closeGroupModal);
       els.closeFeedModal.addEventListener("click", closeFeedModal);
+      els.closeChatModal.addEventListener("click", closeChatModal);
       els.recordButton.addEventListener("click", () => wrapRecording(startRecording, els.recordButton));
       els.stopButton.addEventListener("click", stopRecording);
       els.deleteAudioButton.addEventListener("click", () => wrapRecording(deleteRecording, els.deleteAudioButton));
       els.refreshAudioButton.addEventListener("click", () => wrapRecording(loadLatestRecording, els.refreshAudioButton));
+      els.refreshChat.addEventListener("click", () => wrap(loadChat, els.refreshChat));
+      els.sendChat.addEventListener("click", () => wrap(sendChatMessage, els.sendChat));
+      els.chatText.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && !event.shiftKey) {
+          event.preventDefault();
+          wrap(sendChatMessage, els.sendChat);
+        }
+      });
+      els.recordChat.addEventListener("click", async () => {
+        try {
+          await startChatRecording();
+        } catch (error) {
+          setChatRecordingStatus(error.message || "Failed to start voice recording.", true);
+        }
+      });
+      els.stopChat.addEventListener("click", stopChatRecording);
       els.saveIntention.addEventListener("click", () => wrap(saveIntentionFromSideRail, els.saveIntention));
       els.skipIntention.addEventListener("click", closeIntentionModal);
       els.sendPrayer.addEventListener("click", () => wrap(() => {
@@ -1428,6 +1755,9 @@
       });
       els.feedModal.addEventListener("click", (event) => {
         if (event.target === els.feedModal) closeFeedModal();
+      });
+      els.chatModal.addEventListener("click", (event) => {
+        if (event.target === els.chatModal) closeChatModal();
       });
       document.addEventListener("click", (event) => {
         const avatarButton = event.target.closest?.(".hero-avatar-wrap[data-avatar-name]");
