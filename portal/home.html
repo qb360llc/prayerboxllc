@@ -179,7 +179,17 @@
       .chat-row.own { justify-content:flex-end; }
       .chat-bubble { max-width:min(86%, 540px); padding:14px 16px; border-radius:20px; border:1px solid rgba(248,241,223,.12); background:rgba(248,241,223,.08); color:var(--cream); }
       .chat-row.own .chat-bubble { background:rgba(200,146,61,.16); border-color:rgba(200,146,61,.24); }
-      .chat-author { margin-bottom:8px; color:rgba(248,241,223,.74); font-size:.86rem; }
+      .chat-author {
+        display:flex;
+        align-items:center;
+        gap:10px;
+        margin-bottom:8px;
+        color:rgba(248,241,223,.74);
+        font-size:.86rem;
+      }
+      .chat-author-meta { display:grid; gap:2px; min-width:0; }
+      .chat-author-name { color:var(--cream); font-weight:600; }
+      .chat-author-time { color:rgba(248,241,223,.62); font-size:.8rem; }
       .chat-text { white-space:pre-wrap; line-height:1.45; }
       .chat-audio { width:100%; margin-top:8px; }
       .chat-meta { margin-top:8px; color:rgba(248,241,223,.62); font-size:.82rem; }
@@ -493,7 +503,7 @@
               <div class="chat-composer">
                 <div class="chat-composer-shell">
                   <input id="chat-text" type="text" placeholder="Send a message to your community...">
-                  <button id="send-chat" class="chat-send-button record-mode" aria-label="Record voice message" title="Record voice message" data-mode="record"><span id="chat-send-icon" aria-hidden="true">🎙</span></button>
+                  <button id="send-chat" class="chat-send-button record-mode" aria-label="Record voice message" title="Record voice message" data-mode="record"><span id="chat-send-icon" aria-hidden="true">&#127897;</span></button>
                 </div>
                 <div class="chat-composer-footer">
                   <div id="chat-recording-status" class="status chat-status">Voice chat is ready when your group is active.</div>
@@ -758,16 +768,16 @@
         const hasText = Boolean(els.chatText.value.trim());
         let mode = "record";
         let label = "Record voice message";
-        let icon = "🎙";
+        let icon = "\u{1F399}";
 
         if (isRecording) {
           mode = "stop";
           label = "Stop recording";
-          icon = "■";
+          icon = "\u25A0";
         } else if (hasText) {
           mode = "send";
           label = "Send message";
-          icon = "↑";
+          icon = "\u2191";
         } else if (!hasRecorder) {
           label = "Voice recording unavailable";
         }
@@ -1353,9 +1363,32 @@
 
           const author = document.createElement("div");
           author.className = "chat-author";
-          author.textContent = item.isOwn
-            ? `You • ${new Date(item.createdAt).toLocaleString()}`
-            : `${item.createdBy} • ${new Date(item.createdAt).toLocaleString()}`;
+          const authorName = item.isOwn ? "You" : (item.createdBy || "Community member");
+          const avatarUrl = typeof item.avatarUrl === "string" ? item.avatarUrl.trim() : "";
+          const authorAvatar = document.createElement("span");
+          authorAvatar.className = "feed-author-avatar";
+          if (avatarUrl) {
+            authorAvatar.innerHTML = `<img src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(authorName)}">`;
+          } else {
+            authorAvatar.textContent = initialsForName(authorName);
+          }
+          const authorMeta = document.createElement("div");
+          authorMeta.className = "chat-author-meta";
+          const authorNameLine = document.createElement("div");
+          authorNameLine.className = "chat-author-name";
+          authorNameLine.textContent = authorName;
+          const authorTime = document.createElement("div");
+          authorTime.className = "chat-author-time";
+          authorTime.textContent = new Date(item.createdAt).toLocaleString([], {
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+          });
+          authorMeta.appendChild(authorNameLine);
+          authorMeta.appendChild(authorTime);
+          author.appendChild(authorAvatar);
+          author.appendChild(authorMeta);
           bubble.appendChild(author);
 
           if (item.messageType === "audio" && item.audioUrl) {

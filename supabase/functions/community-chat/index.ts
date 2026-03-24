@@ -140,13 +140,14 @@ async function fetchMessages(
       email?: string | null;
       first_name?: string | null;
       last_name?: string | null;
+      avatar_url?: string | null;
     }
   >();
 
   if (authorIds.length) {
     const { data: authors, error: authorsError } = await supabase
       .from("profiles")
-      .select("id, first_name, last_name, display_name, email")
+      .select("id, first_name, last_name, display_name, email, avatar_url")
       .in("id", authorIds);
 
     if (authorsError) throw authorsError;
@@ -159,6 +160,7 @@ async function fetchMessages(
           email: typeof author.email === "string" ? author.email : null,
           first_name: typeof author.first_name === "string" ? author.first_name : null,
           last_name: typeof author.last_name === "string" ? author.last_name : null,
+          avatar_url: typeof author.avatar_url === "string" ? author.avatar_url : null,
         },
       ]),
     );
@@ -189,6 +191,7 @@ async function fetchMessages(
       contentType: item.content_type,
       createdAt: item.created_at,
       createdBy: fullName || profile?.display_name || profile?.email || "Community member",
+      avatarUrl: profile?.avatar_url || null,
       durationMs: item.duration_ms,
       id: item.id,
       isOwn: String(item.created_by_user_id) === userId,
