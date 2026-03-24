@@ -219,9 +219,6 @@
               <button id="open-intention-modal" class="rail-button" aria-label="Open intention editor">
                 <svg viewBox="0 0 24 24"><path d="M12 21c4.2-3.2 7-6.5 7-10a4 4 0 0 0-7-2.4A4 4 0 0 0 5 11c0 3.5 2.8 6.8 7 10Z"/><path d="M12 7v6"/><path d="M9 10h6"/></svg>
               </button>
-              <button id="open-participants-modal" class="rail-button" aria-label="Open participants list">
-                <svg viewBox="0 0 24 24"><path d="M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M16.5 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/><path d="M3.5 19a4.5 4.5 0 0 1 9 0"/><path d="M13 19a3.5 3.5 0 0 1 7 0"/></svg>
-              </button>
               <button id="open-group-modal" class="rail-button" aria-label="Select community">
                 <svg viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M7 4v6"/><path d="M17 4v6"/><rect x="4" y="7" width="16" height="13" rx="2"/><path d="M8 12h8"/><path d="M8 16h5"/></svg>
               </button>
@@ -1370,12 +1367,6 @@
         closeProfileMenu();
         closeInfoPanel();
         openIntentionModal();
-      });
-      els.openParticipantsModal.addEventListener("click", () => {
-        closeProfileMenu();
-        closeInfoPanel();
-        renderParticipants();
-        openParticipantsModal();
       });
       els.openGroupModal.addEventListener("click", () => {
         closeProfileMenu();
