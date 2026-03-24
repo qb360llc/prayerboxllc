@@ -195,6 +195,27 @@
       .feed-date { font-size:.84rem; color:#6f675d; }
       .feed-body, .feed-event-copy { margin:0; color:#1d1b18; }
       .feed-event-copy { font-weight:600; }
+      .feed-actions { display:flex; align-items:center; gap:10px; margin-top:12px; }
+      .feed-amen-button {
+        min-width:0;
+        padding:0;
+        border:none;
+        border-radius:0;
+        background:none;
+        box-shadow:none;
+        color:rgba(248,241,223,.82);
+        display:inline-flex;
+        align-items:center;
+        gap:8px;
+      }
+      .feed-amen-button .heart {
+        font-size:1rem;
+        line-height:1;
+        color:rgba(248,241,223,.74);
+      }
+      .feed-amen-button.active .heart { color:#e07a78; }
+      .feed-amen-button .amen-label { color:inherit; }
+      .feed-amen-button .amen-count { color:rgba(248,241,223,.62); font-size:.88rem; }
       .feed-modal-card { background:linear-gradient(180deg, #294d61 0%, var(--bg) 42%, var(--bg-deep) 100%); color:var(--cream); }
       .feed-modal-card .modal-title,
       .feed-modal-card .modal-close { color:var(--cream); }
@@ -210,6 +231,10 @@
       .feed-surface .feed-event-copy { color:var(--cream); }
       .feed-surface .feed-author-avatar { background:rgba(248,241,223,.1); border-color:rgba(248,241,223,.14); color:var(--cream); }
       .feed-surface .feed-date { color:rgba(248,241,223,.66); }
+      .feed-surface .feed-amen-button { color:rgba(248,241,223,.84); }
+      .feed-surface .feed-amen-button .heart { color:rgba(248,241,223,.68); }
+      .feed-surface .feed-amen-button.active .heart { color:#ef9a95; }
+      .feed-surface .feed-amen-button .amen-count { color:rgba(248,241,223,.66); }
       .chat-modal-card { background:linear-gradient(180deg, #294d61 0%, var(--bg) 42%, var(--bg-deep) 100%); color:var(--cream); }
       .chat-modal-card .modal-title,
       .chat-modal-card .modal-close { color:var(--cream); }
@@ -1580,6 +1605,13 @@
                 <span class="feed-date">${escapeHtml(formatFeedDate(item.createdAt))}</span>
               </div>
               <p class="feed-body">${escapeHtml(item.body)}</p>
+              <div class="feed-actions">
+                <button class="feed-amen-button ${item.userHasAmen ? "active" : ""}" type="button" data-feed-intention-id="${escapeHtml(item.intentionId)}" aria-label="${item.userHasAmen ? "Remove Amen" : "Say Amen"}">
+                  <span class="heart" aria-hidden="true">${item.userHasAmen ? "♥" : "♡"}</span>
+                  <span class="amen-label">Amen</span>
+                  <span class="amen-count">${item.amenCount || 0}</span>
+                </button>
+              </div>
             </article>
           `;
         }).join("");
@@ -1588,6 +1620,14 @@
         } else {
           syncIntentionUnreadBadge();
         }
+        els.prayerFeed.querySelectorAll("[data-feed-intention-id]").forEach((button) => {
+          button.addEventListener("click", () => {
+            const intentionId = button.getAttribute("data-feed-intention-id") || "";
+            if (intentionId) {
+              wrap(() => toggleFeedAmen(intentionId), button);
+            }
+          });
+        });
       }
 
       function renderChat(messages) {
@@ -1853,6 +1893,29 @@
         await loadGroups();
         await loadPrayerFeed();
         setInfoMessage("Community updated.");
+      }
+
+      async function toggleFeedAmen(intentionId) {
+        const groupSlug = selectedGroupSlug();
+        if (!groupSlug) {
+          throw new Error("Choose your active community in Settings first.");
+        }
+
+        const response = await authedFetch("/functions/v1/community-intentions", {
+          body: JSON.stringify({
+            action: "react",
+            groupSlug,
+            intentionId,
+            reactionType: "love",
+          }),
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error || "Failed to update Amen.");
+        }
+        await loadPrayerFeed();
       }
 
       async function saveIntentionFromSideRail() {

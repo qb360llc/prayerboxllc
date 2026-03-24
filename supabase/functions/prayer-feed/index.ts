@@ -4,10 +4,13 @@ type FeedItem =
   | {
     id: string;
     type: "intention";
+    intentionId: string;
     createdAt: string;
     createdBy: string;
     avatarUrl?: string | null;
     body: string;
+    amenCount: number;
+    userHasAmen: boolean;
   }
   | {
     id: string;
@@ -168,15 +171,50 @@ Deno.serve(async (request) => {
       }
     }
 
+    const intentionIds = (intentions ?? []).map((item: Record<string, unknown>) => String(item.id));
+    const reactionsByIntention = new Map<string, { amenCount: number; userHasAmen: boolean }>();
+    if (intentionIds.length) {
+      const { data: reactions, error: reactionsError } = await supabase
+        .from("community_intention_reactions")
+        .select("intention_id, user_id, reaction_type")
+        .in("intention_id", intentionIds)
+        .eq("reaction_type", "love");
+
+      if (reactionsError) {
+        throw reactionsError;
+      }
+
+      for (const intentionId of intentionIds) {
+        reactionsByIntention.set(intentionId, { amenCount: 0, userHasAmen: false });
+      }
+
+      for (const reaction of reactions ?? []) {
+        const intentionId = String((reaction as Record<string, unknown>).intention_id);
+        const bucket = reactionsByIntention.get(intentionId) ?? { amenCount: 0, userHasAmen: false };
+        bucket.amenCount += 1;
+        if (String((reaction as Record<string, unknown>).user_id) === user.id) {
+          bucket.userHasAmen = true;
+        }
+        reactionsByIntention.set(intentionId, bucket);
+      }
+    }
+
     const feedItems: FeedItem[] = [
-      ...(intentions ?? []).map((item: Record<string, unknown>) => ({
-        avatarUrl: profileAvatar(authorsById.get(String(item.created_by_user_id))),
-        body: String(item.body || ""),
-        createdAt: String(item.created_at),
-        createdBy: profileName(authorsById.get(String(item.created_by_user_id))),
-        id: `intention:${String(item.id)}`,
-        type: "intention" as const,
-      })),
+      ...(intentions ?? []).map((item: Record<string, unknown>) => {
+        const intentionId = String(item.id);
+        const reactionState = reactionsByIntention.get(intentionId) ?? { amenCount: 0, userHasAmen: false };
+        return {
+          amenCount: reactionState.amenCount,
+          avatarUrl: profileAvatar(authorsById.get(String(item.created_by_user_id))),
+          body: String(item.body || ""),
+          createdAt: String(item.created_at),
+          createdBy: profileName(authorsById.get(String(item.created_by_user_id))),
+          id: `intention:${intentionId}`,
+          intentionId,
+          type: "intention" as const,
+          userHasAmen: reactionState.userHasAmen,
+        };
+      }),
       ...(prayerEvents ?? []).map((item: Record<string, unknown>) => {
         const name = profileName(authorsById.get(String(item.user_id)));
         const eventType = String(item.event_type) === "left" ? "left" : "entered";
