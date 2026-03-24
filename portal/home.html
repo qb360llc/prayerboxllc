@@ -301,6 +301,19 @@
       .chat-author-name { color:var(--cream); font-weight:600; }
       .chat-author-time { color:rgba(248,241,223,.62); font-size:.8rem; }
       .chat-text { white-space:pre-wrap; line-height:1.45; }
+      .chat-link-stack { display:grid; gap:8px; margin-top:10px; }
+      .chat-link-preview {
+        display:grid;
+        gap:4px;
+        padding:12px 14px;
+        border-radius:16px;
+        border:1px solid rgba(248,241,223,.12);
+        background:rgba(248,241,223,.06);
+        text-decoration:none;
+        color:var(--cream);
+      }
+      .chat-link-preview-title { font-weight:600; color:var(--cream); overflow-wrap:anywhere; }
+      .chat-link-preview-url { font-size:.82rem; color:rgba(248,241,223,.62); overflow-wrap:anywhere; }
       .chat-audio { width:100%; margin-top:8px; }
       .chat-meta { margin-top:8px; color:rgba(248,241,223,.62); font-size:.82rem; }
       .chat-composer { display:grid; gap:10px; padding-top:10px; border-top:1px solid rgba(248,241,223,.1); }
@@ -935,6 +948,28 @@
         const textarea = document.createElement("textarea");
         textarea.innerHTML = input || "";
         return textarea.value;
+      }
+
+      function extractUrls(text) {
+        const matches = String(text || "").match(/https?:\/\/[^\s<>"')]+/gi);
+        return matches ? Array.from(new Set(matches)) : [];
+      }
+
+      function formatUrlPreview(url) {
+        try {
+          const parsed = new URL(url);
+          const host = parsed.hostname.replace(/^www\./, "");
+          const path = `${parsed.pathname || "/"}${parsed.search || ""}`.replace(/\/$/, "") || "/";
+          return {
+            host,
+            title: path === "/" ? host : `${host}${path}`,
+          };
+        } catch {
+          return {
+            host: "Link",
+            title: url,
+          };
+        }
       }
 
       function initialsForName(name) {
@@ -1794,6 +1829,33 @@
             text.className = "chat-text";
             text.textContent = item.body || "";
             bubble.appendChild(text);
+
+            const urls = extractUrls(item.body || "");
+            if (urls.length) {
+              const linkStack = document.createElement("div");
+              linkStack.className = "chat-link-stack";
+              urls.forEach((url) => {
+                const preview = formatUrlPreview(url);
+                const link = document.createElement("a");
+                link.className = "chat-link-preview";
+                link.href = url;
+                link.target = "_blank";
+                link.rel = "noopener noreferrer";
+
+                const title = document.createElement("div");
+                title.className = "chat-link-preview-title";
+                title.textContent = preview.title;
+
+                const meta = document.createElement("div");
+                meta.className = "chat-link-preview-url";
+                meta.textContent = preview.host;
+
+                link.appendChild(title);
+                link.appendChild(meta);
+                linkStack.appendChild(link);
+              });
+              bubble.appendChild(linkStack);
+            }
           }
 
           if (item.durationMs) {
