@@ -112,6 +112,25 @@
       .modal-body-scroll::-webkit-scrollbar-thumb { background:rgba(35,68,87,.22); border-radius:999px; }
       .rail-button { position:relative; width:48px; height:48px; border-radius:15px; background:rgba(201,146,61,.2); border:1px solid rgba(248,241,223,.22); display:inline-flex; align-items:center; justify-content:center; padding:0; backdrop-filter:blur(10px); box-shadow:0 12px 28px rgba(10,18,24,.22); overflow:visible; }
       .rail-button svg { width:22px; height:22px; stroke:#f8f1df; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+      .rail-badge {
+        position:absolute;
+        top:-5px;
+        right:-5px;
+        min-width:18px;
+        height:18px;
+        padding:0 4px;
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        border-radius:999px;
+        background:rgba(173,55,50,.98);
+        color:#fff8f2;
+        font-size:.68rem;
+        font-weight:700;
+        line-height:1;
+        box-shadow:0 6px 12px rgba(10,18,24,.24);
+      }
+      .rail-badge[hidden] { display:none; }
       .rail-button.has-recording::after {
         content:"★";
         position:absolute;
@@ -369,9 +388,11 @@
               </button>
               <button id="open-intention-modal" class="rail-button" aria-label="Open intention editor">
                 <svg viewBox="0 0 24 24"><path d="M12 21c4.2-3.2 7-6.5 7-10a4 4 0 0 0-7-2.4A4 4 0 0 0 5 11c0 3.5 2.8 6.8 7 10Z"/><path d="M12 7v6"/><path d="M9 10h6"/></svg>
+                <span id="intention-badge" class="rail-badge" hidden>0</span>
               </button>
               <button id="open-chat-modal" class="rail-button" aria-label="Open community chat">
                 <svg viewBox="0 0 24 24"><path d="M5 7.5A2.5 2.5 0 0 1 7.5 5h9A2.5 2.5 0 0 1 19 7.5v6A2.5 2.5 0 0 1 16.5 16H11l-4 3v-3H7.5A2.5 2.5 0 0 1 5 13.5Z"/></svg>
+                <span id="chat-badge" class="rail-badge" hidden>0</span>
               </button>
               <button id="open-group-modal" class="rail-button" aria-label="Select community">
                 <svg viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M7 4v6"/><path d="M17 4v6"/><rect x="4" y="7" width="16" height="13" rx="2"/><path d="M8 12h8"/><path d="M8 16h5"/></svg>
@@ -568,6 +589,8 @@
       const anonKey = config.anonKey || "";
       const SELECTED_GROUP_STORAGE_KEY = "prayerboxSelectedGroupSlug";
       const AUTH_URL = "./index.html";
+      const CHAT_SEEN_STORAGE_PREFIX = "prayerboxHomeChatSeen:";
+      const INTENTION_SEEN_STORAGE_PREFIX = "prayerboxHomeIntentionSeen:";
       const els = {
         actionMenuToggle: document.querySelector("#action-menu-toggle"),
         closePrayModal: document.querySelector("#close-pray-modal"),
@@ -578,6 +601,7 @@
         closeChatModal: document.querySelector("#close-chat-modal"),
         closeGroupModal: document.querySelector("#close-group-modal"),
         chatActiveGroup: document.querySelector("#chat-active-group"),
+        chatBadge: document.querySelector("#chat-badge"),
         chatEmpty: document.querySelector("#chat-empty"),
         chatList: document.querySelector("#chat-list"),
         chatModal: document.querySelector("#chat-modal"),
@@ -596,6 +620,7 @@
         infoFab: document.querySelector("#info-fab"),
         infoPanel: document.querySelector("#info-panel"),
         infoPanelBody: document.querySelector("#info-panel-body"),
+        intentionBadge: document.querySelector("#intention-badge"),
         intentionBody: document.querySelector("#intention-body"),
         intentionModal: document.querySelector("#intention-modal"),
         mobileActionStrip: document.querySelector("#mobile-action-strip"),
@@ -647,6 +672,7 @@
       let currentSessionUser = null;
       let currentGroups = [];
       let currentPrayerFeed = [];
+      let currentChatMessages = [];
       let chatRecorder = null;
       let chatRecordingStartedAt = null;
       let chatAudioChunks = [];
@@ -723,6 +749,79 @@
 
       function selectedGroupSlug() {
         return localStorage.getItem(SELECTED_GROUP_STORAGE_KEY) || "";
+      }
+
+      function chatSeenStorageKey(groupSlug) {
+        return `${CHAT_SEEN_STORAGE_PREFIX}${groupSlug}`;
+      }
+
+      function intentionSeenStorageKey(groupSlug) {
+        return `${INTENTION_SEEN_STORAGE_PREFIX}${groupSlug}`;
+      }
+
+      function storedSeenTimestamp(key) {
+        const value = Number(localStorage.getItem(key) || 0);
+        return Number.isFinite(value) ? value : 0;
+      }
+
+      function updateRailBadge(element, count) {
+        if (!element) return;
+        if (!count) {
+          element.hidden = true;
+          element.textContent = "0";
+          return;
+        }
+        element.hidden = false;
+        element.textContent = count > 99 ? "99+" : String(count);
+      }
+
+      function markChatSeen() {
+        const groupSlug = selectedGroupSlug();
+        if (!groupSlug) {
+          updateRailBadge(els.chatBadge, 0);
+          return;
+        }
+        const latest = currentChatMessages.reduce((max, item) => Math.max(max, Date.parse(item.createdAt || "") || 0), 0);
+        localStorage.setItem(chatSeenStorageKey(groupSlug), String(latest));
+        updateRailBadge(els.chatBadge, 0);
+      }
+
+      function syncChatUnreadBadge() {
+        const groupSlug = selectedGroupSlug();
+        if (!groupSlug) {
+          updateRailBadge(els.chatBadge, 0);
+          return;
+        }
+        const seenAt = storedSeenTimestamp(chatSeenStorageKey(groupSlug));
+        const unreadCount = currentChatMessages.filter((item) => !item.isOwn && (Date.parse(item.createdAt || "") || 0) > seenAt).length;
+        updateRailBadge(els.chatBadge, unreadCount);
+      }
+
+      function markIntentionsSeen() {
+        const groupSlug = selectedGroupSlug();
+        if (!groupSlug) {
+          updateRailBadge(els.intentionBadge, 0);
+          return;
+        }
+        const latest = currentPrayerFeed
+          .filter((item) => item.type === "intention")
+          .reduce((max, item) => Math.max(max, Date.parse(item.createdAt || "") || 0), 0);
+        localStorage.setItem(intentionSeenStorageKey(groupSlug), String(latest));
+        updateRailBadge(els.intentionBadge, 0);
+      }
+
+      function syncIntentionUnreadBadge() {
+        const groupSlug = selectedGroupSlug();
+        if (!groupSlug) {
+          updateRailBadge(els.intentionBadge, 0);
+          return;
+        }
+        const seenAt = storedSeenTimestamp(intentionSeenStorageKey(groupSlug));
+        const unreadCount = currentPrayerFeed
+          .filter((item) => item.type === "intention")
+          .filter((item) => (Date.parse(item.createdAt || "") || 0) > seenAt)
+          .length;
+        updateRailBadge(els.intentionBadge, unreadCount);
       }
 
       function decodeHtmlEntities(input) {
@@ -1416,9 +1515,11 @@
       function renderPrayerFeed() {
         const groupSlug = selectedGroupSlug();
         if (!groupSlug) {
+          currentPrayerFeed = [];
           els.prayerFeed.innerHTML = "";
           els.feedEmpty.hidden = false;
           els.feedEmpty.textContent = "Choose your active community in Settings before viewing the prayer feed.";
+          syncIntentionUnreadBadge();
           return;
         }
 
@@ -1426,6 +1527,7 @@
           els.prayerFeed.innerHTML = "";
           els.feedEmpty.hidden = false;
           els.feedEmpty.textContent = "No prayer activity yet.";
+          syncIntentionUnreadBadge();
           return;
         }
 
@@ -1459,13 +1561,20 @@
             </article>
           `;
         }).join("");
+        if (els.feedModal.classList.contains("open")) {
+          markIntentionsSeen();
+        } else {
+          syncIntentionUnreadBadge();
+        }
       }
 
       function renderChat(messages) {
+        currentChatMessages = messages;
         els.chatList.innerHTML = "";
         if (!messages.length) {
           els.chatEmpty.hidden = false;
           els.chatEmpty.textContent = "No chat messages yet.";
+          syncChatUnreadBadge();
           return;
         }
 
@@ -1535,6 +1644,11 @@
         requestAnimationFrame(() => {
           els.chatShell.scrollTop = els.chatShell.scrollHeight;
         });
+        if (els.chatModal.classList.contains("open")) {
+          markChatSeen();
+        } else {
+          syncChatUnreadBadge();
+        }
       }
 
       async function loadPrayerFeed() {
@@ -1558,6 +1672,7 @@
       async function loadChat() {
         const groupSlug = selectedGroupSlug();
         if (!groupSlug) {
+          currentChatMessages = [];
           els.chatActiveGroup.textContent = "Choose your active community in Settings first.";
           renderChat([]);
           updateChatRecorderButtons();
@@ -1851,17 +1966,13 @@
           refreshTimer = window.setInterval(() => {
             refreshPrayerState().catch(() => {});
             loadPrayerFeed().catch(() => {});
-            if (els.chatModal.classList.contains("open")) {
-              loadChat().catch(() => {});
-            }
+            loadChat().catch(() => {});
           }, 15000);
           document.addEventListener("visibilitychange", () => {
             if (!document.hidden) {
               refreshPrayerState().catch(() => {});
               loadPrayerFeed().catch(() => {});
-              if (els.chatModal.classList.contains("open")) {
-                loadChat().catch(() => {});
-              }
+              loadChat().catch(() => {});
               refreshNotificationBadge().catch(() => {});
               loadProfileShortcut().catch(() => {});
             }
@@ -1941,6 +2052,7 @@
       els.openIntentionModal.addEventListener("click", () => {
         closeProfileMenu();
         closeInfoPanel();
+        markIntentionsSeen();
         openIntentionModal();
       });
       els.openChatModal.addEventListener("click", () => {
@@ -1951,6 +2063,7 @@
           .finally(() => {
             updateChatRecorderButtons();
             openChatModal();
+            markChatSeen();
           });
       });
       els.openGroupModal.addEventListener("click", () => {
@@ -1963,7 +2076,10 @@
         closeInfoPanel();
         loadPrayerFeed()
           .catch((error) => setStatus(error.message || "Failed to load prayer feed.", true))
-          .finally(() => openFeedModal());
+          .finally(() => {
+            openFeedModal();
+            markIntentionsSeen();
+          });
       });
       els.closePrayModal.addEventListener("click", closePrayModal);
       els.closeReadingModal.addEventListener("click", closeReadingModal);
