@@ -151,6 +151,7 @@
       let mediaRecorder = null;
       let recordingStartedAt = null;
       let audioChunks = [];
+      let recordingLocked = false;
 
       function decodeHtmlEntities(input) {
         const textarea = document.createElement("textarea");
@@ -213,7 +214,7 @@
         const hasGroup = Boolean(selectedGroupSlug());
         const hasRecorder = Boolean(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
         const isRecording = Boolean(mediaRecorder && mediaRecorder.state === "recording");
-        recordButton.disabled = !hasGroup || !hasRecorder || isRecording;
+        recordButton.disabled = !hasGroup || !hasRecorder || isRecording || recordingLocked;
         stopButton.disabled = !isRecording;
       }
 
@@ -271,10 +272,12 @@
       async function loadLatestRecording() {
         const groupSlug = selectedGroupSlug();
         if (!groupSlug) {
+          recordingLocked = false;
           sharedAudioEl.removeAttribute("src");
           sharedAudioEl.load();
           recordingMetaEl.textContent = "";
           setRecordingStatus("Choose a community to load that group's recording.");
+          updateRecordingButtons();
           return;
         }
 
@@ -290,18 +293,24 @@
 
           const recording = payload.recording;
           if (!recording) {
+            recordingLocked = false;
             sharedAudioEl.removeAttribute("src");
             sharedAudioEl.load();
             recordingMetaEl.textContent = "";
             setRecordingStatus("No recording for this community yet today.");
+            updateRecordingButtons();
             return;
           }
 
+          recordingLocked = true;
           sharedAudioEl.src = recording.audioUrl;
           recordingMetaEl.textContent = "";
           setRecordingStatus(`${recording.createdBy || "Someone"} submitted a daily reading today.`);
+          updateRecordingButtons();
         } catch (error) {
+          recordingLocked = false;
           setRecordingStatus(error.message || "Failed to load daily reading audio.", true);
+          updateRecordingButtons();
         }
       }
 
@@ -357,6 +366,9 @@
 
         if (!selectedGroupSlug()) {
           throw new Error("Choose a community group first.");
+        }
+        if (recordingLocked) {
+          throw new Error("Today's reading is already recorded for this community.");
         }
 
         if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {

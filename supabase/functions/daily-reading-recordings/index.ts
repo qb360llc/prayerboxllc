@@ -219,6 +219,27 @@ async function notifyGroupMembers(
   });
 }
 
+async function getExistingRecording(
+  supabase: ReturnType<typeof createClient>,
+  groupId: string,
+  readingDate: string,
+) {
+  const { data, error } = await supabase
+    .from("daily_reading_recordings")
+    .select("id, reading_date, created_at, created_by_user_id, storage_path")
+    .eq("group_id", groupId)
+    .eq("reading_date", readingDate)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders(request) });
@@ -239,18 +260,7 @@ Deno.serve(async (request) => {
 
       const group = await getGroupForUser(supabase, user.id, groupSlug);
 
-      const { data: row, error } = await supabase
-        .from("daily_reading_recordings")
-        .select("id, reading_date, created_at, created_by_user_id, storage_path")
-        .eq("group_id", group.id)
-        .eq("reading_date", readingDate)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (error) {
-        throw error;
-      }
+      const row = await getExistingRecording(supabase, group.id, readingDate);
 
       if (!row) {
         return json(request, 200, { ok: true, recording: null });
@@ -300,6 +310,14 @@ Deno.serve(async (request) => {
     }
 
     const group = await getGroupForUser(supabase, user.id, groupSlug);
+    const existingRecording = await getExistingRecording(supabase, group.id, readingDate);
+    if (existingRecording) {
+      const existingActorName = await getActorName(supabase, String(existingRecording.created_by_user_id));
+      return json(request, 409, {
+        error: `${existingActorName} already submitted today's reading for ${group.name}.`,
+        ok: false,
+      });
+    }
 
     const extension = file.name.includes(".") ? file.name.split(".").pop() : "webm";
     const safeExtension = (extension || "webm").replace(/[^a-z0-9]/gi, "").toLowerCase() || "webm";

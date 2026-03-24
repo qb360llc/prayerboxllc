@@ -440,6 +440,7 @@
       let mediaRecorder = null;
       let recordingStartedAt = null;
       let audioChunks = [];
+      let recordingLocked = false;
       let currentSessionUser = null;
       let currentGroups = [];
       let currentPrayerFeed = [];
@@ -590,7 +591,7 @@
         const hasGroup = Boolean(selectedGroupSlug());
         const hasRecorder = Boolean(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
         const isRecording = Boolean(mediaRecorder && mediaRecorder.state === "recording");
-        els.recordButton.disabled = !hasGroup || !hasRecorder || isRecording;
+        els.recordButton.disabled = !hasGroup || !hasRecorder || isRecording || recordingLocked;
         els.stopButton.disabled = !isRecording;
       }
 
@@ -865,9 +866,11 @@
       async function loadLatestRecording() {
         const groupSlug = selectedGroupSlug();
         if (!groupSlug) {
+          recordingLocked = false;
           els.sharedAudio.removeAttribute("src");
           els.sharedAudio.load();
           setRecordingStatus("Choose your active community in Settings before using recordings.", true);
+          updateRecordingButtons();
           return;
         }
 
@@ -884,14 +887,18 @@
 
         const recording = payload.recording;
         if (!recording) {
+          recordingLocked = false;
           els.sharedAudio.removeAttribute("src");
           els.sharedAudio.load();
           setRecordingStatus("No recordings today.");
+          updateRecordingButtons();
           return;
         }
 
+        recordingLocked = true;
         setRecordingStatus(`${recording.createdBy || "Someone"} submitted a daily reading today.`);
         els.sharedAudio.src = recording.audioUrl;
+        updateRecordingButtons();
       }
 
       async function uploadRecording(blob, durationMs) {
@@ -946,6 +953,9 @@
 
         if (!selectedGroupSlug()) {
           throw new Error("Choose your active community in Settings first.");
+        }
+        if (recordingLocked) {
+          throw new Error("Today's reading is already recorded for this community.");
         }
 
         if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
