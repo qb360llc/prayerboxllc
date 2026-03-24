@@ -110,8 +110,25 @@
       .modal-backdrop.top-sheet .modal-body-scroll { max-height:calc(100vh - 110px); }
       .modal-body-scroll::-webkit-scrollbar { width:8px; }
       .modal-body-scroll::-webkit-scrollbar-thumb { background:rgba(35,68,87,.22); border-radius:999px; }
-      .rail-button { width:48px; height:48px; border-radius:15px; background:rgba(201,146,61,.2); border:1px solid rgba(248,241,223,.22); display:inline-flex; align-items:center; justify-content:center; padding:0; backdrop-filter:blur(10px); box-shadow:0 12px 28px rgba(10,18,24,.22); }
+      .rail-button { position:relative; width:48px; height:48px; border-radius:15px; background:rgba(201,146,61,.2); border:1px solid rgba(248,241,223,.22); display:inline-flex; align-items:center; justify-content:center; padding:0; backdrop-filter:blur(10px); box-shadow:0 12px 28px rgba(10,18,24,.22); overflow:visible; }
       .rail-button svg { width:22px; height:22px; stroke:#f8f1df; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+      .rail-button.has-recording::after {
+        content:"★";
+        position:absolute;
+        top:-4px;
+        right:-4px;
+        width:18px;
+        height:18px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        border-radius:999px;
+        background:linear-gradient(180deg, rgba(203,151,65,.98) 0%, rgba(173,117,36,.96) 100%);
+        color:#fff6e7;
+        font-size:.72rem;
+        line-height:1;
+        box-shadow:0 6px 12px rgba(10,18,24,.24);
+      }
       .profile-menu-shell { position:relative; margin-left:auto; }
       .profile-shortcut { width:48px; height:48px; border-radius:50%; overflow:hidden; text-decoration:none; color:var(--cream); font-weight:700; letter-spacing:.03em; }
       .profile-shortcut img { width:100%; height:100%; object-fit:cover; display:block; }
@@ -279,6 +296,11 @@
         display:flex;
         justify-content:flex-end;
         gap:10px;
+      }
+      .chat-preview-actions .secondary {
+        color:#fff1eb;
+        background:rgba(137,33,29,.9);
+        border-color:rgba(255,214,206,.24);
       }
       .reading-card { display:grid; gap:10px; min-width:0; overflow-x:hidden; }
       .reading-card h3 { margin:0; font-size:1.1rem; }
@@ -769,6 +791,10 @@
         els.chatRecordingStatus.classList.toggle("error", isError);
       }
 
+      function setReadingAvailabilityBadge(hasRecording) {
+        els.openReadingModal.classList.toggle("has-recording", Boolean(hasRecording));
+      }
+
       function clearPendingChatRecording() {
         pendingChatAudioBlob = null;
         pendingChatAudioDurationMs = 0;
@@ -1108,6 +1134,7 @@
           currentPrayerState = { othersInPrayerCount: 0, ownActiveCount: 0 };
           updateBannerAndButton();
           renderHeroAvatars();
+          setReadingAvailabilityBadge(false);
           setStatus("Choose your active community in Settings before starting prayer.", true);
           return;
         }
@@ -1122,6 +1149,7 @@
         }
         updateBannerAndButton();
         renderHeroAvatars();
+        await updateReadingAvailabilityBadge();
         setStatus(currentPrayerState.ownActiveCount > 0 ? "You are already in prayer." : "When you're ready, tap Pray.");
       }
 
@@ -1138,6 +1166,28 @@
           <div>${decodeHtmlEntities(reading.descriptionEncoded || "")}</div>
         `;
         readingModalLoaded = true;
+        await updateReadingAvailabilityBadge();
+      }
+
+      async function updateReadingAvailabilityBadge() {
+        const groupSlug = selectedGroupSlug();
+        if (!groupSlug) {
+          setReadingAvailabilityBadge(false);
+          return;
+        }
+        try {
+          const response = await authedFetch(`/functions/v1/daily-reading-recordings?readingDate=${currentReadingDate}&groupSlug=${encodeURIComponent(groupSlug)}`, {
+            method: "GET",
+          });
+          const payload = await response.json();
+          if (!response.ok || !payload.ok) {
+            setReadingAvailabilityBadge(false);
+            return;
+          }
+          setReadingAvailabilityBadge(Boolean(payload.recording));
+        } catch {
+          setReadingAvailabilityBadge(false);
+        }
       }
 
       async function loadLatestRecording() {
@@ -1145,6 +1195,7 @@
         if (!groupSlug) {
           recordingLocked = false;
           recordingCanManage = false;
+          setReadingAvailabilityBadge(false);
           els.sharedAudio.removeAttribute("src");
           els.sharedAudio.load();
           setRecordingStatus("Choose your active community in Settings before using recordings.", true);
@@ -1167,6 +1218,7 @@
           if (!recording) {
             recordingLocked = false;
             recordingCanManage = false;
+            setReadingAvailabilityBadge(false);
             els.sharedAudio.removeAttribute("src");
             els.sharedAudio.load();
             setRecordingStatus("No recordings today.");
@@ -1176,6 +1228,7 @@
 
           recordingLocked = true;
           recordingCanManage = Boolean(recording.canManage);
+          setReadingAvailabilityBadge(true);
           setRecordingStatus(recordingCanManage
             ? "You submitted today's daily reading. You can replace or delete it."
             : `${recording.createdBy || "Someone"} submitted a daily reading today.`);
@@ -1184,6 +1237,7 @@
         } catch (error) {
           recordingLocked = false;
           recordingCanManage = false;
+          setReadingAvailabilityBadge(false);
           setRecordingStatus(error.message || "Failed to load recording.", true);
           updateRecordingButtons();
           throw error;
@@ -1209,6 +1263,7 @@
 
         recordingLocked = false;
         recordingCanManage = false;
+        setReadingAvailabilityBadge(false);
         els.sharedAudio.pause();
         els.sharedAudio.removeAttribute("src");
         els.sharedAudio.load();
@@ -1258,6 +1313,7 @@
           setRecordingStatus(`Recording uploaded. Push sent ${pushResult.sent || 0} of ${pushResult.attempted || 0} attempted subscriptions.`);
         }
         await loadLatestRecording();
+        await updateReadingAvailabilityBadge();
       }
 
       async function startRecording() {
@@ -1697,6 +1753,7 @@
           currentPrayerState = { othersInPrayerCount: 0, ownActiveCount: 0 };
           updateBannerAndButton();
           renderHeroAvatars();
+          setReadingAvailabilityBadge(false);
           updateRecordingButtons();
           updateChatRecorderButtons();
           els.chatActiveGroup.textContent = "Choose your active community in Settings first.";
@@ -1717,6 +1774,7 @@
         await refreshPrayerState(true);
         await loadPrayerFeed();
         await loadChat();
+        await updateReadingAvailabilityBadge();
       }
 
       async function startPrayer(intention = "") {
