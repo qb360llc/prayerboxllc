@@ -195,7 +195,8 @@
       .feed-date { font-size:.84rem; color:#6f675d; }
       .feed-body, .feed-event-copy { margin:0; color:#1d1b18; }
       .feed-event-copy { font-weight:600; }
-      .feed-actions { display:flex; align-items:center; gap:10px; margin-top:12px; }
+      .feed-actions { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:12px; }
+      .feed-actions-right { display:flex; align-items:center; gap:12px; margin-left:auto; }
       .feed-link-button {
         min-width:0;
         padding:0;
@@ -204,6 +205,24 @@
         background:none;
         box-shadow:none;
         color:rgba(248,241,223,.82);
+      }
+      .feed-comment-button {
+        min-width:0;
+        padding:0;
+        border:none;
+        border-radius:0;
+        background:none;
+        box-shadow:none;
+        color:rgba(248,241,223,.82);
+        display:inline-flex;
+        align-items:center;
+        gap:8px;
+      }
+      .feed-comment-button .comment-count { color:rgba(248,241,223,.62); font-size:.88rem; }
+      .feed-comments-toggle {
+        margin-top:6px;
+        font-size:.82rem;
+        color:rgba(248,241,223,.66);
       }
       .feed-amen-button {
         min-width:0;
@@ -245,6 +264,9 @@
       .feed-surface .feed-amen-button.active .heart { color:#ef9a95; }
       .feed-surface .feed-amen-button .amen-count { color:rgba(248,241,223,.66); }
       .feed-surface .feed-link-button { color:rgba(248,241,223,.82); }
+      .feed-surface .feed-comment-button { color:rgba(248,241,223,.84); }
+      .feed-surface .feed-comment-button .comment-count,
+      .feed-surface .feed-comments-toggle { color:rgba(248,241,223,.66); }
       .comments-shell { margin-top:14px; padding-top:14px; border-top:1px solid rgba(248,241,223,.14); }
       .comments-list { display:grid; gap:12px; }
       .comment-item { padding:12px 14px; border-radius:16px; background:rgba(248,241,223,.06); }
@@ -1663,9 +1685,14 @@
                   <span class="amen-label">Amen</span>
                   <span class="amen-count">${item.amenCount || 0}</span>
                 </button>
-                <button class="feed-link-button open-feed-comment" type="button" data-feed-intention-id="${escapeHtml(item.intentionId)}">Comment</button>
-                <button class="feed-link-button toggle-feed-comments" type="button" data-feed-intention-id="${escapeHtml(item.intentionId)}">${openCommentIntentions.has(item.intentionId) ? "Hide Comments" : `View Comments${item.commentCount ? ` (${item.commentCount})` : ""}`}</button>
+                <div class="feed-actions-right">
+                  <button class="feed-comment-button open-feed-comment" type="button" data-feed-intention-id="${escapeHtml(item.intentionId)}">
+                    <span>Comment</span>
+                    <span class="comment-count">${item.commentCount || 0}</span>
+                  </button>
+                </div>
               </div>
+              <button class="feed-link-button feed-comments-toggle toggle-feed-comments" type="button" data-feed-intention-id="${escapeHtml(item.intentionId)}">${openCommentIntentions.has(item.intentionId) ? "Hide Comments" : `View Comments${item.commentCount ? ` (${item.commentCount})` : ""}`}</button>
               ${openCommentIntentions.has(item.intentionId) ? `
                 <div class="comments-shell">
                   <div class="comments-list">${(commentCache.get(item.intentionId) || []).length
@@ -1686,7 +1713,7 @@
         } else {
           syncIntentionUnreadBadge();
         }
-        els.prayerFeed.querySelectorAll("[data-feed-intention-id]").forEach((button) => {
+        els.prayerFeed.querySelectorAll(".feed-amen-button").forEach((button) => {
           button.addEventListener("click", () => {
             const intentionId = button.getAttribute("data-feed-intention-id") || "";
             if (intentionId) {
