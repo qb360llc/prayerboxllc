@@ -42,6 +42,15 @@
       .content h4 { margin:20px 0 8px; }
       .content p { color:var(--ink); }
       .content a { color:var(--accent-strong); }
+      .content { min-width:0; overflow-x:hidden; }
+      .content * { max-width:100%; overflow-wrap:anywhere; }
+      .content img,
+      .content iframe,
+      .content video,
+      .content svg,
+      .content canvas { height:auto; max-width:100%; }
+      .content table,
+      .content pre { display:block; max-width:100%; overflow-x:auto; }
       .actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:16px; }
       button { padding:12px 16px; border:0; border-radius:999px; font:inherit; font-weight:600; color:#fff; background:var(--accent); cursor:pointer; }
       button.secondary { background:var(--accent-strong); }
@@ -58,7 +67,7 @@
       .audio-tools { display:grid; grid-template-columns:repeat(4, 46px); justify-content:start; gap:10px; margin-top:12px; }
       .audio-tools .icon-button { border-radius:999px; }
       .audio-tools .icon-button.slot-hidden { visibility:hidden; pointer-events:none; }
-      .reading-scroll { max-height:min(62vh, 760px); overflow:auto; padding-right:8px; }
+      .reading-scroll { max-height:min(62vh, 760px); overflow-y:auto; overflow-x:hidden; overscroll-behavior-x:none; touch-action:pan-y; padding-right:8px; }
       .reading-scroll::-webkit-scrollbar { width:10px; }
       .reading-scroll::-webkit-scrollbar-thumb { background:rgba(13,107,87,.26); border-radius:999px; }
       .reading-scroll::-webkit-scrollbar-track { background:rgba(13,107,87,.06); border-radius:999px; }

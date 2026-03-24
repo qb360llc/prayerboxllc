@@ -163,16 +163,24 @@
       .feed-surface .feed-event-copy { color:var(--cream); }
       .feed-surface .feed-author-avatar { background:rgba(248,241,223,.1); border-color:rgba(248,241,223,.14); color:var(--cream); }
       .feed-surface .feed-date { color:rgba(248,241,223,.66); }
-      .reading-card { display:grid; gap:10px; }
+      .reading-card { display:grid; gap:10px; min-width:0; overflow-x:hidden; }
       .reading-card h3 { margin:0; font-size:1.1rem; }
       .reading-card p { color:#1d1b18; }
+      .reading-card * { max-width:100%; overflow-wrap:anywhere; }
+      .reading-card img,
+      .reading-card iframe,
+      .reading-card video,
+      .reading-card svg,
+      .reading-card canvas { height:auto; max-width:100%; }
+      .reading-card table,
+      .reading-card pre { display:block; max-width:100%; overflow-x:auto; }
       .recording-panel { position:sticky; top:-18px; z-index:2; margin:0 -18px 16px; padding:18px; background:rgba(255,250,240,.98); border-bottom:1px solid rgba(35,68,87,.12); box-shadow:0 10px 22px rgba(10,18,24,.08); }
       .recording-status { margin-top:0; }
       .recording-audio { width:100%; margin-top:12px; }
       .audio-tools { display:grid; grid-template-columns:repeat(4, 46px); justify-content:start; gap:10px; margin-top:12px; }
       .audio-tools .icon-button { width:46px; height:46px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:999px; font-size:1.12rem; line-height:1; }
       .audio-tools .icon-button.slot-hidden { visibility:hidden; pointer-events:none; }
-      .reading-sheet-scroll { max-height:calc(100vh - 110px); overflow:auto; padding-right:4px; }
+      .reading-sheet-scroll { max-height:calc(100vh - 110px); overflow-y:auto; overflow-x:hidden; overscroll-behavior-x:none; touch-action:pan-y; padding-right:4px; }
       .reading-sheet-scroll::-webkit-scrollbar { width:8px; }
       .reading-sheet-scroll::-webkit-scrollbar-thumb { background:rgba(35,68,87,.22); border-radius:999px; }
       @media (max-width:720px) {
