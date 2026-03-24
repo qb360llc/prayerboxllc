@@ -6,6 +6,7 @@ type FeedItem =
     type: "intention";
     createdAt: string;
     createdBy: string;
+    avatarUrl?: string | null;
     body: string;
   }
   | {
@@ -13,6 +14,7 @@ type FeedItem =
     type: "prayer_event";
     createdAt: string;
     createdBy: string;
+    avatarUrl?: string | null;
     eventType: "entered" | "left";
     body: string;
   };
@@ -49,6 +51,10 @@ function profileName(profile: Record<string, unknown> | undefined) {
     .join(" ");
 
   return fullName || String(profile?.display_name || profile?.email || "Community member");
+}
+
+function profileAvatar(profile: Record<string, unknown> | undefined) {
+  return typeof profile?.avatar_url === "string" ? profile.avatar_url.trim() : null;
 }
 
 Deno.serve(async (request) => {
@@ -150,7 +156,7 @@ Deno.serve(async (request) => {
     if (authorIds.length) {
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
-        .select("id, first_name, last_name, display_name, email")
+        .select("id, first_name, last_name, display_name, email, avatar_url")
         .in("id", authorIds);
 
       if (profilesError) {
@@ -164,6 +170,7 @@ Deno.serve(async (request) => {
 
     const feedItems: FeedItem[] = [
       ...(intentions ?? []).map((item: Record<string, unknown>) => ({
+        avatarUrl: profileAvatar(authorsById.get(String(item.created_by_user_id))),
         body: String(item.body || ""),
         createdAt: String(item.created_at),
         createdBy: profileName(authorsById.get(String(item.created_by_user_id))),
@@ -174,6 +181,7 @@ Deno.serve(async (request) => {
         const name = profileName(authorsById.get(String(item.user_id)));
         const eventType = String(item.event_type) === "left" ? "left" : "entered";
         return {
+          avatarUrl: profileAvatar(authorsById.get(String(item.user_id))),
           body: eventType === "left"
             ? `${name} has finished praying`
             : `${name} has entered prayer`,

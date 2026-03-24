@@ -141,6 +141,9 @@
       .feed-card { padding:16px 16px 14px; border-radius:22px; background:rgba(35,68,87,.08); border:1px solid rgba(35,68,87,.08); }
       .feed-card.prayer-event { background:rgba(200,146,61,.12); border-color:rgba(200,146,61,.2); }
       .feed-meta { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; }
+      .feed-author-row { display:flex; align-items:center; gap:10px; min-width:0; }
+      .feed-author-avatar { width:32px; height:32px; border-radius:50%; overflow:hidden; flex:0 0 32px; display:flex; align-items:center; justify-content:center; background:rgba(35,68,87,.14); border:1px solid rgba(35,68,87,.12); color:#234457; font-size:.72rem; font-weight:700; letter-spacing:.04em; }
+      .feed-author-avatar img { width:100%; height:100%; object-fit:cover; display:block; }
       .feed-author { font-size:.98rem; font-weight:700; color:#1d1b18; }
       .feed-date { font-size:.84rem; color:#6f675d; }
       .feed-body, .feed-event-copy { margin:0; color:#1d1b18; }
@@ -158,6 +161,7 @@
       .feed-surface .feed-author,
       .feed-surface .feed-body,
       .feed-surface .feed-event-copy { color:var(--cream); }
+      .feed-surface .feed-author-avatar { background:rgba(248,241,223,.1); border-color:rgba(248,241,223,.14); color:var(--cream); }
       .feed-surface .feed-date { color:rgba(248,241,223,.66); }
       .reading-card { display:grid; gap:10px; }
       .reading-card h3 { margin:0; font-size:1.1rem; }
@@ -1046,11 +1050,17 @@
 
         els.feedEmpty.hidden = true;
         els.prayerFeed.innerHTML = currentPrayerFeed.map((item) => {
+          const authorName = escapeHtml(item.createdBy);
+          const avatarUrl = typeof item.avatarUrl === "string" ? item.avatarUrl.trim() : "";
+          const authorAvatar = avatarUrl
+            ? `<span class="feed-author-avatar"><img src="${escapeHtml(avatarUrl)}" alt="${authorName}"></span>`
+            : `<span class="feed-author-avatar">${escapeHtml(initialsForName(item.createdBy))}</span>`;
+
           if (item.type === "prayer_event") {
             return `
               <article class="feed-card prayer-event">
                 <div class="feed-meta">
-                  <span class="feed-author">${escapeHtml(item.createdBy)}</span>
+                  <span class="feed-author-row">${authorAvatar}<span class="feed-author">${authorName}</span></span>
                   <span class="feed-date">${escapeHtml(formatFeedDate(item.createdAt))}</span>
                 </div>
                 <p class="feed-event-copy">${escapeHtml(item.body)}</p>
@@ -1061,7 +1071,7 @@
           return `
             <article class="feed-card">
               <div class="feed-meta">
-                <span class="feed-author">${escapeHtml(item.createdBy)}</span>
+                <span class="feed-author-row">${authorAvatar}<span class="feed-author">${authorName}</span></span>
                 <span class="feed-date">${escapeHtml(formatFeedDate(item.createdAt))}</span>
               </div>
               <p class="feed-body">${escapeHtml(item.body)}</p>
