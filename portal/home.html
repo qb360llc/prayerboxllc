@@ -14,6 +14,36 @@
       :root { --bg:#234457; --bg-deep:#1b3443; --gold:#c8923d; --gold-soft:#d9b36b; --cream:#f8f1df; --line:rgba(248,241,223,.18); --danger:#ffd1c9; }
       * { box-sizing:border-box; }
       body { margin:0; min-height:100vh; font-family:Georgia,"Times New Roman",serif; color:var(--cream); background:linear-gradient(180deg, #294d61 0%, var(--bg) 42%, var(--bg-deep) 100%); position:relative; overflow-x:hidden; }
+      .home-host-glow {
+        position:fixed;
+        left:50%;
+        top:32vh;
+        width:min(30vw, 220px);
+        aspect-ratio:1 / 1;
+        transform:translateX(-50%);
+        pointer-events:none;
+        z-index:0;
+        opacity:0;
+        border-radius:50%;
+        background:
+          radial-gradient(circle at 50% 50%, rgba(255,250,241,.92) 0 18%, rgba(248,221,160,.48) 19% 30%, rgba(248,221,160,.18) 31% 52%, transparent 64%),
+          radial-gradient(circle at 50% 50%, rgba(248,221,160,.22) 0 58%, transparent 72%);
+        filter:blur(8px);
+        transition:opacity .35s ease;
+      }
+      body.home-glow-solid .home-host-glow { opacity:.62; }
+      body.home-glow-flicker .home-host-glow { opacity:.78; animation:hostGlowFlicker 4.8s ease-in-out infinite; }
+      @keyframes hostGlowFlicker {
+        0%, 100% { opacity:.66; transform:translateX(-50%) scale(1); filter:blur(8px); }
+        18% { opacity:.74; transform:translateX(-50%) scale(1.02); filter:blur(9px); }
+        34% { opacity:.58; transform:translateX(-50%) scale(.985); filter:blur(7px); }
+        52% { opacity:.82; transform:translateX(-50%) scale(1.03); filter:blur(10px); }
+        68% { opacity:.61; transform:translateX(-50%) scale(.99); filter:blur(7px); }
+        84% { opacity:.76; transform:translateX(-50%) scale(1.015); filter:blur(9px); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        body.home-glow-flicker .home-host-glow { animation:none; opacity:.72; }
+      }
       body::before { content:""; position:fixed; inset:auto 50% 16vh; width:min(86vw, 560px); aspect-ratio:1 / 1.24; transform:translateX(-50%); pointer-events:none; opacity:.96; background:
         radial-gradient(circle at 50% 42%, rgba(255,255,255,.98) 0 11%, rgba(255,243,212,.95) 11.5% 15%, transparent 15.5%),
         radial-gradient(circle at 50% 42%, rgba(247,215,143,.8) 0 23%, transparent 24%),
@@ -435,6 +465,7 @@
       @media (max-width:719px) {
         body { background:#294d61 url("./home-mobile-bg.svg") center 24px / cover no-repeat fixed; }
         body::before, body::after { display:none; }
+        .home-host-glow { top:32vh; width:min(48vw, 190px); filter:blur(10px); }
         main { padding:12px 14px 48px; }
         .hero-card { min-height:calc(100vh - 110px); padding:12px 10px 2px; display:flex; flex-direction:column; justify-content:flex-end; gap:12px; }
         .pray-button { width:100%; max-width:280px; }
@@ -464,6 +495,7 @@
     </style>
   </head>
   <body>
+    <div class="home-host-glow" aria-hidden="true"></div>
     <main>
       <div class="topbar-wrap">
         <div class="topbar">
@@ -1131,8 +1163,13 @@
 
       function updateBannerAndButton() {
         const ownActive = (currentPrayerState.ownActiveCount || 0) > 0;
+        const participantCount = Array.isArray(currentPrayerState.participants)
+          ? currentPrayerState.participants.length
+          : Math.max(0, Number(currentPrayerState.ownActiveCount || 0) + Number(currentPrayerState.othersInPrayerCount || 0));
         els.prayButton.textContent = ownActive ? "Amen" : "Pray";
         els.prayButton.classList.toggle("amen", ownActive);
+        document.body.classList.toggle("home-glow-solid", participantCount === 1);
+        document.body.classList.toggle("home-glow-flicker", participantCount > 1);
       }
 
       function clearHeroAvatarLabels() {
