@@ -18,7 +18,7 @@
         position:fixed;
         left:50%;
         top:32vh;
-        width:min(30vw, 220px);
+        width:min(36vw, 264px);
         aspect-ratio:1 / 1;
         transform:translateX(-50%);
         pointer-events:none;
@@ -32,7 +32,7 @@
         transition:opacity .35s ease;
       }
       body.home-glow-solid .home-host-glow { opacity:.62; }
-      body.home-glow-flicker .home-host-glow { opacity:.78; animation:hostGlowFlicker 4.8s ease-in-out infinite; }
+      body.home-glow-flicker .home-host-glow { opacity:.78; animation:hostGlowFlicker 3.2s ease-in-out infinite; }
       @keyframes hostGlowFlicker {
         0%, 100% { opacity:.66; transform:translateX(-50%) scale(1); filter:blur(8px); }
         18% { opacity:.74; transform:translateX(-50%) scale(1.02); filter:blur(9px); }
@@ -465,7 +465,7 @@
       @media (max-width:719px) {
         body { background:#294d61 url("./home-mobile-bg.svg") center 24px / cover no-repeat fixed; }
         body::before, body::after { display:none; }
-        .home-host-glow { top:32vh; width:min(48vw, 190px); filter:blur(10px); }
+        .home-host-glow { top:32vh; width:min(58vw, 228px); filter:blur(10px); }
         main { padding:12px 14px 48px; }
         .hero-card { min-height:calc(100vh - 110px); padding:12px 10px 2px; display:flex; flex-direction:column; justify-content:flex-end; gap:12px; }
         .pray-button { width:100%; max-width:280px; }
