@@ -220,8 +220,8 @@
       .profile-menu-actions .ghost { color:var(--cream); }
       .members-summary,
       .notifications-summary { margin-bottom:14px; color:rgba(248,241,223,.84); }
-      .members-list { display:grid; gap:10px; }
-      .member-card { display:flex; align-items:center; gap:12px; padding:6px 2px; border:none; border-radius:0; background:transparent; }
+      .members-list { display:grid; gap:6px; align-content:start; justify-items:stretch; }
+      .member-card { display:flex; align-items:center; gap:12px; padding:2px 0; border:none; border-radius:0; background:transparent; }
       .member-avatar { width:42px; height:42px; border-radius:50%; overflow:hidden; flex:0 0 42px; display:flex; align-items:center; justify-content:center; background:rgba(248,241,223,.12); border:1px solid rgba(248,241,223,.14); color:var(--cream); font-size:.8rem; font-weight:700; letter-spacing:.04em; }
       .member-avatar img { width:100%; height:100%; object-fit:cover; display:block; }
       .member-name { font-size:1rem; font-weight:700; color:var(--cream); }
@@ -473,7 +473,7 @@
         border-color:rgba(255,214,206,.24);
       }
       .notifications-surface,
-      .members-surface { min-height:calc(100vh - 140px); display:grid; gap:12px; padding:12px; border-radius:28px; background:rgba(18,35,46,.52); border:1px solid rgba(248,241,223,.12); }
+      .members-surface { min-height:calc(100vh - 140px); display:grid; align-content:start; gap:12px; padding:12px; border-radius:28px; background:rgba(18,35,46,.52); border:1px solid rgba(248,241,223,.12); }
       .notifications-actions { display:flex; gap:10px; flex-wrap:wrap; }
       .notifications-shell { max-height:calc(100vh - 238px); overflow:auto; padding-right:4px; }
       .notifications-shell::-webkit-scrollbar { width:8px; }
