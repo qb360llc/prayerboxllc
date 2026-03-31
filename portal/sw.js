@@ -46,9 +46,9 @@ self.addEventListener("fetch", (event) => {
 
 self.addEventListener("push", (event) => {
   let payload = {
-    body: "Open PRayerbox to view the latest update.",
-    data: { url: "/notifications.html" },
-    title: "PRayerbox",
+    body: "Open Prayerbox to view the latest update.",
+    data: { url: "/home.html" },
+    title: "Prayerbox",
   };
 
   try {
@@ -60,7 +60,7 @@ self.addEventListener("push", (event) => {
   const options = {
     badge: "/icon.svg",
     body: payload.body,
-    data: payload.data || { url: "/notifications.html" },
+    data: payload.data || { url: "/home.html" },
     icon: "/icon.svg",
   };
 
@@ -68,7 +68,7 @@ self.addEventListener("push", (event) => {
     options.tag = payload.tag;
   }
 
-  event.waitUntil(self.registration.showNotification(payload.title || "PRayerbox", options));
+  event.waitUntil(self.registration.showNotification(payload.title || "Prayerbox", options));
 });
 
 function isHomePath(pathname) {
@@ -77,7 +77,7 @@ function isHomePath(pathname) {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const targetUrl = new URL(event.notification.data?.url || "/notifications.html", self.location.origin);
+  const targetUrl = new URL(event.notification.data?.url || "/home.html", self.location.origin);
 
   event.waitUntil(
     self.clients.matchAll({ includeUncontrolled: true, type: "window" }).then(async (clients) => {

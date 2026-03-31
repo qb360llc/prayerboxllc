@@ -62,13 +62,13 @@ Deno.serve(async (request) => {
     const supabase = await getSupabase();
     const user = await getAuthedUser(request, supabase);
     const result = await sendPushToUsers(supabase, [user.id], {
-      body: "This is a PRayerbox test push from your installed app.",
+      body: "This is a Prayerbox test push from your installed app.",
       data: {
         type: "test_push",
-        url: "/notifications.html",
+        url: "/home.html",
       },
       tag: `test-push-${user.id}`,
-      title: "PRayerbox Test Push",
+      title: "Prayerbox Test Push",
     });
 
     return json(request, 200, {

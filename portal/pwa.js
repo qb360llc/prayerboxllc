@@ -136,12 +136,15 @@ window.addEventListener("beforeinstallprompt", (event) => {
   installPromptEvent = event;
 });
 
-window.PRayerboxPWA = {
+const prayerboxPWA = {
   getPushState,
   getRegistration,
   installApp,
   subscribeToPush,
   unsubscribeFromPush,
 };
+
+window.PrayerboxPWA = prayerboxPWA;
+window.PRayerboxPWA = prayerboxPWA;
 
 getRegistration().catch(() => {});

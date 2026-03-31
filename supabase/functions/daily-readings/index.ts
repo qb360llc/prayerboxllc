@@ -42,7 +42,7 @@ Deno.serve(async (request) => {
   try {
     const response = await fetch(FEED_URL, {
       headers: {
-        "User-Agent": "PRayerbox Daily Readings/1.0",
+        "User-Agent": "Prayerbox Daily Readings/1.0",
       },
     });
 

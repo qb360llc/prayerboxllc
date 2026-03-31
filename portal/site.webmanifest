@@ -1,6 +1,6 @@
 {
-  "name": "PRayerbox",
-  "short_name": "PRayerbox",
+  "name": "Prayerbox",
+  "short_name": "Prayerbox",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
