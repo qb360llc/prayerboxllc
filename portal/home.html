@@ -173,11 +173,11 @@
       .profile-menu-actions .secondary,
       .profile-menu-actions .ghost { color:var(--cream); }
       .members-summary,
-      .notifications-summary { margin-bottom:14px; color:#4f4a42; }
+      .notifications-summary { margin-bottom:14px; color:rgba(248,241,223,.84); }
       .members-list { display:grid; gap:12px; }
-      .member-card { display:grid; gap:6px; padding:14px 16px; border-radius:18px; background:rgba(35,68,87,.08); border:1px solid rgba(35,68,87,.1); }
-      .member-name { font-size:1.02rem; font-weight:700; color:#1d1b18; }
-      .member-role { color:#4f4a42; font-size:.92rem; }
+      .member-card { display:grid; gap:6px; padding:14px 16px; border-radius:18px; background:rgba(248,241,223,.1); border:1px solid rgba(248,241,223,.14); }
+      .member-name { font-size:1.02rem; font-weight:700; color:var(--cream); }
+      .member-role { color:rgba(248,241,223,.68); font-size:.92rem; }
       .group-list { display:grid; gap:10px; }
       .group-button { width:100%; justify-content:space-between; text-align:left; border-radius:18px; background:rgba(35,68,87,.08); color:#234457; border:1px solid rgba(35,68,87,.12); display:flex; align-items:center; gap:10px; }
       .group-button.active { background:rgba(200,146,61,.18); border-color:rgba(200,146,61,.34); }
@@ -432,15 +432,25 @@
       .notifications-shell::-webkit-scrollbar { width:8px; }
       .notifications-shell::-webkit-scrollbar-thumb { background:rgba(248,241,223,.22); border-radius:999px; }
       .notifications-list { display:grid; gap:12px; }
-      .notification-card { display:grid; gap:10px; padding:16px; border-radius:22px; background:rgba(248,241,223,.08); border:1px solid rgba(248,241,223,.08); }
-      .notification-card.unread { border-color:rgba(200,146,61,.3); background:rgba(200,146,61,.12); }
-      .notification-pill { display:inline-flex; align-items:center; width:max-content; padding:4px 10px; border-radius:999px; background:rgba(248,241,223,.08); color:rgba(248,241,223,.76); font-size:.82rem; text-transform:capitalize; }
+      .notification-card { display:grid; gap:10px; padding:16px; border-radius:22px; background:rgba(248,241,223,.1); border:1px solid rgba(248,241,223,.12); }
+      .notification-card.unread { border-color:rgba(217,179,107,.42); background:rgba(200,146,61,.18); }
+      .notification-pill { display:inline-flex; align-items:center; width:max-content; padding:4px 10px; border-radius:999px; background:rgba(248,241,223,.14); color:rgba(248,241,223,.9); font-size:.82rem; text-transform:capitalize; }
       .notification-title { color:var(--cream); font-weight:700; }
       .notification-body { color:rgba(248,241,223,.84); }
       .notification-meta { color:rgba(248,241,223,.56); font-size:.86rem; }
       .notification-card-actions { display:flex; gap:10px; flex-wrap:wrap; }
       .notification-card-actions button { padding:10px 14px; }
       .sheet-empty { padding:14px 16px; border-radius:20px; border:1px solid rgba(248,241,223,.1); background:rgba(248,241,223,.06); color:rgba(248,241,223,.82); }
+      .notifications-surface .secondary {
+        background:rgba(248,241,223,.18);
+        color:var(--cream);
+        border:1px solid rgba(248,241,223,.22);
+      }
+      .notifications-surface .notification-card-actions .secondary {
+        background:linear-gradient(160deg, rgba(234,209,160,.96) 0%, rgba(200,146,61,.96) 100%);
+        color:#173241;
+        border:1px solid rgba(234,209,160,.28);
+      }
       .reading-card { display:grid; gap:10px; min-width:0; overflow-x:hidden; }
       .reading-card h3 { margin:0; font-size:1.1rem; }
       .reading-card p { color:#1d1b18; }
