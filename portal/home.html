@@ -56,8 +56,27 @@
         box-shadow:0 0 0 2px rgba(35,68,87,.7);
       }
       .menu-dot[hidden] { display:none; }
-      .mobile-action-strip { position:absolute; top:58px; left:0; display:flex; flex-direction:column; gap:10px; overflow:hidden; max-height:0; opacity:0; transform:translateY(-8px); transition:max-height .24s ease, opacity .18s ease, transform .18s ease; }
-      .mobile-action-strip.open { max-height:520px; opacity:1; transform:translateY(0); }
+      .mobile-action-strip {
+        position:absolute;
+        top:58px;
+        left:0;
+        width:min(240px, calc(100vw - 34px));
+        display:flex;
+        flex-direction:column;
+        gap:8px;
+        overflow:hidden;
+        max-height:0;
+        padding:0;
+        opacity:0;
+        transform:translateY(-8px);
+        border-radius:22px;
+        background:rgba(18,35,46,.94);
+        border:1px solid rgba(248,241,223,.14);
+        box-shadow:0 18px 38px rgba(10,18,24,.28);
+        backdrop-filter:blur(12px);
+        transition:max-height .24s ease, opacity .18s ease, transform .18s ease, padding .18s ease;
+      }
+      .mobile-action-strip.open { max-height:520px; padding:12px; opacity:1; transform:translateY(0); }
       .hero-card { min-height:calc(100vh - 140px); display:grid; align-content:space-between; gap:16px; padding:18px 18px 20px; text-align:center; }
       .hero-stack { display:grid; gap:10px; justify-items:center; align-content:end; min-height:100%; }
       .pray-button { display:inline-flex; align-items:center; justify-content:center; min-width:220px; margin-top:0; padding:18px 30px; font-size:1.12rem; background:linear-gradient(160deg, #ead1a0 0%, #c8923d 100%); box-shadow:0 18px 36px rgba(12,25,34,.24); }
@@ -123,6 +142,33 @@
       .modal-body-scroll::-webkit-scrollbar-thumb { background:rgba(35,68,87,.22); border-radius:999px; }
       .rail-button { position:relative; width:48px; height:48px; border-radius:15px; background:rgba(201,146,61,.2); border:1px solid rgba(248,241,223,.22); display:inline-flex; align-items:center; justify-content:center; padding:0; backdrop-filter:blur(10px); box-shadow:0 12px 28px rgba(10,18,24,.22); overflow:visible; }
       .rail-button svg { width:22px; height:22px; stroke:#f8f1df; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+      .mobile-action-strip .rail-button {
+        width:100%;
+        height:auto;
+        min-height:52px;
+        justify-content:flex-start;
+        gap:12px;
+        padding:12px 14px;
+        border-radius:16px;
+        background:rgba(248,241,223,.08);
+        border:1px solid rgba(248,241,223,.1);
+        box-shadow:none;
+      }
+      .mobile-action-strip .rail-button svg { flex:0 0 22px; }
+      .action-label {
+        color:var(--cream);
+        font-size:.98rem;
+        font-weight:600;
+        letter-spacing:.01em;
+      }
+      .mobile-action-strip .rail-badge {
+        position:static;
+        margin-left:auto;
+        min-width:20px;
+        height:20px;
+        padding:0 6px;
+        box-shadow:none;
+      }
       .rail-badge {
         position:absolute;
         top:-5px;
@@ -540,27 +586,34 @@
             <div id="mobile-action-strip" class="mobile-action-strip" aria-label="Home quick actions">
               <button id="open-reading-modal" class="rail-button" aria-label="Open daily gospel">
                 <svg viewBox="0 0 24 24"><path d="M6 4.5h9.5A2.5 2.5 0 0 1 18 7v12.5a1 1 0 0 0-1-1H6.5A2.5 2.5 0 0 0 4 21V7a2.5 2.5 0 0 1 2-2.5Z"/><path d="M8 7.5h6"/><path d="M8 11h6"/><path d="M8 14.5h4"/></svg>
+                <span class="action-label">Daily Readings</span>
               </button>
               <button id="open-intention-modal" class="rail-button" aria-label="Open intention editor">
                 <svg viewBox="0 0 24 24"><path d="M12 21c4.2-3.2 7-6.5 7-10a4 4 0 0 0-7-2.4A4 4 0 0 0 5 11c0 3.5 2.8 6.8 7 10Z"/><path d="M12 7v6"/><path d="M9 10h6"/></svg>
+                <span class="action-label">Share Intention</span>
               </button>
               <button id="open-chat-modal" class="rail-button" aria-label="Open community chat">
                 <svg viewBox="0 0 24 24"><path d="M5 7.5A2.5 2.5 0 0 1 7.5 5h9A2.5 2.5 0 0 1 19 7.5v6A2.5 2.5 0 0 1 16.5 16H11l-4 3v-3H7.5A2.5 2.5 0 0 1 5 13.5Z"/></svg>
+                <span class="action-label">Community Chat</span>
                 <span id="chat-badge" class="rail-badge" hidden>0</span>
               </button>
               <button id="open-notifications-modal" class="rail-button" aria-label="Open notifications">
                 <svg viewBox="0 0 24 24"><path d="M12 4.5a4.5 4.5 0 0 0-4.5 4.5v2.4c0 .6-.2 1.2-.56 1.68L5.5 15.5h13l-1.44-2.42A2.98 2.98 0 0 1 16.5 11.4V9A4.5 4.5 0 0 0 12 4.5Z"/><path d="M10 18a2 2 0 0 0 4 0"/></svg>
+                <span class="action-label">Notifications</span>
                 <span id="notifications-badge" class="rail-badge" data-notify-count hidden>0</span>
               </button>
               <button id="open-group-modal" class="rail-button" aria-label="Select community">
                 <svg viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M7 4v6"/><path d="M17 4v6"/><rect x="4" y="7" width="16" height="13" rx="2"/><path d="M8 12h8"/><path d="M8 16h5"/></svg>
+                <span class="action-label">Select Group</span>
               </button>
               <button id="open-feed-modal" class="rail-button" aria-label="Open prayer feed">
                 <svg viewBox="0 0 24 24"><path d="M5 6.5h14"/><path d="M5 12h14"/><path d="M5 17.5h9"/></svg>
+                <span class="action-label">Prayer Feed</span>
                 <span id="feed-badge" class="rail-badge" hidden>0</span>
               </button>
               <button id="open-members-modal" class="rail-button" aria-label="Open community members">
                 <svg viewBox="0 0 24 24"><path d="M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M16.5 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/><path d="M4.5 18.5a4.5 4.5 0 0 1 9 0"/><path d="M13 18.5a3.5 3.5 0 0 1 7 0"/></svg>
+                <span class="action-label">Members</span>
               </button>
             </div>
           </div>
