@@ -425,6 +425,28 @@
       .audio-tools { display:grid; grid-template-columns:repeat(4, 46px); justify-content:start; gap:10px; margin-top:12px; }
       .audio-tools .icon-button { width:46px; height:46px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:999px; font-size:1.12rem; line-height:1; }
       .audio-tools .icon-button.slot-hidden { visibility:hidden; pointer-events:none; }
+      .recording-preview {
+        display:grid;
+        gap:10px;
+        margin-top:12px;
+        padding:12px 14px;
+        border-radius:22px;
+        background:rgba(35,68,87,.08);
+        border:1px solid rgba(35,68,87,.12);
+      }
+      .recording-preview[hidden] { display:none; }
+      .recording-preview audio { width:100%; }
+      .recording-preview-actions {
+        display:flex;
+        flex-wrap:wrap;
+        justify-content:flex-end;
+        gap:10px;
+      }
+      .recording-preview-actions .secondary {
+        color:#234457;
+        background:rgba(35,68,87,.08);
+        border:1px solid rgba(35,68,87,.18);
+      }
       .reading-sheet-scroll { max-height:calc(100vh - 110px); overflow-y:auto; overflow-x:hidden; overscroll-behavior-x:none; touch-action:pan-y; padding-right:4px; }
       .reading-sheet-scroll::-webkit-scrollbar { width:8px; }
       .reading-sheet-scroll::-webkit-scrollbar-thumb { background:rgba(35,68,87,.22); border-radius:999px; }
@@ -560,6 +582,14 @@
                 <button id="stop-button" class="secondary icon-button" aria-label="Stop recording" title="Stop recording" disabled>■</button>
                 <button id="delete-audio" class="secondary icon-button slot-hidden" aria-label="Delete recording" title="Delete recording">⌫</button>
                 <button id="refresh-audio" class="secondary icon-button" aria-label="Refresh latest audio" title="Refresh latest audio">↻</button>
+              </div>
+              <div id="recording-preview" class="recording-preview" hidden>
+                <audio id="recording-preview-audio" controls preload="metadata"></audio>
+                <div class="recording-preview-actions">
+                  <button id="discard-recording-preview" class="secondary" type="button">Discard</button>
+                  <button id="rerecord-reading" class="secondary" type="button">Record Again</button>
+                  <button id="send-recording-preview" type="button">Send</button>
+                </div>
               </div>
             </div>
             <div id="reading-modal-content" class="reading-card">
@@ -756,7 +786,10 @@
         prayModal: document.querySelector("#pray-modal"),
         prayerFeed: document.querySelector("#prayer-feed"),
         recordButton: document.querySelector("#record-button"),
+        recordingPreview: document.querySelector("#recording-preview"),
+        recordingPreviewAudio: document.querySelector("#recording-preview-audio"),
         recordingStatus: document.querySelector("#recording-status"),
+        discardRecordingPreview: document.querySelector("#discard-recording-preview"),
         refreshAudioButton: document.querySelector("#refresh-audio"),
         readingModal: document.querySelector("#reading-modal"),
         readingModalContent: document.querySelector("#reading-modal-content"),
@@ -764,12 +797,14 @@
         saveIntention: document.querySelector("#save-intention"),
         shareComment: document.querySelector("#share-comment"),
         sendChat: document.querySelector("#send-chat"),
+        sendRecordingPreview: document.querySelector("#send-recording-preview"),
         sendPrayer: document.querySelector("#send-prayer"),
         sharedAudio: document.querySelector("#shared-audio"),
         skipIntention: document.querySelector("#skip-intention"),
         skipPrayer: document.querySelector("#skip-prayer"),
         stopButton: document.querySelector("#stop-button"),
         deleteAudioButton: document.querySelector("#delete-audio"),
+        rerecordReading: document.querySelector("#rerecord-reading"),
         status: document.querySelector("#status"),
       };
 
@@ -783,6 +818,9 @@
       let audioChunks = [];
       let recordingLocked = false;
       let recordingCanManage = false;
+      let pendingReadingAudioBlob = null;
+      let pendingReadingAudioDurationMs = 0;
+      let pendingReadingAudioUrl = "";
       let currentSessionUser = null;
       let currentGroups = [];
       let currentPrayerFeed = [];
@@ -1051,6 +1089,27 @@
         updateMenuDot();
       }
 
+      function clearPendingReadingRecording() {
+        pendingReadingAudioBlob = null;
+        pendingReadingAudioDurationMs = 0;
+        if (pendingReadingAudioUrl) {
+          URL.revokeObjectURL(pendingReadingAudioUrl);
+          pendingReadingAudioUrl = "";
+        }
+        els.recordingPreviewAudio.removeAttribute("src");
+        els.recordingPreviewAudio.load();
+        els.recordingPreview.hidden = true;
+      }
+
+      function setPendingReadingRecording(blob, durationMs) {
+        clearPendingReadingRecording();
+        pendingReadingAudioBlob = blob;
+        pendingReadingAudioDurationMs = durationMs;
+        pendingReadingAudioUrl = URL.createObjectURL(blob);
+        els.recordingPreviewAudio.src = pendingReadingAudioUrl;
+        els.recordingPreview.hidden = false;
+      }
+
       function clearPendingChatRecording() {
         pendingChatAudioBlob = null;
         pendingChatAudioDurationMs = 0;
@@ -1087,12 +1146,17 @@
         const hasGroup = Boolean(selectedGroupSlug());
         const hasRecorder = Boolean(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
         const isRecording = Boolean(mediaRecorder && mediaRecorder.state === "recording");
-        els.recordButton.disabled = !hasGroup || !hasRecorder || isRecording || (recordingLocked && !recordingCanManage);
+        const hasPendingRecording = Boolean(pendingReadingAudioBlob);
+        els.recordButton.disabled = !hasGroup || !hasRecorder || isRecording || hasPendingRecording || (recordingLocked && !recordingCanManage);
         els.stopButton.disabled = !isRecording;
         els.deleteAudioButton.classList.toggle("slot-hidden", !recordingLocked || !recordingCanManage);
-        els.deleteAudioButton.disabled = isRecording || !recordingLocked || !recordingCanManage;
+        els.deleteAudioButton.disabled = isRecording || hasPendingRecording || !recordingLocked || !recordingCanManage;
+        els.refreshAudioButton.disabled = isRecording || hasPendingRecording || !hasGroup;
         els.recordButton.title = recordingLocked && recordingCanManage ? "Replace recording" : "Record reading";
         els.recordButton.setAttribute("aria-label", recordingLocked && recordingCanManage ? "Replace recording" : "Record reading");
+        els.sendRecordingPreview.disabled = !hasPendingRecording || isRecording;
+        els.discardRecordingPreview.disabled = !hasPendingRecording || isRecording;
+        els.rerecordReading.disabled = !hasPendingRecording || isRecording;
       }
 
       function updateChatComposerState(hasGroup, hasRecorder, isRecording) {
@@ -1464,6 +1528,7 @@
         if (!groupSlug) {
           recordingLocked = false;
           recordingCanManage = false;
+          clearPendingReadingRecording();
           setReadingAvailabilityBadge(false);
           els.sharedAudio.removeAttribute("src");
           els.sharedAudio.load();
@@ -1473,6 +1538,7 @@
         }
 
         setRecordingStatus("Loading today's recording...");
+        clearPendingReadingRecording();
         els.sharedAudio.pause();
         els.sharedAudio.removeAttribute("src");
         els.sharedAudio.load();
@@ -1532,6 +1598,7 @@
 
         recordingLocked = false;
         recordingCanManage = false;
+        clearPendingReadingRecording();
         setReadingAvailabilityBadge(false);
         els.sharedAudio.pause();
         els.sharedAudio.removeAttribute("src");
@@ -1575,6 +1642,7 @@
           throw new Error(payload.error || "Failed to upload recording.");
         }
 
+        clearPendingReadingRecording();
         const pushResult = payload.pushResult || {};
         if (pushResult.attempted === 0) {
           setRecordingStatus("Recording uploaded. Push attempted 0 subscriptions for recipients.", true);
@@ -1619,7 +1687,8 @@
           try {
             const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || "audio/webm" });
             const durationMs = Math.max(0, Date.now() - (recordingStartedAt || Date.now()));
-            await uploadRecording(blob, durationMs);
+            setPendingReadingRecording(blob, durationMs);
+            setRecordingStatus("Preview your reading, then send or record again.");
           } catch (error) {
             setRecordingStatus(error.message || "Failed to process recording.", true);
           } finally {
@@ -1641,7 +1710,19 @@
         }
 
         mediaRecorder.stop();
-        setRecordingStatus("Uploading recording...");
+        setRecordingStatus("Preparing preview...");
+      }
+
+      async function sendPendingRecording() {
+        if (!pendingReadingAudioBlob) {
+          throw new Error("Record a reading first.");
+        }
+        await uploadRecording(pendingReadingAudioBlob, pendingReadingAudioDurationMs);
+      }
+
+      async function rerecordReading() {
+        clearPendingReadingRecording();
+        await startRecording();
       }
 
       function renderParticipants() {
@@ -2450,6 +2531,13 @@
       els.stopButton.addEventListener("click", stopRecording);
       els.deleteAudioButton.addEventListener("click", () => wrapRecording(deleteRecording, els.deleteAudioButton));
       els.refreshAudioButton.addEventListener("click", () => wrapRecording(loadLatestRecording, els.refreshAudioButton));
+      els.sendRecordingPreview.addEventListener("click", () => wrapRecording(sendPendingRecording, els.sendRecordingPreview));
+      els.rerecordReading.addEventListener("click", () => wrapRecording(rerecordReading, els.rerecordReading));
+      els.discardRecordingPreview.addEventListener("click", () => {
+        clearPendingReadingRecording();
+        setRecordingStatus("Recording discarded.");
+        updateRecordingButtons();
+      });
       els.refreshChat.addEventListener("click", () => wrap(loadChat, els.refreshChat));
       els.sendChat.addEventListener("click", () => wrap(handleChatPrimaryAction, els.sendChat));
       els.discardChatAudio.addEventListener("click", () => {
