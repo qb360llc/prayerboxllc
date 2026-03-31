@@ -35,6 +35,17 @@
       button.secondary { background:rgba(248,241,223,.14); color:var(--cream); border:1px solid var(--line); }
       button:disabled { opacity:.6; cursor:wait; }
       textarea { width:100%; min-height:170px; padding:16px 18px; border:1px solid rgba(248,241,223,.18); border-radius:22px; font:inherit; background:rgba(255,250,242,.96); color:#1d1b18; resize:vertical; }
+      input[type="time"],
+      input[type="datetime-local"],
+      select {
+        width:100%;
+        padding:14px 16px;
+        border:1px solid rgba(35,68,87,.16);
+        border-radius:18px;
+        font:inherit;
+        background:rgba(255,250,242,.98);
+        color:#1d1b18;
+      }
       .topbar-wrap { margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw); padding:0 0 14px; }
       .topbar { position:relative; display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 20px; background:transparent; }
       .topnav { display:flex; flex-wrap:wrap; gap:10px; }
@@ -140,6 +151,15 @@
       .modal-backdrop.top-sheet .modal-body-scroll { max-height:calc(100vh - 110px); }
       .modal-body-scroll::-webkit-scrollbar { width:8px; }
       .modal-body-scroll::-webkit-scrollbar-thumb { background:rgba(35,68,87,.22); border-radius:999px; }
+      .form-stack { display:grid; gap:12px; }
+      .field-stack { display:grid; gap:6px; }
+      .field-label { font-size:.9rem; font-weight:700; color:#234457; }
+      .field-help { font-size:.88rem; color:#6f675d; }
+      .summary-card { display:grid; gap:4px; padding:14px 16px; border-radius:18px; background:rgba(35,68,87,.08); border:1px solid rgba(35,68,87,.12); color:#234457; }
+      .summary-card.empty { color:#6f675d; background:rgba(35,68,87,.04); }
+      .summary-title { font-size:.82rem; letter-spacing:.08em; text-transform:uppercase; color:#6f675d; }
+      .summary-value { font-weight:700; color:#1d1b18; }
+      .summary-meta { font-size:.9rem; color:#6f675d; }
       .rail-button { position:relative; width:48px; height:48px; border-radius:15px; background:rgba(201,146,61,.2); border:1px solid rgba(248,241,223,.22); display:inline-flex; align-items:center; justify-content:center; padding:0; backdrop-filter:blur(10px); box-shadow:0 12px 28px rgba(10,18,24,.22); overflow:visible; }
       .rail-button svg { width:22px; height:22px; stroke:#f8f1df; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
       .mobile-action-strip .rail-button {
@@ -510,6 +530,9 @@
       .reading-card table,
       .reading-card pre { display:block; max-width:100%; overflow-x:auto; }
       .recording-panel { position:sticky; top:-18px; z-index:2; margin:0 -18px 16px; padding:18px; background:rgba(255,250,240,.98); border-bottom:1px solid rgba(35,68,87,.12); box-shadow:0 10px 22px rgba(10,18,24,.08); }
+      .recording-utility-row { display:grid; gap:10px; margin-bottom:12px; }
+      .recording-utility-row button.secondary { justify-self:start; }
+      .reading-reminder-summary { padding:12px 14px; border-radius:16px; background:rgba(35,68,87,.06); border:1px solid rgba(35,68,87,.1); color:#4f4a42; }
       .recording-status { margin-top:0; }
       .recording-audio { width:100%; margin-top:12px; }
       .audio-tools { display:grid; grid-template-columns:repeat(4, 46px); justify-content:start; gap:10px; margin-top:12px; }
@@ -607,6 +630,10 @@
                 <svg viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M7 4v6"/><path d="M17 4v6"/><rect x="4" y="7" width="16" height="13" rx="2"/><path d="M8 12h8"/><path d="M8 16h5"/></svg>
                 <span class="action-label">Select Group</span>
               </button>
+              <button id="open-schedule-modal" class="rail-button" aria-label="Schedule group prayer">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2.5"/><path d="M8 3v3"/><path d="M16 3v3"/></svg>
+                <span class="action-label">Prayer Schedule</span>
+              </button>
               <button id="open-feed-modal" class="rail-button" aria-label="Open prayer feed">
                 <svg viewBox="0 0 24 24"><path d="M5 6.5h14"/><path d="M5 12h14"/><path d="M5 17.5h9"/></svg>
                 <span class="action-label">Prayer Feed</span>
@@ -682,6 +709,10 @@
           </div>
           <div class="modal-body-scroll reading-sheet-scroll">
             <div class="recording-panel">
+              <div class="recording-utility-row">
+                <button id="open-reading-reminder-modal" class="secondary" type="button">Set Daily Reminders</button>
+                <div id="reading-reminder-summary" class="reading-reminder-summary">No daily reminder set.</div>
+              </div>
               <div id="recording-status" class="status recording-status">No recordings today.</div>
               <audio id="shared-audio" class="recording-audio" controls preload="none"></audio>
               <div class="audio-tools">
@@ -702,6 +733,30 @@
             <div id="reading-modal-content" class="reading-card">
               <p>Loading today's gospel...</p>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="reading-reminder-modal" class="modal-backdrop center-modal" aria-hidden="true">
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="reading-reminder-modal-title">
+          <div class="modal-header">
+            <div class="modal-title" id="reading-reminder-modal-title">Set Daily Reminders</div>
+            <button id="close-reading-reminder-modal" class="modal-close" aria-label="Close daily reminder dialog">&times;</button>
+          </div>
+          <p class="modal-copy">Choose a time for your personal reminder to open the daily reading for this community.</p>
+          <div class="form-stack">
+            <div id="reading-reminder-current" class="summary-card empty">
+              <div class="summary-title">Current Reminder</div>
+              <div class="summary-value">No reminder set yet.</div>
+            </div>
+            <label class="field-stack">
+              <span class="field-label">Reminder time</span>
+              <input id="reading-reminder-time" type="time">
+            </label>
+          </div>
+          <div class="modal-actions">
+            <button id="clear-reading-reminder" class="secondary" type="button">Clear</button>
+            <button id="save-reading-reminder" type="button">Save</button>
           </div>
         </div>
       </div>
@@ -762,6 +817,43 @@
           <p class="modal-copy">Choose which community Home should use for prayer, readings, and recordings.</p>
           <div id="group-list" class="group-list">
             <button class="group-button" type="button" disabled>Loading communities...</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="schedule-modal" class="modal-backdrop center-modal" aria-hidden="true">
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="schedule-modal-title">
+          <div class="modal-header">
+            <div class="modal-title" id="schedule-modal-title">Schedule Group Prayer</div>
+            <button id="close-schedule-modal" class="modal-close" aria-label="Close prayer schedule dialog">&times;</button>
+          </div>
+          <p class="modal-copy">Suggest a time for your community to pray together, plus how early reminders should go out.</p>
+          <div class="form-stack">
+            <div id="schedule-current" class="summary-card empty">
+              <div class="summary-title">Upcoming Prayer Time</div>
+              <div class="summary-value">No group prayer scheduled yet.</div>
+            </div>
+            <label class="field-stack">
+              <span class="field-label">Prayer time</span>
+              <input id="schedule-datetime" type="datetime-local">
+            </label>
+            <label class="field-stack">
+              <span class="field-label">Reminder lead time</span>
+              <select id="schedule-reminder-minutes">
+                <option value="0">At the prayer time</option>
+                <option value="5">5 minutes before</option>
+                <option value="10">10 minutes before</option>
+                <option value="15" selected>15 minutes before</option>
+                <option value="30">30 minutes before</option>
+                <option value="60">1 hour before</option>
+                <option value="180">3 hours before</option>
+                <option value="1440">1 day before</option>
+              </select>
+            </label>
+          </div>
+          <div class="modal-actions">
+            <button id="clear-schedule" class="secondary" type="button">Clear</button>
+            <button id="save-schedule" type="button">Save</button>
           </div>
         </div>
       </div>
@@ -867,7 +959,9 @@
         cancelComment: document.querySelector("#cancel-comment"),
         closePrayModal: document.querySelector("#close-pray-modal"),
         closeCommentModal: document.querySelector("#close-comment-modal"),
+        closeReadingReminderModal: document.querySelector("#close-reading-reminder-modal"),
         closeReadingModal: document.querySelector("#close-reading-modal"),
+        closeScheduleModal: document.querySelector("#close-schedule-modal"),
         closeIntentionModal: document.querySelector("#close-intention-modal"),
         closeMembersModal: document.querySelector("#close-members-modal"),
         closeFeedModal: document.querySelector("#close-feed-modal"),
@@ -894,6 +988,8 @@
         feedModal: document.querySelector("#feed-modal"),
         groupList: document.querySelector("#group-list"),
         groupModal: document.querySelector("#group-modal"),
+        clearReadingReminder: document.querySelector("#clear-reading-reminder"),
+        clearSchedule: document.querySelector("#clear-schedule"),
         infoFab: document.querySelector("#info-fab"),
         infoPanel: document.querySelector("#info-panel"),
         infoPanelBody: document.querySelector("#info-panel-body"),
@@ -908,6 +1004,8 @@
         openMembersModal: document.querySelector("#open-members-modal"),
         openNotificationsModal: document.querySelector("#open-notifications-modal"),
         openReadingModal: document.querySelector("#open-reading-modal"),
+        openReadingReminderModal: document.querySelector("#open-reading-reminder-modal"),
+        openScheduleModal: document.querySelector("#open-schedule-modal"),
         heroAvatars: document.querySelector("#hero-avatars"),
         membersList: document.querySelector("#members-list"),
         membersModal: document.querySelector("#members-modal"),
@@ -933,9 +1031,19 @@
         refreshAudioButton: document.querySelector("#refresh-audio"),
         readingModal: document.querySelector("#reading-modal"),
         readingModalContent: document.querySelector("#reading-modal-content"),
+        readingReminderCurrent: document.querySelector("#reading-reminder-current"),
+        readingReminderModal: document.querySelector("#reading-reminder-modal"),
+        readingReminderSummary: document.querySelector("#reading-reminder-summary"),
+        readingReminderTime: document.querySelector("#reading-reminder-time"),
         refreshChat: document.querySelector("#refresh-chat"),
         refreshNotifications: document.querySelector("#refresh-notifications"),
+        saveReadingReminder: document.querySelector("#save-reading-reminder"),
+        saveSchedule: document.querySelector("#save-schedule"),
         saveIntention: document.querySelector("#save-intention"),
+        scheduleCurrent: document.querySelector("#schedule-current"),
+        scheduleDatetime: document.querySelector("#schedule-datetime"),
+        scheduleModal: document.querySelector("#schedule-modal"),
+        scheduleReminderMinutes: document.querySelector("#schedule-reminder-minutes"),
         shareComment: document.querySelector("#share-comment"),
         sendChat: document.querySelector("#send-chat"),
         sendRecordingPreview: document.querySelector("#send-recording-preview"),
@@ -981,6 +1089,8 @@
       let pendingChatAudioUrl = "";
       let latestInfoMessage = "";
       let pendingLaunchTarget = initialLaunchParams;
+      let currentDailyReminder = null;
+      let currentPrayerSchedule = null;
 
       function intentionStorageKey() {
         return `prayerboxPrayerIntention:${selectedGroupSlug()}`;
@@ -1044,6 +1154,52 @@
             minute: "2-digit",
             month: "short",
           }).format(new Date(value));
+        } catch {
+          return "";
+        }
+      }
+
+      function clientTimezone() {
+        try {
+          return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+        } catch {
+          return "UTC";
+        }
+      }
+
+      function formatReminderTime(value) {
+        if (!value) return "";
+        const [hourText = "00", minuteText = "00"] = String(value).split(":");
+        const sample = new Date();
+        sample.setHours(Number(hourText) || 0, Number(minuteText) || 0, 0, 0);
+        return new Intl.DateTimeFormat(undefined, {
+          hour: "numeric",
+          minute: "2-digit",
+        }).format(sample);
+      }
+
+      function formatScheduleDateTime(value) {
+        if (!value) return "";
+        try {
+          return new Intl.DateTimeFormat(undefined, {
+            dateStyle: "medium",
+            timeStyle: "short",
+          }).format(new Date(value));
+        } catch {
+          return "";
+        }
+      }
+
+      function toDateTimeLocalValue(value) {
+        if (!value) return "";
+        try {
+          const date = new Date(value);
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, "0");
+          const day = String(date.getDate()).padStart(2, "0");
+          const hour = String(date.getHours()).padStart(2, "0");
+          const minute = String(date.getMinutes()).padStart(2, "0");
+          return `${year}-${month}-${day}T${hour}:${minute}`;
         } catch {
           return "";
         }
@@ -1443,6 +1599,17 @@
         els.sharedAudio.pause();
       }
 
+      function openReadingReminderModal() {
+        els.readingReminderModal.classList.add("open");
+        els.readingReminderModal.setAttribute("aria-hidden", "false");
+        requestAnimationFrame(() => els.readingReminderTime.focus());
+      }
+
+      function closeReadingReminderModal() {
+        els.readingReminderModal.classList.remove("open");
+        els.readingReminderModal.setAttribute("aria-hidden", "true");
+      }
+
       function openIntentionModal() {
         const saved = loadStoredIntention();
         els.editIntentionBody.value = saved?.body || "";
@@ -1478,6 +1645,17 @@
       function closeGroupModal() {
         els.groupModal.classList.remove("open");
         els.groupModal.setAttribute("aria-hidden", "true");
+      }
+
+      function openScheduleModal() {
+        els.scheduleModal.classList.add("open");
+        els.scheduleModal.setAttribute("aria-hidden", "false");
+        requestAnimationFrame(() => els.scheduleDatetime.focus());
+      }
+
+      function closeScheduleModal() {
+        els.scheduleModal.classList.remove("open");
+        els.scheduleModal.setAttribute("aria-hidden", "true");
       }
 
       function openFeedModal() {
@@ -1536,6 +1714,45 @@
           return;
         }
         localStorage.setItem(intentionStorageKey(), JSON.stringify(value));
+      }
+
+      function renderReadingReminderSummary() {
+        if (!currentDailyReminder) {
+          els.readingReminderSummary.textContent = "No daily reminder set.";
+          els.readingReminderCurrent.classList.add("empty");
+          els.readingReminderCurrent.innerHTML = `
+            <div class="summary-title">Current Reminder</div>
+            <div class="summary-value">No reminder set yet.</div>
+          `;
+          return;
+        }
+
+        const summaryText = `${formatReminderTime(currentDailyReminder.reminderTime)} every day`;
+        els.readingReminderSummary.textContent = `Daily reminder set for ${summaryText}.`;
+        els.readingReminderCurrent.classList.remove("empty");
+        els.readingReminderCurrent.innerHTML = `
+          <div class="summary-title">Current Reminder</div>
+          <div class="summary-value">${escapeHtml(summaryText)}</div>
+          <div class="summary-meta">${escapeHtml(currentDailyReminder.timezone || clientTimezone())}</div>
+        `;
+      }
+
+      function renderPrayerScheduleSummary() {
+        if (!currentPrayerSchedule) {
+          els.scheduleCurrent.classList.add("empty");
+          els.scheduleCurrent.innerHTML = `
+            <div class="summary-title">Upcoming Prayer Time</div>
+            <div class="summary-value">No group prayer scheduled yet.</div>
+          `;
+          return;
+        }
+
+        els.scheduleCurrent.classList.remove("empty");
+        els.scheduleCurrent.innerHTML = `
+          <div class="summary-title">Upcoming Prayer Time</div>
+          <div class="summary-value">${escapeHtml(formatScheduleDateTime(currentPrayerSchedule.scheduledFor))}</div>
+          <div class="summary-meta">Reminder ${escapeHtml(String(currentPrayerSchedule.reminderMinutes))} minute${Number(currentPrayerSchedule.reminderMinutes) === 1 ? "" : "s"} before${currentPrayerSchedule.createdBy ? ` • Suggested by ${escapeHtml(currentPrayerSchedule.createdBy)}` : ""}</div>
+        `;
       }
 
       async function authedFetch(path, options = {}) {
@@ -1786,6 +2003,164 @@
         updateRecordingButtons();
       }
 
+      async function loadDailyReminder() {
+        const groupSlug = selectedGroupSlug();
+        if (!groupSlug) {
+          currentDailyReminder = null;
+          els.readingReminderTime.value = "";
+          renderReadingReminderSummary();
+          return;
+        }
+
+        const response = await authedFetch(`/functions/v1/daily-reading-reminders?groupSlug=${encodeURIComponent(groupSlug)}`, {
+          method: "GET",
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error || "Failed to load daily reminder.");
+        }
+
+        currentDailyReminder = payload.reminder || null;
+        els.readingReminderTime.value = currentDailyReminder?.reminderTime || "";
+        renderReadingReminderSummary();
+      }
+
+      async function saveDailyReminder() {
+        const groupSlug = selectedGroupSlug();
+        const reminderTime = els.readingReminderTime.value;
+        if (!groupSlug) {
+          throw new Error("Choose your active community in Settings first.");
+        }
+        if (!reminderTime) {
+          throw new Error("Choose a reminder time first.");
+        }
+
+        const response = await authedFetch("/functions/v1/daily-reading-reminders", {
+          body: JSON.stringify({
+            groupSlug,
+            reminderTime,
+            timezone: clientTimezone(),
+          }),
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error || "Failed to save daily reminder.");
+        }
+
+        currentDailyReminder = payload.reminder || null;
+        renderReadingReminderSummary();
+        closeReadingReminderModal();
+        setInfoMessage(`Daily reminder set for ${formatReminderTime(currentDailyReminder?.reminderTime)}.`);
+      }
+
+      async function clearDailyReminder() {
+        const groupSlug = selectedGroupSlug();
+        if (!groupSlug) {
+          throw new Error("Choose your active community in Settings first.");
+        }
+
+        const response = await authedFetch(`/functions/v1/daily-reading-reminders?groupSlug=${encodeURIComponent(groupSlug)}`, {
+          method: "DELETE",
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error || "Failed to clear daily reminder.");
+        }
+
+        currentDailyReminder = null;
+        els.readingReminderTime.value = "";
+        renderReadingReminderSummary();
+        closeReadingReminderModal();
+        setInfoMessage("Daily reminder cleared.");
+      }
+
+      async function loadPrayerSchedule() {
+        const groupSlug = selectedGroupSlug();
+        if (!groupSlug) {
+          currentPrayerSchedule = null;
+          els.scheduleDatetime.value = "";
+          els.scheduleReminderMinutes.value = "15";
+          renderPrayerScheduleSummary();
+          return;
+        }
+
+        const response = await authedFetch(`/functions/v1/group-prayer-schedules?groupSlug=${encodeURIComponent(groupSlug)}`, {
+          method: "GET",
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error || "Failed to load prayer schedule.");
+        }
+
+        currentPrayerSchedule = payload.schedule || null;
+        els.scheduleDatetime.value = currentPrayerSchedule?.scheduledFor ? toDateTimeLocalValue(currentPrayerSchedule.scheduledFor) : "";
+        els.scheduleReminderMinutes.value = String(currentPrayerSchedule?.reminderMinutes ?? 15);
+        renderPrayerScheduleSummary();
+      }
+
+      async function savePrayerSchedule() {
+        const groupSlug = selectedGroupSlug();
+        const scheduledForLocal = els.scheduleDatetime.value;
+        const reminderMinutes = Number(els.scheduleReminderMinutes.value || 15);
+        if (!groupSlug) {
+          throw new Error("Choose your active community in Settings first.");
+        }
+        if (!scheduledForLocal) {
+          throw new Error("Choose a prayer time first.");
+        }
+
+        const response = await authedFetch("/functions/v1/group-prayer-schedules", {
+          body: JSON.stringify({
+            groupSlug,
+            reminderMinutes,
+            scheduledFor: new Date(scheduledForLocal).toISOString(),
+            timezone: clientTimezone(),
+          }),
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error || "Failed to save prayer schedule.");
+        }
+
+        currentPrayerSchedule = payload.schedule || null;
+        els.scheduleDatetime.value = currentPrayerSchedule?.scheduledFor ? toDateTimeLocalValue(currentPrayerSchedule.scheduledFor) : "";
+        els.scheduleReminderMinutes.value = String(currentPrayerSchedule?.reminderMinutes ?? reminderMinutes);
+        renderPrayerScheduleSummary();
+        closeScheduleModal();
+        const pushResult = payload.pushResult || {};
+        if (pushResult.attempted === 0) {
+          setInfoMessage(`Group prayer scheduled for ${formatScheduleDateTime(currentPrayerSchedule?.scheduledFor)}.`);
+        } else {
+          setInfoMessage(`Group prayer scheduled for ${formatScheduleDateTime(currentPrayerSchedule?.scheduledFor)}. Push sent ${pushResult.sent || 0} of ${pushResult.attempted || 0} attempted subscriptions.`);
+        }
+      }
+
+      async function clearPrayerSchedule() {
+        const groupSlug = selectedGroupSlug();
+        if (!groupSlug) {
+          throw new Error("Choose your active community in Settings first.");
+        }
+
+        const response = await authedFetch(`/functions/v1/group-prayer-schedules?groupSlug=${encodeURIComponent(groupSlug)}`, {
+          method: "DELETE",
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error || "Failed to clear prayer schedule.");
+        }
+
+        currentPrayerSchedule = null;
+        els.scheduleDatetime.value = "";
+        els.scheduleReminderMinutes.value = "15";
+        renderPrayerScheduleSummary();
+        closeScheduleModal();
+        setInfoMessage("Group prayer schedule cleared.");
+      }
+
       async function uploadRecording(blob, durationMs) {
         const session = await getSession();
         const groupSlug = selectedGroupSlug();
@@ -1932,7 +2307,8 @@
       function notificationTargetFor(item) {
         const type = String(item?.type || "");
         if (type === "chat_message") return "chat";
-        if (type === "daily_reading_uploaded") return "reading";
+        if (type === "daily_reading_uploaded" || type === "daily_reading_reminder") return "reading";
+        if (type === "group_prayer_scheduled" || type === "group_prayer_reminder") return "schedule";
         if (type === "intention_posted" || type === "intention_loved" || type === "prayer_started" || type === "prayer_ended" || type === "lights_activated") {
           return "feed";
         }
@@ -2337,6 +2713,11 @@
             closeNotificationsModal();
             await openReadingSheetFromLaunch();
             return;
+          case "schedule":
+            closeNotificationsModal();
+            await loadPrayerSchedule();
+            openScheduleModal();
+            return;
           default:
             return;
         }
@@ -2482,6 +2863,8 @@
         await loadGroups();
         await loadMembers();
         await loadPrayerFeed();
+        await loadDailyReminder();
+        await loadPrayerSchedule();
         setInfoMessage("Community updated.");
       }
 
@@ -2620,6 +3003,8 @@
         await refreshPrayerState(true);
         await loadPrayerFeed();
         await loadChat();
+        await loadDailyReminder();
+        await loadPrayerSchedule();
         await updateReadingAvailabilityBadge();
       }
 
@@ -2628,6 +3013,7 @@
         openReadingModal();
         try {
           await loadReadingModalContent();
+          await loadDailyReminder();
           await loadLatestRecording();
           updateRecordingButtons();
         } catch (error) {
@@ -2656,6 +3042,10 @@
             return;
           case "reading":
             await openReadingSheetFromLaunch();
+            return;
+          case "schedule":
+            await loadPrayerSchedule();
+            openScheduleModal();
             return;
           case "members":
             await loadMembers();
@@ -2819,6 +3209,7 @@
         openReadingModal();
         try {
           await loadReadingModalContent();
+          await loadDailyReminder();
           await loadLatestRecording();
           updateRecordingButtons();
         } catch (error) {
@@ -2827,6 +3218,15 @@
         } finally {
           els.openReadingModal.disabled = false;
         }
+      });
+      els.openReadingReminderModal.addEventListener("click", () => {
+        closeProfileMenu();
+        closeInfoPanel();
+        loadDailyReminder()
+          .catch((error) => setRecordingStatus(error.message || "Failed to load daily reminder.", true))
+          .finally(() => {
+            openReadingReminderModal();
+          });
       });
       els.openIntentionModal.addEventListener("click", () => {
         closeProfileMenu();
@@ -2858,6 +3258,15 @@
         closeInfoPanel();
         openGroupModal();
       });
+      els.openScheduleModal.addEventListener("click", () => {
+        closeProfileMenu();
+        closeInfoPanel();
+        loadPrayerSchedule()
+          .catch((error) => setStatus(error.message || "Failed to load prayer schedule.", true))
+          .finally(() => {
+            openScheduleModal();
+          });
+      });
       els.openFeedModal.addEventListener("click", () => {
         closeProfileMenu();
         closeInfoPanel();
@@ -2878,7 +3287,9 @@
           });
       });
       els.closePrayModal.addEventListener("click", closePrayModal);
+      els.closeReadingReminderModal.addEventListener("click", closeReadingReminderModal);
       els.closeReadingModal.addEventListener("click", closeReadingModal);
+      els.closeScheduleModal.addEventListener("click", closeScheduleModal);
       els.closeIntentionModal.addEventListener("click", closeIntentionModal);
       els.closeCommentModal.addEventListener("click", closeCommentModal);
       els.cancelComment.addEventListener("click", closeCommentModal);
@@ -2892,6 +3303,10 @@
       els.deleteAudioButton.addEventListener("click", () => wrapRecording(deleteRecording, els.deleteAudioButton));
       els.refreshAudioButton.addEventListener("click", () => wrapRecording(loadLatestRecording, els.refreshAudioButton));
       els.refreshNotifications.addEventListener("click", () => wrap(loadNotifications, els.refreshNotifications));
+      els.saveReadingReminder.addEventListener("click", () => wrap(saveDailyReminder, els.saveReadingReminder));
+      els.clearReadingReminder.addEventListener("click", () => wrap(clearDailyReminder, els.clearReadingReminder));
+      els.saveSchedule.addEventListener("click", () => wrap(savePrayerSchedule, els.saveSchedule));
+      els.clearSchedule.addEventListener("click", () => wrap(clearPrayerSchedule, els.clearSchedule));
       els.markAllNotifications.addEventListener("click", () => wrap(markAllNotificationsRead, els.markAllNotifications));
       els.sendRecordingPreview.addEventListener("click", () => wrapRecording(sendPendingRecording, els.sendRecordingPreview));
       els.rerecordReading.addEventListener("click", () => wrapRecording(rerecordReading, els.rerecordReading));
@@ -2934,8 +3349,14 @@
       els.readingModal.addEventListener("click", (event) => {
         if (event.target === els.readingModal) closeReadingModal();
       });
+      els.readingReminderModal.addEventListener("click", (event) => {
+        if (event.target === els.readingReminderModal) closeReadingReminderModal();
+      });
       els.intentionModal.addEventListener("click", (event) => {
         if (event.target === els.intentionModal) closeIntentionModal();
+      });
+      els.scheduleModal.addEventListener("click", (event) => {
+        if (event.target === els.scheduleModal) closeScheduleModal();
       });
       els.commentModal.addEventListener("click", (event) => {
         if (event.target === els.commentModal) closeCommentModal();
