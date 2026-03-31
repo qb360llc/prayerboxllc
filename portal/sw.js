@@ -1,14 +1,12 @@
-const CACHE_NAME = "prayerbox-shell-v2";
+const CACHE_NAME = "prayerbox-shell-v3";
 const APP_SHELL = [
   "/",
   "/home.html",
-  "/community.html",
-  "/chat.html",
-  "/readings.html",
-  "/controls.html",
+  "/members.html",
   "/notifications.html",
   "/settings.html",
   "/admin.html",
+  "/setup.html",
   "/config.js",
   "/site.webmanifest",
   "/icon.svg",
