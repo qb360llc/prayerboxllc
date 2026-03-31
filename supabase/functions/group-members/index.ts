@@ -117,7 +117,7 @@ Deno.serve(async (request) => {
     if (userIds.length) {
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
-        .select("id, first_name, last_name, display_name, email")
+        .select("id, first_name, last_name, display_name, email, avatar_url")
         .in("id", userIds);
 
       if (profilesError) throw profilesError;
@@ -134,6 +134,7 @@ Deno.serve(async (request) => {
       const profile = profilesById.get(userId);
 
       return {
+        avatarUrl: typeof profile?.avatar_url === "string" ? profile.avatar_url : null,
         createdAt: row.created_at,
         firstName: typeof profile?.first_name === "string" ? profile.first_name : null,
         lastName: typeof profile?.last_name === "string" ? profile.last_name : null,
