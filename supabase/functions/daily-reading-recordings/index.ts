@@ -121,6 +121,15 @@ async function getActorName(
   return fullName || data?.display_name || data?.email || "Someone";
 }
 
+function buildHomeUrl(open: "feed" | "chat" | "reading", groupSlug?: unknown) {
+  const params = new URLSearchParams();
+  params.set("open", open);
+  if (typeof groupSlug === "string" && groupSlug.trim()) {
+    params.set("group", groupSlug.trim());
+  }
+  return `/home.html?${params.toString()}`;
+}
+
 async function getGroupForUser(
   supabase: ReturnType<typeof createClient>,
   userId: string,
@@ -211,7 +220,7 @@ async function notifyGroupMembers(
     data: {
       groupId,
       type: "daily_reading_uploaded",
-      url: "/readings.html",
+      url: buildHomeUrl("reading", metadata.groupSlug),
       ...metadata,
     },
     tag: `daily-reading-${groupId}-${crypto.randomUUID()}`,

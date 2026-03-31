@@ -21,6 +21,18 @@ type GroupActivityRow = {
   slug: string;
 };
 
+function buildHomeUrl(open?: "feed" | "chat" | "reading", groupSlug?: unknown) {
+  const params = new URLSearchParams();
+  if (open) {
+    params.set("open", open);
+  }
+  if (typeof groupSlug === "string" && groupSlug.trim()) {
+    params.set("group", groupSlug.trim());
+  }
+  const query = params.toString();
+  return query ? `/home.html?${query}` : "/home.html";
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Headers":
     "authorization, content-type, x-client-info, x-prayerbox-webhook-secret",
@@ -126,7 +138,7 @@ async function notifyGroupMembers(
     data: {
       groupId,
       type: "lights_activated",
-      url: "/controls.html",
+      url: buildHomeUrl(undefined, metadata.groupSlug),
       ...metadata,
     },
     tag: `lights-${groupId}-${crypto.randomUUID()}`,

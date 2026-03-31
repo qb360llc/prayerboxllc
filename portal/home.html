@@ -693,6 +693,16 @@
       const AUTH_URL = "./index.html";
       const CHAT_SEEN_STORAGE_PREFIX = "prayerboxHomeChatSeen:";
       const INTENTION_SEEN_STORAGE_PREFIX = "prayerboxHomeIntentionSeen:";
+      const initialLaunchParams = (() => {
+        const url = new URL(window.location.href);
+        return {
+          groupSlug: url.searchParams.get("group")?.trim() || "",
+          open: url.searchParams.get("open")?.trim() || "",
+        };
+      })();
+      if (initialLaunchParams.groupSlug) {
+        localStorage.setItem(SELECTED_GROUP_STORAGE_KEY, initialLaunchParams.groupSlug);
+      }
       const els = {
         actionMenuToggle: document.querySelector("#action-menu-toggle"),
         cancelComment: document.querySelector("#cancel-comment"),
@@ -791,6 +801,7 @@
       let pendingChatAudioDurationMs = 0;
       let pendingChatAudioUrl = "";
       let latestInfoMessage = "";
+      let pendingLaunchTarget = initialLaunchParams;
 
       function intentionStorageKey() {
         return `prayerboxPrayerIntention:${selectedGroupSlug()}`;
@@ -860,6 +871,13 @@
 
       function selectedGroupSlug() {
         return localStorage.getItem(SELECTED_GROUP_STORAGE_KEY) || "";
+      }
+
+      function clearLaunchTarget() {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("group");
+        url.searchParams.delete("open");
+        window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
       }
 
       function chatSeenStorageKey(groupSlug) {
@@ -2195,6 +2213,45 @@
         await updateReadingAvailabilityBadge();
       }
 
+      async function openReadingSheetFromLaunch() {
+        els.openReadingModal.disabled = true;
+        openReadingModal();
+        try {
+          await loadReadingModalContent();
+          await loadLatestRecording();
+          updateRecordingButtons();
+        } catch (error) {
+          setRecordingStatus(error.message || "Failed to load recording tools.", true);
+          els.readingModalContent.innerHTML = `<p>${error.message || "Failed to load daily gospel."}</p>`;
+        } finally {
+          els.openReadingModal.disabled = false;
+        }
+      }
+
+      async function openPendingLaunchTarget() {
+        if (!pendingLaunchTarget) return;
+        const launchTarget = pendingLaunchTarget;
+        pendingLaunchTarget = null;
+        clearLaunchTarget();
+
+        switch (launchTarget.open) {
+          case "feed":
+            openFeedModal();
+            markIntentionsSeen();
+            return;
+          case "chat":
+            updateChatRecorderButtons();
+            openChatModal();
+            markChatSeen();
+            return;
+          case "reading":
+            await openReadingSheetFromLaunch();
+            return;
+          default:
+            return;
+        }
+      }
+
       async function startPrayer(intention = "") {
         const groupSlug = selectedGroupSlug();
         if (!groupSlug) {
@@ -2265,6 +2322,7 @@
           await loadProfileShortcut();
           await refreshNotificationBadge();
           await loadGroups();
+          await openPendingLaunchTarget();
           setChatRecordingStatus("Voice chat is ready when your group is active.");
           refreshTimer = window.setInterval(() => {
             refreshPrayerState().catch(() => {});

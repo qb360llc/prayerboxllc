@@ -32,6 +32,18 @@ type PrayerParticipant = {
   name: string;
 };
 
+function buildHomeUrl(open?: "feed" | "chat" | "reading", groupSlug?: unknown) {
+  const params = new URLSearchParams();
+  if (open) {
+    params.set("open", open);
+  }
+  if (typeof groupSlug === "string" && groupSlug.trim()) {
+    params.set("group", groupSlug.trim());
+  }
+  const query = params.toString();
+  return query ? `/home.html?${query}` : "/home.html";
+}
+
 function corsHeaders(request: Request) {
   const allowedOrigin = Deno.env.get("PRAYERBOX_PORTAL_ORIGIN");
   const requestOrigin = request.headers.get("Origin");
@@ -155,7 +167,7 @@ async function notifyGroupMembers(
     data: {
       groupId,
       type: "lights_activated",
-      url: "/home.html",
+      url: buildHomeUrl("feed", metadata.groupSlug),
       ...metadata,
     },
     tag: `prayer-${groupId}-${crypto.randomUUID()}`,

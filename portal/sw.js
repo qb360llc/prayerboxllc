@@ -1,6 +1,7 @@
-const CACHE_NAME = "prayerbox-shell-v1";
+const CACHE_NAME = "prayerbox-shell-v2";
 const APP_SHELL = [
   "/",
+  "/home.html",
   "/community.html",
   "/chat.html",
   "/readings.html",
@@ -72,17 +73,39 @@ self.addEventListener("push", (event) => {
   event.waitUntil(self.registration.showNotification(payload.title || "PRayerbox", options));
 });
 
+function isHomePath(pathname) {
+  return pathname === "/" || pathname === "/home.html";
+}
+
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const targetUrl = new URL(event.notification.data?.url || "/notifications.html", self.location.origin).href;
+  const targetUrl = new URL(event.notification.data?.url || "/notifications.html", self.location.origin);
 
   event.waitUntil(
-    self.clients.matchAll({ includeUncontrolled: true, type: "window" }).then((clients) => {
-      const matchingClient = clients.find((client) => "focus" in client && client.url === targetUrl);
+    self.clients.matchAll({ includeUncontrolled: true, type: "window" }).then(async (clients) => {
+      const matchingClient = clients.find((client) => "focus" in client && client.url === targetUrl.href);
       if (matchingClient) {
         return matchingClient.focus();
       }
-      return self.clients.openWindow(targetUrl);
+
+      if (isHomePath(targetUrl.pathname)) {
+        const homeClient = clients.find((client) => {
+          if (!("focus" in client) || !("navigate" in client)) return false;
+          try {
+            const clientUrl = new URL(client.url);
+            return clientUrl.origin === self.location.origin && isHomePath(clientUrl.pathname);
+          } catch {
+            return false;
+          }
+        });
+
+        if (homeClient) {
+          await homeClient.navigate(targetUrl.href);
+          return homeClient.focus();
+        }
+      }
+
+      return self.clients.openWindow(targetUrl.href);
     }),
   );
 });

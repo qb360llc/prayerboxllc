@@ -51,6 +51,15 @@ function isAdminProfile(profile: Record<string, unknown> | null) {
   return Boolean(profile?.is_admin);
 }
 
+function buildHomeUrl(open: "feed" | "chat" | "reading", groupSlug?: unknown) {
+  const params = new URLSearchParams();
+  params.set("open", open);
+  if (typeof groupSlug === "string" && groupSlug.trim()) {
+    params.set("group", groupSlug.trim());
+  }
+  return `/home.html?${params.toString()}`;
+}
+
 async function getActorName(
   supabase: ReturnType<typeof createClient>,
   userId: string,
@@ -116,7 +125,7 @@ async function notifyGroupMembers(
     data: {
       groupId,
       type,
-      url: "/community.html",
+      url: buildHomeUrl("feed", metadata.groupSlug),
       ...metadata,
     },
     tag: `${type}-${groupId}-${crypto.randomUUID()}`,
@@ -160,7 +169,7 @@ async function notifyRecipient(
     data: {
       groupId,
       type,
-      url: "/community.html",
+      url: buildHomeUrl("feed", metadata.groupSlug),
       ...metadata,
     },
     tag: `${type}-${groupId}-${crypto.randomUUID()}`,
