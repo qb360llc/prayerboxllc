@@ -186,7 +186,12 @@
       .feed-empty { padding:14px 16px; border-radius:20px; border:1px solid rgba(35,68,87,.12); background:rgba(35,68,87,.06); color:#4f4a42; }
       .feed-list { display:grid; gap:14px; }
       .feed-card { padding:16px 16px 14px; border-radius:22px; background:rgba(35,68,87,.08); border:1px solid rgba(35,68,87,.08); }
-      .feed-card.prayer-event { background:rgba(200,146,61,.12); border-color:rgba(200,146,61,.2); }
+      .feed-card.prayer-event {
+        padding:10px 12px;
+        background:rgba(200,146,61,.08);
+        border-color:rgba(200,146,61,.14);
+        text-align:center;
+      }
       .feed-meta { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; }
       .feed-author-row { display:flex; align-items:center; gap:10px; min-width:0; }
       .feed-author-avatar { width:32px; height:32px; border-radius:50%; overflow:hidden; flex:0 0 32px; display:flex; align-items:center; justify-content:center; background:rgba(35,68,87,.14); border:1px solid rgba(35,68,87,.12); color:#234457; font-size:.72rem; font-weight:700; letter-spacing:.04em; }
@@ -194,7 +199,13 @@
       .feed-author { font-size:.98rem; font-weight:700; color:#1d1b18; }
       .feed-date { font-size:.84rem; color:#6f675d; }
       .feed-body, .feed-event-copy { margin:0; color:#1d1b18; }
-      .feed-event-copy { font-weight:600; }
+      .feed-event-copy { font-size:.87rem; font-weight:500; color:#4f4a42; }
+      .feed-event-time {
+        display:block;
+        margin-top:4px;
+        font-size:.76rem;
+        color:#7a7267;
+      }
       .feed-actions { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:12px; }
       .feed-actions-right { display:flex; align-items:center; gap:12px; margin-left:auto; }
       .feed-link-button {
@@ -253,10 +264,12 @@
       .feed-surface .feed-shell { max-height:calc(100vh - 190px); padding:2px 2px 8px; border-radius:24px; }
       .feed-surface .feed-shell::-webkit-scrollbar-thumb { background:rgba(248,241,223,.22); }
       .feed-surface .feed-card { background:rgba(248,241,223,.08); border-color:rgba(248,241,223,.08); }
-      .feed-surface .feed-card.prayer-event { background:rgba(200,146,61,.16); border-color:rgba(200,146,61,.24); }
-      .feed-surface .feed-author,
+      .feed-surface .feed-card.prayer-event { background:rgba(200,146,61,.12); border-color:rgba(200,146,61,.18); }
       .feed-surface .feed-body,
       .feed-surface .feed-event-copy { color:var(--cream); }
+      .feed-surface .feed-event-copy { color:rgba(248,241,223,.76); }
+      .feed-surface .feed-event-time { color:rgba(248,241,223,.52); }
+      .feed-surface .feed-author,
       .feed-surface .feed-author-avatar { background:rgba(248,241,223,.1); border-color:rgba(248,241,223,.14); color:var(--cream); }
       .feed-surface .feed-date { color:rgba(248,241,223,.66); }
       .feed-surface .feed-amen-button { color:rgba(248,241,223,.84); }
@@ -1793,11 +1806,8 @@
           if (item.type === "prayer_event") {
             return `
               <article class="feed-card prayer-event">
-                <div class="feed-meta">
-                  <span class="feed-author-row">${authorAvatar}<span class="feed-author">${authorName}</span></span>
-                  <span class="feed-date">${escapeHtml(formatFeedDate(item.createdAt))}</span>
-                </div>
                 <p class="feed-event-copy">${escapeHtml(item.body)}</p>
+                <span class="feed-event-time">${escapeHtml(formatFeedDate(item.createdAt))}</span>
               </article>
             `;
           }
