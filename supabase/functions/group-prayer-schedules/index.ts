@@ -195,7 +195,11 @@ async function notifyGroupMembers(
   if (error) throw error;
 
   const recipientUserIds = (members ?? []).map((member: Record<string, unknown>) => String(member.user_id));
-  if (!recipientUserIds.length) {
+  const notificationRecipientUserIds = Array.from(new Set([
+    actorUserId,
+    ...recipientUserIds,
+  ]));
+  if (!notificationRecipientUserIds.length) {
     return {
       attempted: 0,
       failed: 0,
@@ -204,7 +208,7 @@ async function notifyGroupMembers(
     };
   }
 
-  const rows = recipientUserIds.map((recipientUserId) => ({
+  const rows = notificationRecipientUserIds.map((recipientUserId) => ({
     actor_user_id: actorUserId,
     body,
     group_id: groupId,

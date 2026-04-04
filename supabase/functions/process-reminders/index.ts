@@ -16,6 +16,7 @@ type GroupRow = {
 };
 
 type PrayerScheduleRow = {
+  created_by_user_id?: string | null;
   group_id: string;
   id: string;
   reminder_minutes: number;
@@ -267,7 +268,7 @@ async function processGroupPrayerReminders(
 ) {
   const { data, error } = await supabase
     .from("group_prayer_schedules")
-    .select("id, group_id, scheduled_for, reminder_minutes, timezone")
+    .select("id, group_id, created_by_user_id, scheduled_for, reminder_minutes, timezone")
     .is("cancelled_at", null)
     .order("scheduled_for", { ascending: true });
 
@@ -309,7 +310,10 @@ async function processGroupPrayerReminders(
 
     if (membershipError) throw membershipError;
 
-    const recipientUserIds = (members ?? []).map((member: Record<string, unknown>) => String(member.user_id));
+    const recipientUserIds = Array.from(new Set([
+      ...(members ?? []).map((member: Record<string, unknown>) => String(member.user_id)),
+      ...(schedule.created_by_user_id ? [String(schedule.created_by_user_id)] : []),
+    ]));
     if (recipientUserIds.length) {
       const startsLabel = new Intl.DateTimeFormat("en-US", {
         dateStyle: "medium",
