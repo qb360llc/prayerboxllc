@@ -4100,6 +4100,42 @@
         }
       }
 
+      async function handleBottomNavSelection(pageKey) {
+        switch (pageKey) {
+          case "home":
+            setPage("home");
+            return;
+          case "feed":
+            await loadPrayerFeed();
+            openFeedModal();
+            markIntentionsSeen();
+            return;
+          case "chat":
+            await loadChat();
+            updateChatRecorderButtons();
+            openChatModal();
+            markChatSeen();
+            return;
+          case "reading":
+            await openReadingSheetFromLaunch();
+            return;
+          case "schedule":
+            await loadPrayerSchedule();
+            openScheduleModal();
+            return;
+          case "notifications":
+            await loadNotifications();
+            openNotificationsModal();
+            return;
+          case "members":
+            await loadMembers();
+            openMembersModal();
+            return;
+          default:
+            return;
+        }
+      }
+
       async function startPrayer(intention = "") {
         const groupSlug = selectedGroupSlug();
         if (!groupSlug) {
@@ -4397,6 +4433,21 @@
       els.saveIntention.addEventListener("click", () => wrap(saveIntentionFromSideRail, els.saveIntention));
       els.feedFilterSelect?.addEventListener("change", (event) => {
         setFeedFilter(event.target.value);
+      });
+      els.pageLinks.forEach((link) => {
+        link.addEventListener("click", (event) => {
+          const pageKey = link.getAttribute("data-page-link") || "";
+          if (!pageKey || pageKey === "settings") {
+            return;
+          }
+          event.preventDefault();
+          closeProfileMenu();
+          closeInfoPanel();
+          closeActionStrip();
+          handleBottomNavSelection(pageKey).catch((error) => {
+            setStatus(error.message || "Failed to open page.", true);
+          });
+        });
       });
       els.shareComment.addEventListener("click", () => wrap(postFeedComment, els.shareComment));
       els.skipIntention.addEventListener("click", closeIntentionModal);
