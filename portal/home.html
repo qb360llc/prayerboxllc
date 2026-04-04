@@ -2139,7 +2139,7 @@
         els.recordingStatus.classList.toggle("error", isError);
       }
 
-      function updateSharedAudioPlayButton() {
+      function legacyUpdateSharedAudioPlayButton() {
         const hasRecording = Boolean(els.sharedAudio.getAttribute("src"));
         const isPlaying = !els.sharedAudio.paused && !els.sharedAudio.ended;
         els.toggleAudioPlay.disabled = !hasRecording;
