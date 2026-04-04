@@ -900,7 +900,7 @@
           position:fixed;
           left:0;
           right:0;
-          bottom:calc(env(safe-area-inset-bottom, 0px) + 68px);
+          bottom:calc(env(safe-area-inset-bottom, 0px) + 58px);
           width:100%;
           margin:0;
           padding:16px;
@@ -937,13 +937,17 @@
           margin-top:12px;
         }
         .app-page-modal.page-active#reading-modal .reading-card {
-          background:linear-gradient(180deg, #203848 0%, #122632 100%);
+          background:#122632;
           border-top:1px solid rgba(248,241,223,.1);
           border-bottom:1px solid rgba(248,241,223,.08);
           border-left:none;
           border-right:none;
           border-radius:0;
           box-shadow:none;
+          color:#f8f1df;
+        }
+        .app-page-modal.page-active#reading-modal .reading-card * {
+          color:#f8f1df !important;
         }
         .app-page-modal.page-active#reading-modal .reading-card h3,
         .app-page-modal.page-active#reading-modal .reading-card p,
@@ -952,6 +956,9 @@
         .app-page-modal.page-active#reading-modal .reading-card em,
         .app-page-modal.page-active#reading-modal .reading-card span {
           color:#f8f1df;
+        }
+        .app-page-modal.page-active#reading-modal .reading-card a {
+          color:#f0d18c !important;
         }
         .app-page-modal .feed-empty,
         .app-page-modal .sheet-empty {
