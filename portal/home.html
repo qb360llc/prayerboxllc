@@ -256,6 +256,48 @@
       .feed-shell::-webkit-scrollbar-thumb { background:rgba(35,68,87,.22); border-radius:999px; }
       .feed-empty { padding:14px 16px; border-radius:20px; border:1px solid rgba(35,68,87,.12); background:rgba(35,68,87,.06); color:#4f4a42; }
       .feed-list { display:grid; gap:14px; }
+      .feed-date-group { display:grid; gap:12px; }
+      .feed-date-marker {
+        width:100%;
+        padding:12px 14px;
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:12px;
+        border-radius:18px;
+        background:rgba(35,68,87,.06);
+        border:1px solid rgba(35,68,87,.08);
+        color:#173241;
+        box-shadow:none;
+      }
+      .feed-date-marker-main {
+        display:grid;
+        gap:2px;
+        text-align:left;
+      }
+      .feed-date-label {
+        font-size:.98rem;
+        font-weight:700;
+      }
+      .feed-date-subtitle {
+        font-size:.82rem;
+        color:#6f675d;
+      }
+      .feed-date-marker-side {
+        display:flex;
+        align-items:center;
+        gap:10px;
+        color:#6f675d;
+        font-size:.82rem;
+      }
+      .feed-date-chevron {
+        font-size:.9rem;
+        transition:transform .18s ease;
+      }
+      .feed-date-marker.collapsed .feed-date-chevron {
+        transform:rotate(-90deg);
+      }
+      .feed-date-items { display:grid; gap:14px; }
       .feed-card { padding:16px 16px 14px; border-radius:22px; background:rgba(35,68,87,.08); border:1px solid rgba(35,68,87,.08); }
       .feed-card.prayer-event {
         padding:10px 12px;
@@ -663,7 +705,7 @@
           box-shadow:none;
         }
         body[data-current-page]:not([data-current-page="home"]) .topbar {
-          padding:calc(env(safe-area-inset-top, 0px) + 12px) 14px 4px;
+          padding:calc(env(safe-area-inset-top, 0px) + 12px) 14px 0;
         }
         body[data-current-page]:not([data-current-page="home"]) .profile-shortcut,
         body[data-current-page]:not([data-current-page="home"]) .rail-button {
@@ -711,7 +753,7 @@
           z-index:auto;
         }
         .app-page-modal.page-active {
-          margin-top:calc(-1 * (env(safe-area-inset-top, 0px) + 44px));
+          margin-top:calc(-1 * (env(safe-area-inset-top, 0px) + 56px));
         }
         .app-page-modal .modal-card {
           width:100%;
@@ -725,7 +767,7 @@
         }
         .app-page-modal .modal-header {
           min-height:48px;
-          padding:0 64px 14px 4px;
+          padding:0 64px 14px 0;
           margin-bottom:0;
           align-items:center;
         }
@@ -767,10 +809,26 @@
           border:1px solid rgba(35,68,87,.08);
           box-shadow:0 18px 40px rgba(20,38,52,.08);
         }
+        .app-page-modal.page-active .feed-surface {
+          width:calc(100vw - 28px);
+          min-height:auto;
+          margin-left:calc(50% - 50vw + 14px);
+          margin-right:calc(50% - 50vw + 14px);
+          padding:0;
+          border:none;
+          border-radius:0;
+          background:transparent;
+          box-shadow:none;
+        }
         .app-page-modal .feed-shell,
         .app-page-modal .chat-shell,
         .app-page-modal .notifications-shell {
           max-height:none;
+        }
+        .app-page-modal.page-active .feed-shell {
+          max-height:calc(100vh - 164px);
+          overflow:auto;
+          padding:0 2px 8px;
         }
         .app-page-modal .feed-empty,
         .app-page-modal .sheet-empty {
@@ -832,6 +890,15 @@
         .app-page-modal .feed-card.prayer-event {
           background:#f7f9fc;
           border-color:rgba(35,68,87,.06);
+        }
+        .app-page-modal .feed-date-marker {
+          background:#ffffff;
+          border-color:rgba(35,68,87,.08);
+          box-shadow:0 10px 24px rgba(20,38,52,.05);
+        }
+        .app-page-modal .feed-date-subtitle,
+        .app-page-modal .feed-date-marker-side {
+          color:#7b8e9c;
         }
         .app-page-modal .feed-body,
         .app-page-modal .feed-event-copy,
@@ -1479,6 +1546,7 @@
       let currentDailyReminder = null;
       let currentPrayerSchedule = null;
       let currentPageKey = normalizePageKey(initialLaunchParams.page);
+      const collapsedFeedDates = new Set();
 
       function intentionStorageKey() {
         return `prayerboxPrayerIntention:${selectedGroupSlug()}`;
@@ -1545,6 +1613,53 @@
         } catch {
           return "";
         }
+      }
+
+      function formatFeedTime(value) {
+        try {
+          return new Intl.DateTimeFormat(undefined, {
+            hour: "numeric",
+            minute: "2-digit",
+          }).format(new Date(value));
+        } catch {
+          return "";
+        }
+      }
+
+      function feedDateKey(value) {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return "";
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      }
+
+      function formatFeedDateHeader(value) {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return "Prayer Feed";
+        const today = new Date();
+        const yesterday = new Date();
+        yesterday.setDate(today.getDate() - 1);
+        const isSameDay = (left, right) =>
+          left.getFullYear() === right.getFullYear()
+          && left.getMonth() === right.getMonth()
+          && left.getDate() === right.getDate();
+        if (isSameDay(date, today)) return "Today";
+        if (isSameDay(date, yesterday)) return "Yesterday";
+        return new Intl.DateTimeFormat(undefined, {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        }).format(date);
+      }
+
+      function isFeedVisible() {
+        return els.feedModal.classList.contains("open") || (useMobileBottomNav() && currentPageKey === "feed");
+      }
+
+      function isChatVisible() {
+        return els.chatModal.classList.contains("open") || (useMobileBottomNav() && currentPageKey === "chat");
       }
 
       function clientTimezone() {
@@ -2912,7 +3027,22 @@
         }
 
         els.feedEmpty.hidden = true;
-        els.prayerFeed.innerHTML = currentPrayerFeed.map((item) => {
+        const groupedItems = [];
+        currentPrayerFeed.forEach((item) => {
+          const key = feedDateKey(item.createdAt);
+          const lastGroup = groupedItems[groupedItems.length - 1];
+          if (!lastGroup || lastGroup.key !== key) {
+            groupedItems.push({
+              key,
+              label: formatFeedDateHeader(item.createdAt),
+              items: [item],
+            });
+            return;
+          }
+          lastGroup.items.push(item);
+        });
+
+        const renderFeedItem = (item) => {
           const authorName = escapeHtml(item.createdBy);
           const avatarUrl = typeof item.avatarUrl === "string" ? item.avatarUrl.trim() : "";
           const authorAvatar = avatarUrl
@@ -2923,7 +3053,7 @@
             return `
               <article class="feed-card prayer-event">
                 <p class="feed-event-copy">${escapeHtml(item.body)}</p>
-                <span class="feed-event-time">${escapeHtml(formatFeedDate(item.createdAt))}</span>
+                <span class="feed-event-time">${escapeHtml(formatFeedTime(item.createdAt))}</span>
               </article>
             `;
           }
@@ -2932,7 +3062,7 @@
             <article class="feed-card">
               <div class="feed-meta">
                 <span class="feed-author-row">${authorAvatar}<span class="feed-author">${authorName}</span></span>
-                <span class="feed-date">${escapeHtml(formatFeedDate(item.createdAt))}</span>
+                <span class="feed-date">${escapeHtml(formatFeedTime(item.createdAt))}</span>
               </div>
               <p class="feed-body">${escapeHtml(item.body)}</p>
               <div class="feed-actions">
@@ -2963,12 +3093,45 @@
                 </div>` : ""}
             </article>
           `;
+        };
+
+        els.prayerFeed.innerHTML = groupedItems.map((group) => {
+          const isCollapsed = collapsedFeedDates.has(group.key);
+          return `
+            <section class="feed-date-group">
+              <button class="feed-date-marker ${isCollapsed ? "collapsed" : ""}" type="button" data-feed-date-key="${escapeHtml(group.key)}" aria-expanded="${isCollapsed ? "false" : "true"}">
+                <span class="feed-date-marker-main">
+                  <span class="feed-date-label">${escapeHtml(group.label)}</span>
+                  <span class="feed-date-subtitle">${group.items.length} update${group.items.length === 1 ? "" : "s"}</span>
+                </span>
+                <span class="feed-date-marker-side">
+                  <span>${escapeHtml(formatFeedTime(group.items[0]?.createdAt))}</span>
+                  <span class="feed-date-chevron">⌃</span>
+                </span>
+              </button>
+              <div class="feed-date-items" ${isCollapsed ? "hidden" : ""}>
+                ${group.items.map((item) => renderFeedItem(item)).join("")}
+              </div>
+            </section>
+          `;
         }).join("");
-        if (els.feedModal.classList.contains("open")) {
+        if (isFeedVisible()) {
           markIntentionsSeen();
         } else {
           syncIntentionUnreadBadge();
         }
+        els.prayerFeed.querySelectorAll(".feed-date-marker").forEach((button) => {
+          button.addEventListener("click", () => {
+            const key = button.getAttribute("data-feed-date-key") || "";
+            if (!key) return;
+            if (collapsedFeedDates.has(key)) {
+              collapsedFeedDates.delete(key);
+            } else {
+              collapsedFeedDates.add(key);
+            }
+            renderPrayerFeed();
+          });
+        });
         els.prayerFeed.querySelectorAll(".feed-amen-button").forEach((button) => {
           button.addEventListener("click", () => {
             const intentionId = button.getAttribute("data-feed-intention-id") || "";
@@ -3093,7 +3256,7 @@
         requestAnimationFrame(() => {
           els.chatShell.scrollTop = els.chatShell.scrollHeight;
         });
-        if (els.chatModal.classList.contains("open")) {
+        if (isChatVisible()) {
           markChatSeen();
         } else {
           syncChatUnreadBadge();
