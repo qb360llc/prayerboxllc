@@ -1208,6 +1208,41 @@
         body[data-current-page="chat"] #chat-modal .chat-composer-footer {
           padding:0 4px;
         }
+        body[data-current-page="schedule"] #schedule-modal {
+          width:100vw;
+          margin-left:calc(50% - 50vw);
+          min-height:calc(100vh - 76px);
+        }
+        body[data-current-page="schedule"] #schedule-modal .modal-card {
+          width:100vw;
+          min-height:calc(100vh - 76px);
+          margin:0;
+          padding:0 20px calc(96px + env(safe-area-inset-bottom, 0px));
+          border-radius:0;
+          background:transparent;
+          box-shadow:none;
+        }
+        body[data-current-page="schedule"] #schedule-modal .modal-header,
+        body[data-current-page="schedule"] #schedule-modal .modal-copy,
+        body[data-current-page="schedule"] #schedule-modal .form-stack,
+        body[data-current-page="schedule"] #schedule-modal .modal-actions {
+          width:100%;
+          min-width:0;
+        }
+        body[data-current-page="schedule"] #schedule-modal .field-stack {
+          width:100%;
+          min-width:0;
+        }
+        body[data-current-page="schedule"] #schedule-modal #schedule-datetime,
+        body[data-current-page="schedule"] #schedule-modal #schedule-reminder-minutes {
+          display:block;
+          width:100%;
+          min-width:0;
+          max-width:100%;
+          box-sizing:border-box;
+          -webkit-appearance:none;
+          appearance:none;
+        }
         .app-page-modal .chat-send-button.record-mode {
           background:#e9eef3;
           border:1px solid rgba(35,68,87,.08);
