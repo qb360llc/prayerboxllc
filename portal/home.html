@@ -653,6 +653,55 @@
         body[data-current-page]:not([data-current-page="home"]) .hero-card { display:none; }
         body[data-current-page]:not([data-current-page="home"]) .info-fab,
         body[data-current-page]:not([data-current-page="home"]) .info-panel { display:none !important; }
+        body[data-current-page]:not([data-current-page="home"]) {
+          color:#173241;
+          background:linear-gradient(180deg, #f9fbfd 0%, #eef3f7 100%);
+        }
+        body[data-current-page]:not([data-current-page="home"]) .topbar-wrap {
+          background:linear-gradient(180deg, rgba(255,255,255,.98) 0%, rgba(249,251,253,.94) 100%);
+          border-bottom:1px solid rgba(35,68,87,.08);
+          box-shadow:0 10px 28px rgba(20,38,52,.06);
+        }
+        body[data-current-page]:not([data-current-page="home"]) .topbar {
+          padding:calc(env(safe-area-inset-top, 0px) + 12px) 14px 12px;
+        }
+        body[data-current-page]:not([data-current-page="home"]) .profile-shortcut,
+        body[data-current-page]:not([data-current-page="home"]) .rail-button {
+          background:rgba(255,255,255,.96);
+          border:1px solid rgba(35,68,87,.1);
+          box-shadow:0 10px 24px rgba(20,38,52,.08);
+        }
+        body[data-current-page]:not([data-current-page="home"]) .rail-button svg {
+          stroke:#234457;
+        }
+        body[data-current-page]:not([data-current-page="home"]) .profile-menu-panel {
+          background:rgba(255,255,255,.98);
+          border-color:rgba(35,68,87,.1);
+          box-shadow:0 16px 34px rgba(20,38,52,.12);
+        }
+        body[data-current-page]:not([data-current-page="home"]) .profile-menu-name,
+        body[data-current-page]:not([data-current-page="home"]) .profile-menu-actions .secondary,
+        body[data-current-page]:not([data-current-page="home"]) .profile-menu-actions .ghost {
+          color:#173241;
+        }
+        body[data-current-page]:not([data-current-page="home"]) .profile-menu-meta {
+          color:#607383;
+        }
+        body[data-current-page]:not([data-current-page="home"]) .mobile-bottom-nav {
+          background:rgba(255,255,255,.98);
+          border-top:1px solid rgba(35,68,87,.08);
+          box-shadow:0 -12px 28px rgba(20,38,52,.08);
+        }
+        body[data-current-page]:not([data-current-page="home"]) .mobile-bottom-link {
+          color:#607383;
+          background:rgba(244,247,250,.98);
+          border-color:rgba(35,68,87,.08);
+        }
+        body[data-current-page]:not([data-current-page="home"]) .mobile-bottom-link.active {
+          color:#173241;
+          background:rgba(200,146,61,.16);
+          border-color:rgba(200,146,61,.28);
+        }
         .app-page-modal {
           display:none;
           position:static;
@@ -669,13 +718,20 @@
           border-radius:0;
           box-shadow:none;
           background:transparent;
-          color:var(--cream);
+          color:#173241;
         }
         .app-page-modal .modal-header {
-          padding:0 2px 12px;
+          padding:4px 4px 14px;
           margin-bottom:0;
         }
-        .app-page-modal .modal-title { color:var(--cream); }
+        .app-page-modal .modal-title {
+          color:#173241;
+          font-size:1.35rem;
+          letter-spacing:-.02em;
+        }
+        .app-page-modal .modal-copy {
+          color:#607383;
+        }
         .app-page-modal .modal-close { display:none; }
         .app-page-modal .modal-body-scroll,
         .app-page-modal .reading-sheet-scroll,
@@ -684,25 +740,27 @@
           position:sticky;
           top:0;
           margin:0 0 14px;
-          border-radius:22px;
-          border:1px solid rgba(248,241,223,.12);
-          background:rgba(18,35,46,.88);
-          box-shadow:0 12px 28px rgba(10,18,24,.22);
+          border-radius:28px;
+          border:1px solid rgba(35,68,87,.08);
+          background:rgba(255,255,255,.98);
+          box-shadow:0 16px 34px rgba(20,38,52,.08);
         }
         .app-page-modal .recording-status,
         .app-page-modal .chat-status {
-          background:rgba(248,241,223,.12);
-          border-color:rgba(248,241,223,.12);
+          background:rgba(244,247,250,.96);
+          border-color:rgba(35,68,87,.08);
+          color:#4a5e6d;
         }
         .app-page-modal .feed-surface,
         .app-page-modal .chat-surface,
         .app-page-modal .members-surface,
         .app-page-modal .notifications-surface {
           min-height:calc(100vh - 176px);
-          padding:0;
-          border-radius:0;
-          background:transparent;
-          box-shadow:none;
+          padding:16px;
+          border-radius:30px;
+          background:rgba(255,255,255,.98);
+          border:1px solid rgba(35,68,87,.08);
+          box-shadow:0 18px 40px rgba(20,38,52,.08);
         }
         .app-page-modal .feed-shell,
         .app-page-modal .chat-shell,
@@ -711,9 +769,162 @@
         }
         .app-page-modal .feed-empty,
         .app-page-modal .sheet-empty {
-          background:rgba(248,241,223,.08);
-          border-color:rgba(248,241,223,.1);
-          color:rgba(248,241,223,.82);
+          background:#f5f8fb;
+          border-color:rgba(35,68,87,.08);
+          color:#607383;
+        }
+        .app-page-modal .summary-card,
+        .app-page-modal .reading-reminder-summary,
+        .app-page-modal .recording-preview,
+        .app-page-modal .chat-preview {
+          background:#f5f8fb;
+          border-color:rgba(35,68,87,.08);
+          color:#173241;
+        }
+        .app-page-modal .summary-title,
+        .app-page-modal .summary-meta,
+        .app-page-modal .chat-summary,
+        .app-page-modal .members-summary,
+        .app-page-modal .notifications-summary,
+        .app-page-modal .chat-meta {
+          color:#607383;
+        }
+        .app-page-modal .summary-value,
+        .app-page-modal .field-label,
+        .app-page-modal .group-name,
+        .app-page-modal .member-name,
+        .app-page-modal .feed-author,
+        .app-page-modal .notification-title {
+          color:#173241;
+        }
+        .app-page-modal .group-button {
+          background:#f5f8fb;
+          border-color:rgba(35,68,87,.08);
+          color:#173241;
+        }
+        .app-page-modal .group-button.active {
+          background:rgba(200,146,61,.14);
+          border-color:rgba(200,146,61,.28);
+        }
+        .app-page-modal .group-slug,
+        .app-page-modal .feed-date,
+        .app-page-modal .field-help,
+        .app-page-modal .notification-meta,
+        .app-page-modal .feed-event-time {
+          color:#7b8e9c;
+        }
+        .app-page-modal .member-avatar,
+        .app-page-modal .feed-author-avatar {
+          background:#f5f8fb;
+          border-color:rgba(35,68,87,.08);
+          color:#173241;
+        }
+        .app-page-modal .feed-card {
+          background:#ffffff;
+          border-color:rgba(35,68,87,.08);
+          box-shadow:0 10px 24px rgba(20,38,52,.05);
+        }
+        .app-page-modal .feed-card.prayer-event {
+          background:#f7f9fc;
+          border-color:rgba(35,68,87,.06);
+        }
+        .app-page-modal .feed-body,
+        .app-page-modal .feed-event-copy,
+        .app-page-modal .notification-body,
+        .app-page-modal .reading-card p,
+        .app-page-modal .chat-text,
+        .app-page-modal .chat-author-name,
+        .app-page-modal .chat-link-preview-title {
+          color:#173241;
+        }
+        .app-page-modal .feed-link-button,
+        .app-page-modal .feed-comment-button,
+        .app-page-modal .feed-amen-button,
+        .app-page-modal .feed-comments-toggle,
+        .app-page-modal .chat-refresh-button,
+        .app-page-modal .chat-author,
+        .app-page-modal .chat-author-time,
+        .app-page-modal .chat-link-preview-url {
+          color:#607383;
+        }
+        .app-page-modal .feed-comment-button .comment-count,
+        .app-page-modal .feed-amen-button .heart {
+          color:#7b8e9c;
+        }
+        .app-page-modal .feed-amen-button.active .heart {
+          color:#d85e66;
+        }
+        .app-page-modal .notification-card {
+          background:#ffffff;
+          border-color:rgba(35,68,87,.08);
+          box-shadow:0 10px 24px rgba(20,38,52,.05);
+        }
+        .app-page-modal .notification-card.unread {
+          background:#fff9ef;
+          border-color:rgba(200,146,61,.24);
+        }
+        .app-page-modal .notification-pill {
+          background:rgba(200,146,61,.14);
+          color:#8d641f;
+        }
+        .app-page-modal .notifications-surface .secondary,
+        .app-page-modal .notification-card-actions .secondary {
+          background:#f5f8fb;
+          color:#173241;
+          border-color:rgba(35,68,87,.08);
+        }
+        .app-page-modal .chat-modal-card,
+        .app-page-modal .feed-modal-card {
+          background:transparent;
+        }
+        .app-page-modal .chat-empty {
+          background:#f5f8fb;
+          border-color:rgba(35,68,87,.08);
+          color:#607383;
+        }
+        .app-page-modal .chat-bubble {
+          color:#173241;
+          background:#f5f8fb;
+          border-color:rgba(35,68,87,.08);
+        }
+        .app-page-modal .chat-row.own .chat-bubble {
+          background:#fff5e5;
+          border-color:rgba(200,146,61,.22);
+        }
+        .app-page-modal .chat-link-preview {
+          background:#ffffff;
+          border-color:rgba(35,68,87,.08);
+          color:#173241;
+        }
+        .app-page-modal .chat-composer {
+          border-top-color:rgba(35,68,87,.08);
+        }
+        .app-page-modal .chat-composer-shell {
+          background:#f5f8fb;
+          border:1px solid rgba(35,68,87,.08);
+          box-shadow:none;
+        }
+        .app-page-modal .chat-composer-shell input {
+          color:#173241;
+        }
+        .app-page-modal .chat-send-button.record-mode {
+          background:#e9eef3;
+          border:1px solid rgba(35,68,87,.08);
+          color:#607383;
+        }
+        .app-page-modal .chat-preview-actions .secondary,
+        .app-page-modal .recording-preview-actions .secondary {
+          background:#e9eef3;
+          border-color:rgba(35,68,87,.08);
+          color:#173241;
+        }
+        .app-page-modal .reading-card h3,
+        .app-page-modal .reading-card p,
+        .app-page-modal .reading-card li,
+        .app-page-modal .reading-card strong,
+        .app-page-modal .reading-card em,
+        .app-page-modal .reading-card span {
+          color:#173241;
         }
       }
     </style>
