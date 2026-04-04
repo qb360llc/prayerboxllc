@@ -263,12 +263,12 @@ async function processDailyReadingReminders(
 async function processGroupPrayerReminders(
   supabase: ReturnType<typeof createClient>,
   now: Date,
+  windowMinutes: number,
 ) {
   const { data, error } = await supabase
     .from("group_prayer_schedules")
     .select("id, group_id, scheduled_for, reminder_minutes, timezone")
     .is("cancelled_at", null)
-    .is("reminder_sent_at", null)
     .order("scheduled_for", { ascending: true });
 
   if (error) throw error;
@@ -284,8 +284,21 @@ async function processGroupPrayerReminders(
     const group = groupsById.get(schedule.group_id);
     if (!group) continue;
 
-    const dueAtMs = new Date(schedule.scheduled_for).getTime() - (Number(schedule.reminder_minutes) * 60 * 1000);
-    if (Number.isNaN(dueAtMs) || dueAtMs > now.getTime()) {
+    const scheduledAtMs = new Date(schedule.scheduled_for).getTime();
+    if (Number.isNaN(scheduledAtMs)) {
+      continue;
+    }
+    const reminderMinutes = Math.max(0, Number(schedule.reminder_minutes) || 0);
+    const preReminderAtMs = scheduledAtMs - (reminderMinutes * 60 * 1000);
+    const windowStartMs = now.getTime() - (windowMinutes * 60 * 1000);
+
+    const isWithinWindow = (targetMs: number) =>
+      targetMs <= now.getTime() && targetMs > windowStartMs;
+
+    const shouldSendPreReminder = reminderMinutes > 0 && isWithinWindow(preReminderAtMs);
+    const shouldSendStartReminder = isWithinWindow(scheduledAtMs);
+
+    if (!shouldSendPreReminder && !shouldSendStartReminder) {
       continue;
     }
 
@@ -303,53 +316,91 @@ async function processGroupPrayerReminders(
         timeStyle: "short",
         timeZone: schedule.timezone || "UTC",
       }).format(new Date(schedule.scheduled_for));
-      const title = "Upcoming group prayer";
-      const body = schedule.reminder_minutes > 0
-        ? `Group prayer for ${group.name} begins in ${schedule.reminder_minutes} minute${schedule.reminder_minutes === 1 ? "" : "s"} at ${startsLabel}.`
-        : `Group prayer for ${group.name} begins now.`;
-      const metadata = {
-        groupSlug: group.slug,
-        reminderMinutes: schedule.reminder_minutes,
-        scheduledFor: schedule.scheduled_for,
-        source: "group_prayer_reminder",
-        timezone: schedule.timezone,
+
+      const deliverStage = async (
+        stage: "pre" | "start",
+        title: string,
+        body: string,
+      ) => {
+        const recipientsToNotify: string[] = [];
+        for (const recipientUserId of recipientUserIds) {
+          const reminderKey = `${schedule.id}:${stage}`;
+          if (await deliveryExists(supabase, "group_prayer", reminderKey, recipientUserId)) {
+            continue;
+          }
+          recipientsToNotify.push(recipientUserId);
+        }
+
+        if (!recipientsToNotify.length) {
+          return 0;
+        }
+
+        const metadata = {
+          groupSlug: group.slug,
+          reminderMinutes,
+          scheduledFor: schedule.scheduled_for,
+          source: stage === "start" ? "group_prayer_start" : "group_prayer_reminder",
+          timezone: schedule.timezone,
+        };
+
+        const rows = recipientsToNotify.map((recipientUserId) => ({
+          body,
+          group_id: group.id,
+          metadata,
+          notification_type: "group_prayer_reminder",
+          recipient_user_id: recipientUserId,
+          title,
+        }));
+        const { error: insertError } = await supabase.from("notifications").insert(rows);
+        if (insertError) throw insertError;
+
+        await sendPushToUsers(supabase, recipientsToNotify, {
+          body,
+          data: {
+            groupId: group.id,
+            type: "group_prayer_reminder",
+            url: buildHomeUrl("schedule", group.slug),
+            ...metadata,
+          },
+          tag: `group-prayer-${stage}-${schedule.id}`,
+          title,
+        });
+
+        for (const recipientUserId of recipientsToNotify) {
+          await storeDelivery(supabase, "group_prayer", `${schedule.id}:${stage}`, recipientUserId);
+        }
+
+        return recipientsToNotify.length;
       };
 
-      const rows = recipientUserIds.map((recipientUserId) => ({
-        body,
-        group_id: group.id,
-        metadata,
-        notification_type: "group_prayer_reminder",
-        recipient_user_id: recipientUserId,
-        title,
-      }));
-      const { error: insertError } = await supabase.from("notifications").insert(rows);
-      if (insertError) throw insertError;
+      if (shouldSendPreReminder) {
+        sent += await deliverStage(
+          "pre",
+          "Upcoming group prayer",
+          `Group prayer for ${group.name} begins in ${reminderMinutes} minute${reminderMinutes === 1 ? "" : "s"} at ${startsLabel}.`,
+        );
+      }
 
-      await sendPushToUsers(supabase, recipientUserIds, {
-        body,
-        data: {
-          groupId: group.id,
-          type: "group_prayer_reminder",
-          url: buildHomeUrl("schedule", group.slug),
-          ...metadata,
-        },
-        tag: `group-prayer-reminder-${schedule.id}`,
-        title,
-      });
-
-      sent += recipientUserIds.length;
+      if (shouldSendStartReminder) {
+        sent += await deliverStage(
+          "start",
+          "Group prayer is starting",
+          `Group prayer for ${group.name} is starting now.`,
+        );
+      }
     }
 
-    const { error: updateError } = await supabase
-      .from("group_prayer_schedules")
-      .update({
-        reminder_sent_at: now.toISOString(),
-        updated_at: now.toISOString(),
-      })
-      .eq("id", schedule.id);
+    if (shouldSendStartReminder) {
+      const { error: updateError } = await supabase
+        .from("group_prayer_schedules")
+        .update({
+          reminder_sent_at: now.toISOString(),
+          updated_at: now.toISOString(),
+        })
+        .eq("id", schedule.id);
 
-    if (updateError) throw updateError;
+      if (updateError) throw updateError;
+    }
   }
 
   return sent;
@@ -374,7 +425,7 @@ Deno.serve(async (request) => {
     const windowMinutes = Math.max(1, Number(Deno.env.get("PRAYERBOX_REMINDER_WINDOW_MINUTES") || 5));
 
     const dailyReadingSent = await processDailyReadingReminders(supabase, now, windowMinutes);
-    const groupPrayerSent = await processGroupPrayerReminders(supabase, now);
+    const groupPrayerSent = await processGroupPrayerReminders(supabase, now, windowMinutes);
 
     return json(request, 200, {
       ok: true,
