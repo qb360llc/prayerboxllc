@@ -831,6 +831,60 @@
           overflow:auto;
           padding:0 2px 8px;
         }
+        .app-page-modal.page-active#reading-modal {
+          min-height:calc(100vh - 76px);
+        }
+        .app-page-modal.page-active#reading-modal .modal-card {
+          min-height:calc(100vh - 76px);
+          display:flex;
+          flex-direction:column;
+        }
+        .app-page-modal.page-active#reading-modal .modal-body-scroll.reading-sheet-scroll {
+          flex:1;
+          min-height:0;
+          display:flex;
+          flex-direction:column;
+          gap:14px;
+          overflow:hidden;
+          padding-right:0;
+        }
+        .app-page-modal.page-active#reading-modal .reading-card {
+          flex:1;
+          min-height:0;
+          overflow:auto;
+          padding:0 4px 8px 0;
+          overscroll-behavior:contain;
+        }
+        .app-page-modal.page-active#reading-modal .reading-card::-webkit-scrollbar {
+          width:8px;
+        }
+        .app-page-modal.page-active#reading-modal .reading-card::-webkit-scrollbar-thumb {
+          background:rgba(35,68,87,.18);
+          border-radius:999px;
+        }
+        .app-page-modal.page-active#reading-modal .recording-panel {
+          order:2;
+          position:sticky;
+          top:auto;
+          bottom:calc(env(safe-area-inset-bottom, 0px) + 84px);
+          margin:0;
+          padding:16px;
+          border-radius:28px;
+          box-shadow:0 18px 40px rgba(20,38,52,.12);
+        }
+        .app-page-modal.page-active#reading-modal .recording-utility-row {
+          gap:12px;
+          margin-bottom:10px;
+        }
+        .app-page-modal.page-active#reading-modal .recording-status {
+          margin-bottom:0;
+        }
+        .app-page-modal.page-active#reading-modal .audio-tools {
+          margin-top:10px;
+        }
+        .app-page-modal.page-active#reading-modal .recording-preview {
+          margin-top:10px;
+        }
         .app-page-modal .feed-empty,
         .app-page-modal .sheet-empty {
           background:#f5f8fb;
