@@ -581,6 +581,34 @@
       .audio-tools { display:grid; grid-template-columns:repeat(4, 46px); justify-content:start; gap:10px; margin-top:12px; }
       .audio-tools .icon-button { width:46px; height:46px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:999px; font-size:1.12rem; line-height:1; }
       .audio-tools .icon-button.slot-hidden { visibility:hidden; pointer-events:none; }
+      .reading-player-actions {
+        display:grid;
+        grid-template-columns:repeat(5, minmax(0, 1fr));
+        align-items:center;
+        gap:10px;
+        margin-top:12px;
+      }
+      .reading-player-actions .icon-button {
+        width:46px;
+        height:46px;
+        padding:0;
+        justify-self:center;
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        border-radius:999px;
+        font-size:1.05rem;
+        line-height:1;
+      }
+      .reading-player-actions .player-primary {
+        width:60px;
+        height:60px;
+        font-size:1.3rem;
+      }
+      .reading-player-actions .icon-button.slot-hidden {
+        visibility:hidden;
+        pointer-events:none;
+      }
       .recording-preview {
         display:grid;
         gap:10px;
@@ -867,23 +895,58 @@
           position:sticky;
           top:auto;
           bottom:calc(env(safe-area-inset-bottom, 0px) + 84px);
-          margin:0;
+          width:calc(100vw - 28px);
+          margin:0 0 0 calc(50% - 50vw + 14px);
           padding:16px;
           border-radius:28px;
           box-shadow:0 18px 40px rgba(20,38,52,.12);
         }
         .app-page-modal.page-active#reading-modal .recording-utility-row {
-          gap:12px;
-          margin-bottom:10px;
+          margin-bottom:6px;
+        }
+        .app-page-modal.page-active#reading-modal #open-reading-reminder-modal {
+          width:100%;
+          justify-content:center;
+        }
+        .app-page-modal.page-active#reading-modal .reading-reminder-summary {
+          display:none;
         }
         .app-page-modal.page-active#reading-modal .recording-status {
           margin-bottom:0;
+          display:none;
+        }
+        .app-page-modal.page-active#reading-modal .recording-status.error {
+          display:block;
+          margin-top:10px;
         }
         .app-page-modal.page-active#reading-modal .audio-tools {
           margin-top:10px;
+          display:none;
         }
         .app-page-modal.page-active#reading-modal .recording-preview {
           margin-top:10px;
+        }
+        .app-page-modal.page-active#reading-modal .recording-audio {
+          width:100%;
+          margin-top:8px;
+        }
+        .app-page-modal.page-active#reading-modal .reading-player-actions {
+          margin-top:12px;
+        }
+        .app-page-modal.page-active#reading-modal .reading-card {
+          background:linear-gradient(180deg, #203848 0%, #122632 100%);
+          border:1px solid rgba(248,241,223,.1);
+          border-radius:28px;
+          padding:20px 18px 28px;
+          box-shadow:0 18px 40px rgba(9,17,23,.16);
+        }
+        .app-page-modal.page-active#reading-modal .reading-card h3,
+        .app-page-modal.page-active#reading-modal .reading-card p,
+        .app-page-modal.page-active#reading-modal .reading-card li,
+        .app-page-modal.page-active#reading-modal .reading-card strong,
+        .app-page-modal.page-active#reading-modal .reading-card em,
+        .app-page-modal.page-active#reading-modal .reading-card span {
+          color:#f8f1df;
         }
         .app-page-modal .feed-empty,
         .app-page-modal .sheet-empty {
@@ -1169,10 +1232,11 @@
                 <div id="reading-reminder-summary" class="reading-reminder-summary">No daily reminder set.</div>
               </div>
               <div id="recording-status" class="status recording-status">No recordings today.</div>
-              <audio id="shared-audio" class="recording-audio" controls preload="none"></audio>
-              <div class="audio-tools">
+              <audio id="shared-audio" class="recording-audio" controls preload="none" hidden></audio>
+              <div class="reading-player-actions">
                 <button id="record-button" class="icon-button" aria-label="Record reading" title="Record reading">●</button>
                 <button id="stop-button" class="secondary icon-button" aria-label="Stop recording" title="Stop recording" disabled>■</button>
+                <button id="toggle-audio-play" class="icon-button player-primary" aria-label="Play recording" title="Play recording" disabled>▶</button>
                 <button id="delete-audio" class="secondary icon-button slot-hidden" aria-label="Delete recording" title="Delete recording">⌫</button>
                 <button id="refresh-audio" class="secondary icon-button" aria-label="Refresh latest audio" title="Refresh latest audio">↻</button>
               </div>
@@ -1562,6 +1626,7 @@
         skipPrayer: document.querySelector("#skip-prayer"),
         stopButton: document.querySelector("#stop-button"),
         deleteAudioButton: document.querySelector("#delete-audio"),
+        toggleAudioPlay: document.querySelector("#toggle-audio-play"),
         markAllNotifications: document.querySelector("#mark-all-notifications"),
         rerecordReading: document.querySelector("#rerecord-reading"),
         status: document.querySelector("#status"),
@@ -2014,6 +2079,15 @@
         els.recordingStatus.classList.toggle("error", isError);
       }
 
+      function updateSharedAudioPlayButton() {
+        const hasRecording = Boolean(els.sharedAudio.getAttribute("src"));
+        const isPlaying = !els.sharedAudio.paused && !els.sharedAudio.ended;
+        els.toggleAudioPlay.disabled = !hasRecording;
+        els.toggleAudioPlay.textContent = isPlaying ? "❚❚" : "▶";
+        els.toggleAudioPlay.setAttribute("aria-label", isPlaying ? "Pause recording" : "Play recording");
+        els.toggleAudioPlay.setAttribute("title", isPlaying ? "Pause recording" : "Play recording");
+      }
+
       function setChatRecordingStatus(message, isError = false) {
         els.chatRecordingStatus.textContent = message;
         els.chatRecordingStatus.classList.toggle("error", isError);
@@ -2221,6 +2295,7 @@
         els.readingModal.classList.remove("open");
         els.readingModal.setAttribute("aria-hidden", "true");
         els.sharedAudio.pause();
+        updateSharedAudioPlayButton();
       }
 
       function openReadingReminderModal() {
@@ -2594,8 +2669,10 @@
           recordingCanManage = false;
           clearPendingReadingRecording();
           setReadingAvailabilityBadge(false);
+          els.sharedAudio.hidden = true;
           els.sharedAudio.removeAttribute("src");
           els.sharedAudio.load();
+          updateSharedAudioPlayButton();
           setRecordingStatus("Choose your active community in Settings before using recordings.", true);
           updateRecordingButtons();
           return;
@@ -2604,8 +2681,10 @@
         setRecordingStatus("Loading today's recording...");
         clearPendingReadingRecording();
         els.sharedAudio.pause();
+        els.sharedAudio.hidden = true;
         els.sharedAudio.removeAttribute("src");
         els.sharedAudio.load();
+        updateSharedAudioPlayButton();
         try {
           const response = await authedFetch(`/functions/v1/daily-reading-recordings?readingDate=${currentReadingDate}&groupSlug=${encodeURIComponent(groupSlug)}`, {
             method: "GET",
@@ -2618,8 +2697,10 @@
             recordingLocked = false;
             recordingCanManage = false;
             setReadingAvailabilityBadge(false);
+            els.sharedAudio.hidden = true;
             els.sharedAudio.removeAttribute("src");
             els.sharedAudio.load();
+            updateSharedAudioPlayButton();
             setRecordingStatus("No recordings today.");
             updateRecordingButtons();
             return;
@@ -2631,12 +2712,16 @@
           setRecordingStatus(recordingCanManage
             ? "You submitted today's daily reading. You can replace or delete it."
             : `${recording.createdBy || "Someone"} submitted a daily reading today.`);
+          els.sharedAudio.hidden = false;
           els.sharedAudio.src = recording.audioUrl;
+          els.sharedAudio.load();
+          updateSharedAudioPlayButton();
           updateRecordingButtons();
         } catch (error) {
           recordingLocked = false;
           recordingCanManage = false;
           setReadingAvailabilityBadge(false);
+          updateSharedAudioPlayButton();
           setRecordingStatus(error.message || "Failed to load recording.", true);
           updateRecordingButtons();
           throw error;
@@ -2665,8 +2750,10 @@
         clearPendingReadingRecording();
         setReadingAvailabilityBadge(false);
         els.sharedAudio.pause();
+        els.sharedAudio.hidden = true;
         els.sharedAudio.removeAttribute("src");
         els.sharedAudio.load();
+        updateSharedAudioPlayButton();
         setRecordingStatus("Recording deleted. Another member can now record today's reading.");
         updateRecordingButtons();
       }
@@ -4017,6 +4104,22 @@
       els.recordButton.addEventListener("click", () => wrapRecording(startRecording, els.recordButton));
       els.stopButton.addEventListener("click", stopRecording);
       els.deleteAudioButton.addEventListener("click", () => wrapRecording(deleteRecording, els.deleteAudioButton));
+      els.toggleAudioPlay.addEventListener("click", async () => {
+        try {
+          if (!els.sharedAudio.getAttribute("src")) return;
+          if (els.sharedAudio.paused || els.sharedAudio.ended) {
+            await els.sharedAudio.play();
+          } else {
+            els.sharedAudio.pause();
+          }
+          updateSharedAudioPlayButton();
+        } catch (error) {
+          setRecordingStatus(error.message || "Unable to play recording.", true);
+        }
+      });
+      ["play", "pause", "ended", "emptied", "loadeddata"].forEach((eventName) => {
+        els.sharedAudio.addEventListener(eventName, updateSharedAudioPlayButton);
+      });
       els.refreshAudioButton.addEventListener("click", () => wrapRecording(loadLatestRecording, els.refreshAudioButton));
       els.refreshNotifications.addEventListener("click", () => wrap(loadNotifications, els.refreshNotifications));
       els.saveReadingReminder.addEventListener("click", () => wrap(saveDailyReminder, els.saveReadingReminder));
@@ -4122,6 +4225,7 @@
         syncMobilePageLayout();
       });
 
+      updateSharedAudioPlayButton();
       syncMobilePageLayout();
       boot();
     </script>
