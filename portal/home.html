@@ -858,85 +858,91 @@
           overflow:auto;
           padding:0 2px 8px;
         }
-        .app-page-modal.page-active#reading-modal {
+        body[data-current-page="reading"] #reading-modal {
           width:100vw;
           margin-left:calc(50% - 50vw);
           min-height:calc(100vh - 76px);
         }
-        .app-page-modal.page-active#reading-modal .modal-card {
+        body[data-current-page="reading"] #reading-modal .modal-card {
           width:100vw;
-          min-height:calc(100vh - 76px);
+          height:calc(100vh - 68px - env(safe-area-inset-bottom, 0px));
+          min-height:calc(100vh - 68px - env(safe-area-inset-bottom, 0px));
           margin:0;
           display:flex;
           flex-direction:column;
         }
-        .app-page-modal.page-active#reading-modal .modal-header {
+        body[data-current-page="reading"] #reading-modal .modal-header {
           width:100%;
           padding:0 64px 14px 20px;
         }
-        .app-page-modal.page-active#reading-modal .modal-body-scroll.reading-sheet-scroll {
+        body[data-current-page="reading"] #reading-modal .modal-body-scroll.reading-sheet-scroll {
           width:100%;
           flex:1;
           min-height:0;
+          display:flex;
+          flex-direction:column;
           overflow:hidden;
           padding-right:0;
+          background:#122632;
         }
-        .app-page-modal.page-active#reading-modal .reading-card {
-          height:calc(100vh - 92px);
+        body[data-current-page="reading"] #reading-modal .reading-card {
+          order:1;
+          flex:1;
+          min-height:0;
           overflow:auto;
           width:100%;
           margin:0;
-          padding:20px 20px calc(220px + env(safe-area-inset-bottom, 0px)) 20px;
+          padding:20px 20px 24px;
           overscroll-behavior:contain;
         }
-        .app-page-modal.page-active#reading-modal .reading-card::-webkit-scrollbar {
+        body[data-current-page="reading"] #reading-modal .reading-card::-webkit-scrollbar {
           width:8px;
         }
-        .app-page-modal.page-active#reading-modal .reading-card::-webkit-scrollbar-thumb {
+        body[data-current-page="reading"] #reading-modal .reading-card::-webkit-scrollbar-thumb {
           background:rgba(35,68,87,.18);
           border-radius:999px;
         }
-        .app-page-modal.page-active#reading-modal .recording-panel {
-          position:fixed;
-          left:0;
-          right:0;
-          bottom:calc(env(safe-area-inset-bottom, 0px) + 58px);
+        body[data-current-page="reading"] #reading-modal .recording-panel {
+          order:2;
+          position:relative;
+          flex:0 0 auto;
           width:100%;
           margin:0;
-          padding:16px;
+          padding:14px 16px calc(14px + env(safe-area-inset-bottom, 0px));
           border-radius:0;
-          box-shadow:0 18px 40px rgba(20,38,52,.12);
-          z-index:35;
+          border-top:1px solid rgba(35,68,87,.12);
+          background:#eef2f5;
+          box-shadow:0 -10px 24px rgba(20,38,52,.08);
         }
-        .app-page-modal.page-active#reading-modal .recording-utility-row {
+        body[data-current-page="reading"] #reading-modal .recording-utility-row {
           display:none;
         }
-        .app-page-modal.page-active#reading-modal .reading-reminder-summary {
+        body[data-current-page="reading"] #reading-modal .reading-reminder-summary {
           display:none;
         }
-        .app-page-modal.page-active#reading-modal .recording-status {
+        body[data-current-page="reading"] #reading-modal .recording-status {
           margin-bottom:0;
           display:none;
         }
-        .app-page-modal.page-active#reading-modal .recording-status.error {
+        body[data-current-page="reading"] #reading-modal .recording-status.error {
           display:block;
           margin-top:10px;
         }
-        .app-page-modal.page-active#reading-modal .audio-tools {
+        body[data-current-page="reading"] #reading-modal .audio-tools {
           margin-top:10px;
           display:none;
         }
-        .app-page-modal.page-active#reading-modal .recording-preview {
+        body[data-current-page="reading"] #reading-modal .recording-preview {
           margin-top:10px;
         }
-        .app-page-modal.page-active#reading-modal .recording-audio {
+        body[data-current-page="reading"] #reading-modal .recording-audio {
           width:100%;
           margin-top:8px;
         }
-        .app-page-modal.page-active#reading-modal .reading-player-actions {
+        body[data-current-page="reading"] #reading-modal .reading-player-actions {
           margin-top:12px;
         }
-        .app-page-modal.page-active#reading-modal .reading-card {
+        body[data-current-page="reading"] #reading-modal .reading-card {
           background:#122632;
           border-top:1px solid rgba(248,241,223,.1);
           border-bottom:1px solid rgba(248,241,223,.08);
@@ -946,18 +952,25 @@
           box-shadow:none;
           color:#f8f1df;
         }
-        .app-page-modal.page-active#reading-modal .reading-card * {
+        body[data-current-page="reading"] #reading-modal #reading-modal-content,
+        body[data-current-page="reading"] #reading-modal #reading-modal-content * {
           color:#f8f1df !important;
         }
-        .app-page-modal.page-active#reading-modal .reading-card h3,
-        .app-page-modal.page-active#reading-modal .reading-card p,
-        .app-page-modal.page-active#reading-modal .reading-card li,
-        .app-page-modal.page-active#reading-modal .reading-card strong,
-        .app-page-modal.page-active#reading-modal .reading-card em,
-        .app-page-modal.page-active#reading-modal .reading-card span {
+        body[data-current-page="reading"] #reading-modal .reading-card * {
+          color:#f8f1df !important;
+        }
+        body[data-current-page="reading"] #reading-modal .reading-card h3,
+        body[data-current-page="reading"] #reading-modal .reading-card p,
+        body[data-current-page="reading"] #reading-modal .reading-card li,
+        body[data-current-page="reading"] #reading-modal .reading-card strong,
+        body[data-current-page="reading"] #reading-modal .reading-card em,
+        body[data-current-page="reading"] #reading-modal .reading-card span {
           color:#f8f1df;
         }
-        .app-page-modal.page-active#reading-modal .reading-card a {
+        body[data-current-page="reading"] #reading-modal .reading-card a {
+          color:#f0d18c !important;
+        }
+        body[data-current-page="reading"] #reading-modal #reading-modal-content a {
           color:#f0d18c !important;
         }
         .app-page-modal .feed-empty,
