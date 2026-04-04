@@ -866,14 +866,23 @@
           padding:0 2px 8px;
         }
         .app-page-modal.page-active#reading-modal {
+          width:100vw;
+          margin-left:calc(50% - 50vw);
           min-height:calc(100vh - 76px);
         }
         .app-page-modal.page-active#reading-modal .modal-card {
+          width:100vw;
           min-height:calc(100vh - 76px);
+          margin:0;
           display:flex;
           flex-direction:column;
         }
+        .app-page-modal.page-active#reading-modal .modal-header {
+          width:100%;
+          padding:0 64px 14px 20px;
+        }
         .app-page-modal.page-active#reading-modal .modal-body-scroll.reading-sheet-scroll {
+          width:100%;
           flex:1;
           min-height:0;
           display:flex;
@@ -886,8 +895,8 @@
           flex:1;
           min-height:0;
           overflow:auto;
-          width:100vw;
-          margin:0 0 0 calc(50% - 50vw);
+          width:100%;
+          margin:0;
           padding:20px 20px 28px;
           overscroll-behavior:contain;
         }
@@ -903,8 +912,8 @@
           position:sticky;
           top:auto;
           bottom:calc(env(safe-area-inset-bottom, 0px) + 72px);
-          width:100vw;
-          margin:0 0 0 calc(50% - 50vw);
+          width:100%;
+          margin:0;
           padding:16px;
           border-radius:28px 28px 0 0;
           box-shadow:0 18px 40px rgba(20,38,52,.12);
