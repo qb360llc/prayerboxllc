@@ -261,7 +261,7 @@
       .feed-shell::-webkit-scrollbar-thumb { background:rgba(35,68,87,.22); border-radius:999px; }
       .feed-empty { padding:14px 16px; border-radius:20px; border:1px solid rgba(35,68,87,.12); background:rgba(35,68,87,.06); color:#4f4a42; }
       .feed-toolbar { display:flex; justify-content:flex-end; margin-bottom:12px; }
-      .feed-filter-button { min-width:0; padding:10px 14px; border-radius:999px; border:1px solid rgba(35,68,87,.12); background:#f5f8fb; color:#173241; box-shadow:none; }
+      .feed-filter-select { min-width:0; width:auto; padding:10px 40px 10px 14px; border-radius:999px; border:1px solid rgba(35,68,87,.12); background:#f5f8fb; color:#173241; box-shadow:none; }
       .feed-list { display:grid; gap:14px; }
       .feed-date-group { display:grid; gap:12px; }
       .feed-date-marker {
@@ -694,12 +694,12 @@
         .mobile-action-cluster { position:absolute; left:14px; top:calc(env(safe-area-inset-top, 0px) + 12px); display:flex; align-items:flex-start; gap:10px; z-index:3; }
       }
       @media (max-width:719px) {
-        body { background:#294d61 url("./home-mobile-bg.svg") center 12px / cover no-repeat fixed; }
+        body { background:#294d61 url("./home-mobile-bg.svg") center 0px / cover no-repeat fixed; }
         body::before, body::after { display:none; }
         main { padding:12px 14px 124px; }
         .mobile-action-cluster { display:none !important; }
         .hero-card { min-height:calc(100vh - 110px); padding:12px 10px 2px; display:flex; flex-direction:column; justify-content:flex-end; gap:12px; }
-        .hero-actions { width:min(100%, 340px); margin-top:24px; }
+        .hero-actions { width:min(100%, 340px); margin-top:32px; }
         .pray-button,
         .intention-only-button { width:100%; max-width:none; }
         .modal-backdrop { padding:12px; }
@@ -1542,7 +1542,11 @@
           <div class="modal-body-scroll">
             <div class="feed-surface">
               <div class="feed-toolbar">
-                <button id="feed-filter-button" class="feed-filter-button" type="button">Filter: All</button>
+                <select id="feed-filter-select" class="feed-filter-select" aria-label="Filter prayer feed">
+                  <option value="all">All</option>
+                  <option value="intentions">Intentions</option>
+                  <option value="prayer_events">Prayer Enter/Exit</option>
+                </select>
               </div>
               <div id="feed-empty" class="feed-empty" hidden>No prayer activity yet.</div>
               <div class="feed-shell">
@@ -1751,7 +1755,7 @@
         intentionOnlyButton: document.querySelector("#intention-only-button"),
         prayModal: document.querySelector("#pray-modal"),
         prayerFeed: document.querySelector("#prayer-feed"),
-        feedFilterButton: document.querySelector("#feed-filter-button"),
+        feedFilterSelect: document.querySelector("#feed-filter-select"),
         recordButton: document.querySelector("#record-button"),
         recordingPreview: document.querySelector("#recording-preview"),
         recordingPreviewAudio: document.querySelector("#recording-preview-audio"),
@@ -2419,21 +2423,16 @@
         return currentPrayerFeed;
       }
 
-      function feedFilterLabel() {
-        if (currentFeedFilter === "intentions") return "Filter: Intentions";
-        if (currentFeedFilter === "prayer_events") return "Filter: Prayer Enter/Exit";
-        return "Filter: All";
+      function syncFeedFilterControl() {
+        if (els.feedFilterSelect) {
+          els.feedFilterSelect.value = currentFeedFilter;
+        }
       }
 
-      function cycleFeedFilter() {
-        currentFeedFilter = currentFeedFilter === "all"
-          ? "intentions"
-          : currentFeedFilter === "intentions"
-            ? "prayer_events"
-            : "all";
-        if (els.feedFilterButton) {
-          els.feedFilterButton.textContent = feedFilterLabel();
-        }
+      function setFeedFilter(nextFilter) {
+        const allowed = new Set(["all", "intentions", "prayer_events"]);
+        currentFeedFilter = allowed.has(nextFilter) ? nextFilter : "all";
+        syncFeedFilterControl();
         renderPrayerFeed();
       }
 
@@ -3377,9 +3376,7 @@
 
       function renderPrayerFeed() {
         const groupSlug = selectedGroupSlug();
-        if (els.feedFilterButton) {
-          els.feedFilterButton.textContent = feedFilterLabel();
-        }
+        syncFeedFilterControl();
         if (!groupSlug) {
           currentPrayerFeed = [];
           els.prayerFeed.innerHTML = "";
@@ -4398,7 +4395,9 @@
         }
       });
       els.saveIntention.addEventListener("click", () => wrap(saveIntentionFromSideRail, els.saveIntention));
-      els.feedFilterButton?.addEventListener("click", cycleFeedFilter);
+      els.feedFilterSelect?.addEventListener("change", (event) => {
+        setFeedFilter(event.target.value);
+      });
       els.shareComment.addEventListener("click", () => wrap(postFeedComment, els.shareComment));
       els.skipIntention.addEventListener("click", closeIntentionModal);
       els.sendPrayer.addEventListener("click", () => wrap(() => {
