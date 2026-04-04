@@ -504,21 +504,9 @@
         opacity:.58;
         box-shadow:none;
       }
-      .chat-composer-footer {
-        display:flex;
-        align-items:center;
-        justify-content:space-between;
-        gap:12px;
-      }
-      .chat-refresh-button {
-        min-width:0;
-        padding:0;
-        border:none;
-        background:none;
-        color:rgba(248,241,223,.8);
-        box-shadow:none;
-      }
-      .chat-status { margin:0; flex:1; }
+      .chat-composer-footer { display:grid; gap:10px; }
+      .chat-status { margin:0; }
+      .chat-status[hidden] { display:none; }
       .chat-preview {
         display:grid;
         gap:10px;
@@ -1197,10 +1185,6 @@
           background:#ffffff;
           box-shadow:none;
         }
-        body[data-current-page="chat"] #chat-modal .chat-summary {
-          flex:0 0 auto;
-          padding:0 20px 12px;
-        }
         body[data-current-page="chat"] #chat-modal .chat-empty {
           margin:0 20px 12px;
         }
@@ -1528,7 +1512,6 @@
           </div>
           <div class="modal-body-scroll chat-modal-body">
             <div class="chat-surface">
-              <div id="chat-active-group" class="chat-summary">Choose your active community in Settings first.</div>
               <div id="chat-empty" class="chat-empty">No chat messages yet.</div>
               <div id="chat-shell" class="chat-shell">
                 <div id="chat-list" class="chat-list"></div>
@@ -1539,8 +1522,7 @@
                   <button id="send-chat" class="chat-send-button record-mode" aria-label="Record voice message" title="Record voice message" data-mode="record"><span id="chat-send-icon" aria-hidden="true">&#127897;</span></button>
                 </div>
                 <div class="chat-composer-footer">
-                  <div id="chat-recording-status" class="status chat-status">Voice chat is ready when your group is active.</div>
-                  <button id="refresh-chat" class="chat-refresh-button" type="button">Refresh</button>
+                  <div id="chat-recording-status" class="status chat-status" hidden></div>
                 </div>
                 <div id="chat-preview" class="chat-preview" hidden>
                   <audio id="chat-preview-audio" controls preload="metadata"></audio>
@@ -1665,7 +1647,6 @@
         closeChatModal: document.querySelector("#close-chat-modal"),
         closeGroupModal: document.querySelector("#close-group-modal"),
         closeNotificationsModal: document.querySelector("#close-notifications-modal"),
-        chatActiveGroup: document.querySelector("#chat-active-group"),
         chatBadge: document.querySelector("#chat-badge"),
         chatEmpty: document.querySelector("#chat-empty"),
         chatList: document.querySelector("#chat-list"),
@@ -1733,7 +1714,6 @@
         readingReminderModal: document.querySelector("#reading-reminder-modal"),
         readingReminderSummary: document.querySelector("#reading-reminder-summary"),
         readingReminderTime: document.querySelector("#reading-reminder-time"),
-        refreshChat: document.querySelector("#refresh-chat"),
         refreshNotifications: document.querySelector("#refresh-notifications"),
         saveReadingReminder: document.querySelector("#save-reading-reminder"),
         saveSchedule: document.querySelector("#save-schedule"),
@@ -2216,8 +2196,10 @@
       }
 
       function setChatRecordingStatus(message, isError = false) {
-        els.chatRecordingStatus.textContent = message;
-        els.chatRecordingStatus.classList.toggle("error", isError);
+        const hasMessage = Boolean(String(message || "").trim());
+        els.chatRecordingStatus.hidden = !hasMessage;
+        els.chatRecordingStatus.textContent = hasMessage ? message : "";
+        els.chatRecordingStatus.classList.toggle("error", hasMessage && isError);
       }
 
       function readingTrayIconSvg(kind) {
@@ -2358,7 +2340,6 @@
           : hasPendingVoice
             ? "Voice message ready to send..."
             : "Send a message to your community...";
-        els.refreshChat.disabled = !hasGroup || isRecording || hasPendingVoice;
         els.discardChatAudio.disabled = !hasPendingVoice || isRecording;
         updateChatComposerState(hasGroup, hasRecorder, isRecording);
       }
@@ -3617,16 +3598,10 @@
         const groupSlug = selectedGroupSlug();
         if (!groupSlug) {
           currentChatMessages = [];
-          els.chatActiveGroup.textContent = "Choose your active community in Settings first.";
           renderChat([]);
           updateChatRecorderButtons();
           return;
         }
-
-        const activeGroup = currentGroups.find((group) => group.slug === groupSlug) || null;
-        els.chatActiveGroup.textContent = activeGroup
-          ? `Chatting in ${activeGroup.name || activeGroup.slug}`
-          : `Chatting in ${groupSlug}`;
 
         const response = await authedFetch(`/functions/v1/community-chat?groupSlug=${encodeURIComponent(groupSlug)}`, { method: "GET" });
         const payload = await response.json();
@@ -3950,7 +3925,6 @@
           setReadingAvailabilityBadge(false);
           updateRecordingButtons();
           updateChatRecorderButtons();
-          els.chatActiveGroup.textContent = "Choose your active community in Settings first.";
           els.chatList.innerHTML = "";
           els.chatEmpty.hidden = false;
           els.chatEmpty.textContent = "Choose your active community in Settings first.";
@@ -4100,7 +4074,7 @@
           await refreshNotificationBadge();
           await loadGroups();
           await openPendingLaunchTarget();
-          setChatRecordingStatus("Voice chat is ready when your group is active.");
+          setChatRecordingStatus("");
           refreshTimer = window.setInterval(() => {
             refreshPrayerState().catch(() => {});
             loadPrayerFeed().catch(() => {});
@@ -4301,7 +4275,6 @@
         setRecordingStatus("Recording discarded.");
         updateRecordingButtons();
       });
-      els.refreshChat.addEventListener("click", () => wrap(loadChat, els.refreshChat));
       els.sendChat.addEventListener("click", () => wrap(handleChatPrimaryAction, els.sendChat));
       els.discardChatAudio.addEventListener("click", () => {
         clearPendingChatRecording();
