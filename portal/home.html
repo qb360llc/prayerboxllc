@@ -658,12 +658,12 @@
           background:linear-gradient(180deg, #f9fbfd 0%, #eef3f7 100%);
         }
         body[data-current-page]:not([data-current-page="home"]) .topbar-wrap {
-          background:linear-gradient(180deg, rgba(255,255,255,.98) 0%, rgba(249,251,253,.94) 100%);
-          border-bottom:1px solid rgba(35,68,87,.08);
-          box-shadow:0 10px 28px rgba(20,38,52,.06);
+          background:transparent;
+          border-bottom:none;
+          box-shadow:none;
         }
         body[data-current-page]:not([data-current-page="home"]) .topbar {
-          padding:calc(env(safe-area-inset-top, 0px) + 12px) 14px 12px;
+          padding:calc(env(safe-area-inset-top, 0px) + 12px) 14px 4px;
         }
         body[data-current-page]:not([data-current-page="home"]) .profile-shortcut,
         body[data-current-page]:not([data-current-page="home"]) .rail-button {
@@ -710,6 +710,9 @@
           background:none;
           z-index:auto;
         }
+        .app-page-modal.page-active {
+          margin-top:calc(-1 * (env(safe-area-inset-top, 0px) + 44px));
+        }
         .app-page-modal .modal-card {
           width:100%;
           min-height:auto;
@@ -721,8 +724,10 @@
           color:#173241;
         }
         .app-page-modal .modal-header {
-          padding:4px 4px 14px;
+          min-height:48px;
+          padding:0 64px 14px 4px;
           margin-bottom:0;
+          align-items:center;
         }
         .app-page-modal .modal-title {
           color:#173241;
