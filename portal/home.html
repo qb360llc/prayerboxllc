@@ -446,7 +446,7 @@
       .chat-composer { display:grid; gap:10px; padding-top:10px; border-top:1px solid rgba(248,241,223,.1); }
       .chat-composer-shell {
         display:flex;
-        align-items:center;
+        align-items:flex-end;
         gap:10px;
         min-height:58px;
         padding:8px 8px 8px 16px;
@@ -454,10 +454,11 @@
         background:rgba(255,250,242,.96);
         box-shadow:0 10px 28px rgba(7,19,29,.2);
       }
-      .chat-composer-shell input {
+      .chat-composer-shell textarea {
         flex:1;
         width:auto;
         min-height:42px;
+        max-height:132px;
         padding:0;
         margin:0;
         border:none;
@@ -466,8 +467,11 @@
         background:transparent;
         color:#173347;
         font-size:1.04rem;
+        line-height:1.4;
+        resize:none;
+        overflow:hidden;
       }
-      .chat-composer-shell input:focus {
+      .chat-composer-shell textarea:focus {
         outline:none;
         box-shadow:none;
       }
@@ -1152,8 +1156,71 @@
           border:1px solid rgba(35,68,87,.08);
           box-shadow:none;
         }
-        .app-page-modal .chat-composer-shell input {
+        .app-page-modal .chat-composer-shell textarea {
           color:#173241;
+        }
+        body[data-current-page="chat"] #chat-modal {
+          width:100vw;
+          margin-left:calc(50% - 50vw);
+          min-height:calc(100vh - 76px);
+        }
+        body[data-current-page="chat"] #chat-modal .modal-card {
+          width:100vw;
+          height:calc(100vh - 68px - env(safe-area-inset-bottom, 0px));
+          min-height:calc(100vh - 68px - env(safe-area-inset-bottom, 0px));
+          margin:0;
+          display:flex;
+          flex-direction:column;
+        }
+        body[data-current-page="chat"] #chat-modal .modal-header {
+          width:100%;
+          padding:0 64px 14px 20px;
+        }
+        body[data-current-page="chat"] #chat-modal .chat-modal-body {
+          flex:1;
+          min-height:0;
+          display:flex;
+          flex-direction:column;
+          overflow:hidden;
+          padding:0;
+        }
+        body[data-current-page="chat"] #chat-modal .chat-surface {
+          flex:1;
+          min-height:0;
+          display:flex;
+          flex-direction:column;
+          gap:0;
+          width:100%;
+          padding:0;
+          border:none;
+          border-radius:0;
+          background:#ffffff;
+          box-shadow:none;
+        }
+        body[data-current-page="chat"] #chat-modal .chat-summary {
+          flex:0 0 auto;
+          padding:0 20px 12px;
+        }
+        body[data-current-page="chat"] #chat-modal .chat-empty {
+          margin:0 20px 12px;
+        }
+        body[data-current-page="chat"] #chat-modal .chat-shell {
+          flex:1;
+          min-height:0;
+          max-height:none;
+          overflow:auto;
+          padding:0 20px 12px;
+          overscroll-behavior:contain;
+        }
+        body[data-current-page="chat"] #chat-modal .chat-composer {
+          flex:0 0 auto;
+          gap:10px;
+          padding:12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+          border-top:1px solid rgba(35,68,87,.08);
+          background:#ffffff;
+        }
+        body[data-current-page="chat"] #chat-modal .chat-composer-footer {
+          padding:0 4px;
         }
         .app-page-modal .chat-send-button.record-mode {
           background:#e9eef3;
@@ -1468,7 +1535,7 @@
               </div>
               <div class="chat-composer">
                 <div class="chat-composer-shell">
-                  <input id="chat-text" type="text" placeholder="Send a message to your community...">
+                  <textarea id="chat-text" rows="1" placeholder="Send a message to your community..."></textarea>
                   <button id="send-chat" class="chat-send-button record-mode" aria-label="Record voice message" title="Record voice message" data-mode="record"><span id="chat-send-icon" aria-hidden="true">&#127897;</span></button>
                 </div>
                 <div class="chat-composer-footer">
@@ -2294,6 +2361,13 @@
         els.refreshChat.disabled = !hasGroup || isRecording || hasPendingVoice;
         els.discardChatAudio.disabled = !hasPendingVoice || isRecording;
         updateChatComposerState(hasGroup, hasRecorder, isRecording);
+      }
+
+      function autosizeChatInput() {
+        if (!els.chatText) return;
+        els.chatText.style.height = "auto";
+        const nextHeight = Math.min(Math.max(42, els.chatText.scrollHeight), 132);
+        els.chatText.style.height = `${nextHeight}px`;
       }
 
       function updateBannerAndButton() {
@@ -3631,6 +3705,7 @@
         const payload = await response.json();
         if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to send chat message.");
         els.chatText.value = "";
+        autosizeChatInput();
         clearPendingChatRecording();
         updateChatRecorderButtons();
         renderChat(payload.messages || []);
@@ -4233,7 +4308,10 @@
         setChatRecordingStatus("Voice message discarded.");
         updateChatRecorderButtons();
       });
-      els.chatText.addEventListener("input", updateChatRecorderButtons);
+      els.chatText.addEventListener("input", () => {
+        autosizeChatInput();
+        updateChatRecorderButtons();
+      });
       els.chatText.addEventListener("keydown", (event) => {
         if (event.key === "Enter" && !event.shiftKey) {
           if (!els.chatText.value.trim()) return;
@@ -4318,6 +4396,7 @@
       });
 
       updateSharedAudioPlayButton();
+      autosizeChatInput();
       syncMobilePageLayout();
       boot();
     </script>
