@@ -93,8 +93,10 @@
       .mobile-action-strip.open { max-height:520px; padding:12px; opacity:1; transform:translateY(0); }
       .hero-card { min-height:calc(100vh - 140px); display:grid; align-content:space-between; gap:16px; padding:18px 18px 20px; text-align:center; }
       .hero-stack { display:grid; gap:10px; justify-items:center; align-content:end; min-height:100%; }
-      .pray-button { display:inline-flex; align-items:center; justify-content:center; min-width:220px; margin-top:0; padding:18px 30px; font-size:1.12rem; background:linear-gradient(160deg, #ead1a0 0%, #c8923d 100%); box-shadow:0 18px 36px rgba(12,25,34,.24); }
+      .hero-actions { width:min(100%, 360px); display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px; margin-top:18px; }
+      .pray-button { display:inline-flex; align-items:center; justify-content:center; width:100%; min-width:0; margin-top:0; padding:18px 20px; font-size:1.12rem; background:linear-gradient(160deg, #ead1a0 0%, #c8923d 100%); box-shadow:0 18px 36px rgba(12,25,34,.24); }
       .pray-button.amen { background:linear-gradient(160deg, rgba(248,241,223,.94) 0%, #f0dcb5 100%); }
+      .intention-only-button { display:inline-flex; align-items:center; justify-content:center; width:100%; min-width:0; padding:18px 20px; border-radius:999px; border:1px solid rgba(248,241,223,.22); background:rgba(18,35,46,.56); color:var(--cream); box-shadow:0 18px 36px rgba(12,25,34,.18); }
       .status { max-width:28rem; margin:0 auto; padding:12px 14px; border-radius:18px; background:rgba(248,241,223,.12); border:1px solid rgba(248,241,223,.12); white-space:pre-wrap; }
       .status.error { color:var(--danger); background:rgba(127,30,19,.28); border-color:rgba(255,209,201,.2); }
       .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0, 0, 0, 0); white-space:nowrap; border:0; }
@@ -258,6 +260,8 @@
       .feed-shell::-webkit-scrollbar { width:8px; }
       .feed-shell::-webkit-scrollbar-thumb { background:rgba(35,68,87,.22); border-radius:999px; }
       .feed-empty { padding:14px 16px; border-radius:20px; border:1px solid rgba(35,68,87,.12); background:rgba(35,68,87,.06); color:#4f4a42; }
+      .feed-toolbar { display:flex; justify-content:flex-end; margin-bottom:12px; }
+      .feed-filter-button { min-width:0; padding:10px 14px; border-radius:999px; border:1px solid rgba(35,68,87,.12); background:#f5f8fb; color:#173241; box-shadow:none; }
       .feed-list { display:grid; gap:14px; }
       .feed-date-group { display:grid; gap:12px; }
       .feed-date-marker {
@@ -690,12 +694,14 @@
         .mobile-action-cluster { position:absolute; left:14px; top:calc(env(safe-area-inset-top, 0px) + 12px); display:flex; align-items:flex-start; gap:10px; z-index:3; }
       }
       @media (max-width:719px) {
-        body { background:#294d61 url("./home-mobile-bg.svg") center 24px / cover no-repeat fixed; }
+        body { background:#294d61 url("./home-mobile-bg.svg") center 12px / cover no-repeat fixed; }
         body::before, body::after { display:none; }
         main { padding:12px 14px 124px; }
         .mobile-action-cluster { display:none !important; }
         .hero-card { min-height:calc(100vh - 110px); padding:12px 10px 2px; display:flex; flex-direction:column; justify-content:flex-end; gap:12px; }
-        .pray-button { width:100%; max-width:280px; }
+        .hero-actions { width:min(100%, 340px); margin-top:24px; }
+        .pray-button,
+        .intention-only-button { width:100%; max-width:none; }
         .modal-backdrop { padding:12px; }
         .modal-backdrop.top-sheet { padding:0; }
         .modal-backdrop.top-sheet .modal-card { width:100%; min-height:100vh; border-radius:0 0 24px 24px; }
@@ -1334,7 +1340,10 @@
 
       <section id="hero-card" class="hero-card">
         <div class="hero-stack">
-          <button id="pray-button" class="pray-button">Pray</button>
+          <div class="hero-actions">
+            <button id="pray-button" class="pray-button">Pray</button>
+            <button id="intention-only-button" class="intention-only-button" type="button">Intention Only</button>
+          </div>
         </div>
         <div class="hero-presence">
           <div id="hero-avatars" class="hero-avatars" aria-label="People currently in prayer">
@@ -1532,6 +1541,9 @@
           </div>
           <div class="modal-body-scroll">
             <div class="feed-surface">
+              <div class="feed-toolbar">
+                <button id="feed-filter-button" class="feed-filter-button" type="button">Filter: All</button>
+              </div>
               <div id="feed-empty" class="feed-empty" hidden>No prayer activity yet.</div>
               <div class="feed-shell">
                 <div id="prayer-feed" class="feed-list"></div>
@@ -1736,8 +1748,10 @@
         profileMenuPanel: document.querySelector("#profile-menu-panel"),
         profileMenuToggle: document.querySelector("#profile-menu-toggle"),
         prayButton: document.querySelector("#pray-button"),
+        intentionOnlyButton: document.querySelector("#intention-only-button"),
         prayModal: document.querySelector("#pray-modal"),
         prayerFeed: document.querySelector("#prayer-feed"),
+        feedFilterButton: document.querySelector("#feed-filter-button"),
         recordButton: document.querySelector("#record-button"),
         recordingPreview: document.querySelector("#recording-preview"),
         recordingPreviewAudio: document.querySelector("#recording-preview-audio"),
@@ -1810,6 +1824,7 @@
       let currentDailyReminder = null;
       let currentPrayerSchedule = null;
       let currentPageKey = normalizePageKey(initialLaunchParams.page);
+      let currentFeedFilter = "all";
       const collapsedFeedDates = new Set();
 
       function intentionStorageKey() {
@@ -2392,6 +2407,34 @@
         const ownActive = (currentPrayerState.ownActiveCount || 0) > 0;
         els.prayButton.textContent = ownActive ? "Amen" : "Pray";
         els.prayButton.classList.toggle("amen", ownActive);
+      }
+
+      function filteredPrayerFeedItems() {
+        if (currentFeedFilter === "intentions") {
+          return currentPrayerFeed.filter((item) => item.type === "intention");
+        }
+        if (currentFeedFilter === "prayer_events") {
+          return currentPrayerFeed.filter((item) => item.type === "prayer_event");
+        }
+        return currentPrayerFeed;
+      }
+
+      function feedFilterLabel() {
+        if (currentFeedFilter === "intentions") return "Filter: Intentions";
+        if (currentFeedFilter === "prayer_events") return "Filter: Prayer Enter/Exit";
+        return "Filter: All";
+      }
+
+      function cycleFeedFilter() {
+        currentFeedFilter = currentFeedFilter === "all"
+          ? "intentions"
+          : currentFeedFilter === "intentions"
+            ? "prayer_events"
+            : "all";
+        if (els.feedFilterButton) {
+          els.feedFilterButton.textContent = feedFilterLabel();
+        }
+        renderPrayerFeed();
       }
 
       function clearHeroAvatarLabels() {
@@ -3334,6 +3377,9 @@
 
       function renderPrayerFeed() {
         const groupSlug = selectedGroupSlug();
+        if (els.feedFilterButton) {
+          els.feedFilterButton.textContent = feedFilterLabel();
+        }
         if (!groupSlug) {
           currentPrayerFeed = [];
           els.prayerFeed.innerHTML = "";
@@ -3351,9 +3397,24 @@
           return;
         }
 
+        const visibleFeedItems = filteredPrayerFeedItems();
+        if (!visibleFeedItems.length) {
+          els.prayerFeed.innerHTML = "";
+          els.feedEmpty.hidden = false;
+          els.feedEmpty.textContent = currentFeedFilter === "intentions"
+            ? "No intentions found for this filter."
+            : "No prayer enter/exit updates found for this filter.";
+          if (isFeedVisible()) {
+            markIntentionsSeen();
+          } else {
+            syncIntentionUnreadBadge();
+          }
+          return;
+        }
+
         els.feedEmpty.hidden = true;
         const groupedItems = [];
-        currentPrayerFeed.forEach((item) => {
+        visibleFeedItems.forEach((item) => {
           const key = feedDateKey(item.createdAt);
           const lastGroup = groupedItems[groupedItems.length - 1];
           if (!lastGroup || lastGroup.key !== key) {
@@ -3956,6 +4017,7 @@
         const activeGroup = groups.find((group) => group.slug === savedGroupSlug) || groups[0] || null;
         if (!activeGroup) {
           els.prayButton.disabled = true;
+          if (els.intentionOnlyButton) els.intentionOnlyButton.disabled = true;
           currentPrayerState = { othersInPrayerCount: 0, ownActiveCount: 0 };
           updateBannerAndButton();
           renderHeroAvatars();
@@ -3975,6 +4037,7 @@
           localStorage.setItem(SELECTED_GROUP_STORAGE_KEY, activeGroup.slug);
         }
         els.prayButton.disabled = false;
+        if (els.intentionOnlyButton) els.intentionOnlyButton.disabled = false;
         updateRecordingButtons();
         updateChatRecorderButtons();
         renderGroupList();
@@ -4182,6 +4245,11 @@
         }
         openPrayModal();
       });
+      els.intentionOnlyButton?.addEventListener("click", () => {
+        closeProfileMenu();
+        closeInfoPanel();
+        openIntentionModal();
+      });
       els.openReadingModal.addEventListener("click", async () => {
         closeProfileMenu();
         closeInfoPanel();
@@ -4330,6 +4398,7 @@
         }
       });
       els.saveIntention.addEventListener("click", () => wrap(saveIntentionFromSideRail, els.saveIntention));
+      els.feedFilterButton?.addEventListener("click", cycleFeedFilter);
       els.shareComment.addEventListener("click", () => wrap(postFeedComment, els.shareComment));
       els.skipIntention.addEventListener("click", closeIntentionModal);
       els.sendPrayer.addEventListener("click", () => wrap(() => {
