@@ -604,6 +604,27 @@
         color:#111;
         box-shadow:none;
       }
+      .reading-player-actions .icon-button .tray-icon {
+        width:20px;
+        height:20px;
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        pointer-events:none;
+      }
+      .reading-player-actions .icon-button .tray-icon svg {
+        width:100%;
+        height:100%;
+        stroke:currentColor;
+        fill:none;
+        stroke-width:2;
+        stroke-linecap:round;
+        stroke-linejoin:round;
+      }
+      .reading-player-actions .icon-button .tray-icon.fill svg {
+        fill:currentColor;
+        stroke:none;
+      }
       .reading-player-actions .icon-button.slot-hidden {
         visibility:hidden;
         pointer-events:none;
@@ -913,6 +934,18 @@
           border-top:1px solid rgba(35,68,87,.12);
           background:#eef2f5;
           box-shadow:0 -10px 24px rgba(20,38,52,.08);
+        }
+        body[data-current-page="reading"] #reading-modal .reading-player-actions .icon-button,
+        body[data-current-page="reading"] #reading-modal .reading-player-actions .icon-button.secondary {
+          background:#122632;
+          border:1px solid rgba(248,241,223,.16);
+          color:#f8f1df;
+        }
+        body[data-current-page="reading"] #reading-modal .reading-player-actions .icon-button:disabled,
+        body[data-current-page="reading"] #reading-modal .reading-player-actions .icon-button.secondary:disabled {
+          opacity:.48;
+          color:rgba(248,241,223,.68);
+          background:#122632;
         }
         body[data-current-page="reading"] #reading-modal .recording-utility-row {
           display:none;
@@ -1258,11 +1291,11 @@
               <div id="recording-status" class="status recording-status">No recordings today.</div>
               <audio id="shared-audio" class="recording-audio" controls preload="none" hidden></audio>
               <div class="reading-player-actions">
-                <button id="record-button" class="icon-button" aria-label="Record reading" title="Record reading">●</button>
-                <button id="stop-button" class="secondary icon-button" aria-label="Stop recording" title="Stop recording" disabled>■</button>
-                <button id="toggle-audio-play" class="icon-button" aria-label="Play recording" title="Play recording" disabled>▶</button>
-                <button id="open-reading-reminder-modal" class="secondary icon-button" aria-label="Set daily reminder" title="Set daily reminder">⏲</button>
-                <button id="redo-reading-bar" class="secondary icon-button" aria-label="Redo recording" title="Redo recording">↺</button>
+                <button id="record-button" class="icon-button" aria-label="Record reading" title="Record reading"><span class="tray-icon fill" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"></circle></svg></span></button>
+                <button id="stop-button" class="secondary icon-button" aria-label="Stop recording" title="Stop recording" disabled><span class="tray-icon fill" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="1.5"></rect></svg></span></button>
+                <button id="toggle-audio-play" class="icon-button" aria-label="Play recording" title="Play recording" disabled><span class="tray-icon fill" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 6.5v11l9-5.5z"></path></svg></span></button>
+                <button id="open-reading-reminder-modal" class="secondary icon-button" aria-label="Set daily reminder" title="Set daily reminder"><span class="tray-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="7"></circle><path d="M12 9v4l2.5 1.5"></path><path d="M9 3h6"></path></svg></span></button>
+                <button id="redo-reading-bar" class="secondary icon-button" aria-label="Redo recording" title="Redo recording"><span class="tray-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 8H4v4"></path><path d="M4.5 11a8 8 0 1 0 2.3-5.3L8 8"></path></svg></span></button>
               </div>
               <button id="delete-audio" hidden aria-label="Delete recording" title="Delete recording"></button>
               <button id="refresh-audio" hidden aria-label="Refresh latest audio" title="Refresh latest audio"></button>
@@ -2118,6 +2151,22 @@
       function setChatRecordingStatus(message, isError = false) {
         els.chatRecordingStatus.textContent = message;
         els.chatRecordingStatus.classList.toggle("error", isError);
+      }
+
+      function readingTrayIconSvg(kind) {
+        if (kind === "pause") {
+          return `<span class="tray-icon fill" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="6.5" y="5.5" width="4" height="13" rx="1.2"></rect><rect x="13.5" y="5.5" width="4" height="13" rx="1.2"></rect></svg></span>`;
+        }
+        return `<span class="tray-icon fill" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 6.5v11l9-5.5z"></path></svg></span>`;
+      }
+
+      function updateSharedAudioPlayButton() {
+        const hasRecording = Boolean(els.sharedAudio.getAttribute("src"));
+        const isPlaying = !els.sharedAudio.paused && !els.sharedAudio.ended;
+        els.toggleAudioPlay.disabled = !hasRecording;
+        els.toggleAudioPlay.innerHTML = readingTrayIconSvg(isPlaying ? "pause" : "play");
+        els.toggleAudioPlay.setAttribute("aria-label", isPlaying ? "Pause recording" : "Play recording");
+        els.toggleAudioPlay.setAttribute("title", isPlaying ? "Pause recording" : "Play recording");
       }
 
       function setReadingAvailabilityBadge(hasRecording) {
