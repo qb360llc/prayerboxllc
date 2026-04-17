@@ -231,36 +231,38 @@
             <button id="mode-signup" class="auth-tab" type="button">Sign Up</button>
           </div>
 
-          <div class="auth-grid two" id="signup-name-row" hidden>
-            <div>
-              <label for="auth-first-name">First Name</label>
-              <input id="auth-first-name" placeholder="Jane">
+          <form id="auth-form">
+            <div class="auth-grid two" id="signup-name-row" hidden>
+              <div>
+                <label for="auth-first-name">First Name</label>
+                <input id="auth-first-name" placeholder="Jane" autocomplete="given-name">
+              </div>
+              <div>
+                <label for="auth-last-name">Last Name</label>
+                <input id="auth-last-name" placeholder="Doe" autocomplete="family-name">
+              </div>
             </div>
-            <div>
-              <label for="auth-last-name">Last Name</label>
-              <input id="auth-last-name" placeholder="Doe">
-            </div>
-          </div>
 
-          <div class="auth-grid" style="margin-top:12px;">
-            <div>
-              <label for="auth-email">Email</label>
-              <input id="auth-email" type="email" placeholder="you@example.com">
+            <div class="auth-grid" style="margin-top:12px;">
+              <div>
+                <label for="auth-email">Email</label>
+                <input id="auth-email" type="email" placeholder="you@example.com" autocomplete="email">
+              </div>
+              <div>
+                <label for="auth-password">Password</label>
+                <input id="auth-password" type="password" placeholder="Password" autocomplete="current-password">
+              </div>
+              <div id="signup-confirm-row" hidden>
+                <label for="auth-confirm-password">Confirm Password</label>
+                <input id="auth-confirm-password" type="password" placeholder="Confirm Password" autocomplete="new-password">
+              </div>
             </div>
-            <div>
-              <label for="auth-password">Password</label>
-              <input id="auth-password" type="password" placeholder="Password">
-            </div>
-            <div id="signup-confirm-row" hidden>
-              <label for="auth-confirm-password">Confirm Password</label>
-              <input id="auth-confirm-password" type="password" placeholder="Confirm Password">
-            </div>
-          </div>
 
-          <div class="actions">
-            <button id="auth-submit">Log In</button>
-            <button id="auth-switch" class="ghost" type="button">Need an account? Sign Up</button>
-          </div>
+            <div class="actions">
+              <button id="auth-submit">Log In</button>
+              <button id="auth-switch" class="ghost" type="button">Need an account? Sign Up</button>
+            </div>
+          </form>
           <div id="auth-status" class="status">Welcome. Sign in to continue.</div>
           <div class="auth-helper">Need help getting a box online? Read the <a href="./setup.html">Setup Guide</a>. Admins can still use <a href="./admin.html">Admin</a> for device provisioning.</div>
         </section>
@@ -274,10 +276,12 @@
       const projectUrl = config.projectUrl || "";
       const anonKey = config.anonKey || "";
       const HOME_URL = "./home.html";
+      const AUTH_REDIRECT_URL = new URL("./index.html", window.location.href).toString();
       const els = {
         authConfirmPassword: document.querySelector("#auth-confirm-password"),
         authEmail: document.querySelector("#auth-email"),
         authFirstName: document.querySelector("#auth-first-name"),
+        authForm: document.querySelector("#auth-form"),
         authLastName: document.querySelector("#auth-last-name"),
         authPassword: document.querySelector("#auth-password"),
         authStatus: document.querySelector("#auth-status"),
@@ -300,6 +304,10 @@
           supabase = createClient(projectUrl, anonKey);
         }
         return supabase;
+      }
+
+      function normalizeEmail(value) {
+        return value.trim().toLowerCase();
       }
 
       function setAuthStatus(message, isError = false) {
@@ -333,7 +341,7 @@
         const lastName = els.authLastName.value.trim();
         if (!firstName && !lastName) return;
         const displayName = [firstName, lastName].filter(Boolean).join(" ") || emailFallback;
-        await client
+        const { error } = await client
           .from("profiles")
           .update({
             display_name: displayName,
@@ -341,6 +349,9 @@
             last_name: lastName || null,
           })
           .eq("id", userId);
+        if (error) {
+          console.warn("Unable to update profile names after auth:", error);
+        }
       }
 
       function redirectToHome() {
@@ -349,7 +360,7 @@
 
       async function handleAuthSubmit() {
         const client = getClient();
-        const email = els.authEmail.value.trim();
+        const email = normalizeEmail(els.authEmail.value);
         const password = els.authPassword.value;
         if (!email || !password) {
           throw new Error("Email and password are required.");
@@ -359,6 +370,7 @@
           const firstName = els.authFirstName.value.trim();
           const lastName = els.authLastName.value.trim();
           const confirmPassword = els.authConfirmPassword.value;
+          const displayName = [firstName, lastName].filter(Boolean).join(" ");
           if (!firstName || !lastName) {
             throw new Error("First and last name are required for sign up.");
           }
@@ -366,12 +378,23 @@
             throw new Error("Passwords do not match.");
           }
 
-          const { data, error } = await client.auth.signUp({ email, password });
+          const { data, error } = await client.auth.signUp({
+            email,
+            password,
+            options: {
+              emailRedirectTo: AUTH_REDIRECT_URL,
+              data: {
+                display_name: displayName,
+                first_name: firstName,
+                last_name: lastName,
+              },
+            },
+          });
           if (error) throw error;
 
           if (!data.session) {
             setAuthMode("signin");
-            setAuthStatus("Account created. Check your email, then log in.", false);
+            setAuthStatus("Account created. Check your email for the confirmation link, then log in.", false);
             return;
           }
 
@@ -399,6 +422,12 @@
       async function boot() {
         try {
           const client = getClient();
+          client.auth.onAuthStateChange((event, session) => {
+            if (!session) return;
+            if (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") {
+              redirectToHome();
+            }
+          });
           const { data } = await client.auth.getSession();
           if (data.session) {
             redirectToHome();
@@ -417,7 +446,10 @@
       els.modeSignin.addEventListener("click", () => setAuthMode("signin"));
       els.modeSignup.addEventListener("click", () => setAuthMode("signup"));
       els.authSwitch.addEventListener("click", () => setAuthMode(authMode === "signin" ? "signup" : "signin"));
-      els.authSubmit.addEventListener("click", () => wrap(handleAuthSubmit, els.authSubmit));
+      els.authForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        wrap(handleAuthSubmit, els.authSubmit);
+      });
 
       boot();
     </script>
