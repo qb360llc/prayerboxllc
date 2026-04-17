@@ -295,6 +295,7 @@
 
       let authMode = "signin";
       let supabase = null;
+      const AUTH_TIMEOUT_MS = 15000;
 
       function getClient() {
         if (!projectUrl || !anonKey) {
@@ -313,6 +314,15 @@
       function setAuthStatus(message, isError = false) {
         els.authStatus.textContent = message;
         els.authStatus.classList.toggle("error", isError);
+      }
+
+      function withTimeout(promise, message = "Prayerbox couldn't reach sign in right now. Please try again.") {
+        return Promise.race([
+          promise,
+          new Promise((_, reject) => {
+            window.setTimeout(() => reject(new Error(message)), AUTH_TIMEOUT_MS);
+          }),
+        ]);
       }
 
       function setAuthMode(mode) {
@@ -367,6 +377,7 @@
         }
 
         if (authMode === "signup") {
+          setAuthStatus("Creating your account...", false);
           const firstName = els.authFirstName.value.trim();
           const lastName = els.authLastName.value.trim();
           const confirmPassword = els.authConfirmPassword.value;
@@ -378,18 +389,21 @@
             throw new Error("Passwords do not match.");
           }
 
-          const { data, error } = await client.auth.signUp({
-            email,
-            password,
-            options: {
-              emailRedirectTo: AUTH_REDIRECT_URL,
-              data: {
-                display_name: displayName,
-                first_name: firstName,
-                last_name: lastName,
+          const { data, error } = await withTimeout(
+            client.auth.signUp({
+              email,
+              password,
+              options: {
+                emailRedirectTo: AUTH_REDIRECT_URL,
+                data: {
+                  display_name: displayName,
+                  first_name: firstName,
+                  last_name: lastName,
+                },
               },
-            },
-          });
+            }),
+            "Creating your account is taking too long. Please check your connection and try again."
+          );
           if (error) throw error;
 
           if (!data.session) {
@@ -403,7 +417,11 @@
           return;
         }
 
-        const { error } = await client.auth.signInWithPassword({ email, password });
+        setAuthStatus("Logging you in...", false);
+        const { error } = await withTimeout(
+          client.auth.signInWithPassword({ email, password }),
+          "Logging in is taking too long. Please check your connection and try again."
+        );
         if (error) throw error;
         redirectToHome();
       }
