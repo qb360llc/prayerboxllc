@@ -733,12 +733,22 @@
           color:#173241;
           background:linear-gradient(180deg, #f9fbfd 0%, #eef3f7 100%);
         }
+        body[data-current-page]:not([data-current-page="home"]) main {
+          padding:calc(env(safe-area-inset-top, 0px) + 74px) 14px 24px;
+        }
         body[data-current-page]:not([data-current-page="home"]) .topbar-wrap {
-          background:transparent;
+          position:fixed;
+          top:0;
+          left:0;
+          right:0;
+          padding-bottom:0;
+          background:linear-gradient(180deg, rgba(249,251,253,.98) 0%, rgba(249,251,253,.92) 72%, rgba(249,251,253,0) 100%);
           border-bottom:none;
           box-shadow:none;
+          z-index:20;
         }
         body[data-current-page]:not([data-current-page="home"]) .topbar {
+          min-height:56px;
           padding:calc(env(safe-area-inset-top, 0px) + 12px) 14px 0;
         }
         body[data-current-page]:not([data-current-page="home"]) .profile-shortcut,
@@ -787,7 +797,7 @@
           z-index:auto;
         }
         .app-page-modal.page-active {
-          margin-top:calc(-1 * (env(safe-area-inset-top, 0px) + 56px));
+          margin-top:0;
         }
         .app-page-modal .modal-card {
           width:100%;
@@ -836,12 +846,26 @@
         .app-page-modal .chat-surface,
         .app-page-modal .members-surface,
         .app-page-modal .notifications-surface {
-          min-height:calc(100vh - 176px);
+          min-height:calc(100vh - 138px - env(safe-area-inset-bottom, 0px));
           padding:16px;
           border-radius:30px;
           background:rgba(255,255,255,.98);
           border:1px solid rgba(35,68,87,.08);
           box-shadow:0 18px 40px rgba(20,38,52,.08);
+        }
+        .app-page-modal .members-surface {
+          overflow:visible;
+        }
+        .app-page-modal .members-list {
+          gap:10px;
+        }
+        .app-page-modal .member-card {
+          padding:4px 0;
+        }
+        .app-page-modal .member-avatar {
+          width:44px;
+          height:44px;
+          flex:0 0 44px;
         }
         .app-page-modal.page-active .feed-surface {
           width:calc(100vw - 28px);
