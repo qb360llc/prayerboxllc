@@ -1836,6 +1836,8 @@
       let currentDailyReminder = null;
       let currentPrayerSchedule = null;
       let prayerActionInFlight = false;
+      let suppressPrayModalUntil = 0;
+      let currentProfileSummary = null;
       let currentPageKey = normalizePageKey(initialLaunchParams.page);
       let currentFeedFilter = "all";
       const collapsedFeedDates = new Set();
@@ -2490,17 +2492,68 @@
       }
 
       function openPrayModal() {
+        if (Date.now() < suppressPrayModalUntil) {
+          return;
+        }
         els.prayModal.classList.add("open");
         els.prayModal.setAttribute("aria-hidden", "false");
         requestAnimationFrame(() => els.intentionBody.focus());
       }
 
       function closePrayModal({ clear = true } = {}) {
+        suppressPrayModalUntil = Date.now() + 700;
         els.prayModal.classList.remove("open");
         els.prayModal.setAttribute("aria-hidden", "true");
         if (clear) {
           els.intentionBody.value = "";
         }
+      }
+
+      function currentParticipantProfile() {
+        if (!currentSessionUser) return null;
+        const name = currentProfileSummary?.name
+          || currentSessionUser.email?.split("@")[0]
+          || "You";
+        return {
+          name,
+          avatarUrl: currentProfileSummary?.avatarUrl || "",
+        };
+      }
+
+      function addCurrentUserToPrayerState() {
+        const participant = currentParticipantProfile();
+        currentPrayerState = {
+          ...currentPrayerState,
+          ownActiveCount: Math.max(1, Number(currentPrayerState.ownActiveCount || 0)),
+          participants: Array.isArray(currentPrayerState.participants)
+            ? currentPrayerState.participants
+            : [],
+        };
+        if (!participant) {
+          updateBannerAndButton();
+          renderHeroAvatars();
+          return;
+        }
+        const alreadyPresent = currentPrayerState.participants.some((item) => String(item.name || "").trim().toLowerCase() === participant.name.trim().toLowerCase());
+        if (!alreadyPresent) {
+          currentPrayerState.participants = [participant, ...currentPrayerState.participants];
+        }
+        updateBannerAndButton();
+        renderHeroAvatars();
+      }
+
+      function removeCurrentUserFromPrayerState() {
+        const participant = currentParticipantProfile();
+        const normalizedName = participant?.name?.trim().toLowerCase() || "";
+        currentPrayerState = {
+          ...currentPrayerState,
+          ownActiveCount: 0,
+          participants: Array.isArray(currentPrayerState.participants)
+            ? currentPrayerState.participants.filter((item) => String(item.name || "").trim().toLowerCase() !== normalizedName)
+            : [],
+        };
+        updateBannerAndButton();
+        renderHeroAvatars();
       }
 
       function openReadingModal() {
@@ -2761,6 +2814,7 @@
           || "Prayerbox";
 
         const avatarUrl = typeof profile?.avatar_url === "string" ? profile.avatar_url.trim() : "";
+        currentProfileSummary = { avatarUrl, name };
         if (avatarUrl) {
           els.profileMenuToggle.innerHTML = `<img src="${avatarUrl}" alt="${name}">`;
         } else {
@@ -2817,6 +2871,7 @@
         const { error } = await client.auth.signOut();
         if (error) throw error;
         currentSessionUser = null;
+        currentProfileSummary = null;
         closeProfileMenu();
         window.location.replace("./index.html?mode=signin");
       }
@@ -4168,11 +4223,7 @@
           if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to start prayer.");
 
           closePrayModal();
-          currentPrayerState = {
-            ...currentPrayerState,
-            ownActiveCount: Math.max(1, Number(currentPrayerState.ownActiveCount || 0)),
-          };
-          updateBannerAndButton();
+          addCurrentUserToPrayerState();
           const pushResult = payload.pushResult || {};
           if (intention) {
             saveStoredIntention({ body: intention, id: payload.intentionId || null });
@@ -4229,11 +4280,7 @@
           if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to end prayer.");
 
           saveStoredIntention(null);
-          currentPrayerState = {
-            ...currentPrayerState,
-            ownActiveCount: 0,
-          };
-          updateBannerAndButton();
+          removeCurrentUserFromPrayerState();
           const pushResult = payload.pushResult || {};
           if (pushResult.attempted === 0) {
             setInfoMessage("Prayer ended. Push attempted 0 subscriptions for recipients.");
@@ -4329,6 +4376,9 @@
         toggleInfoPanel();
       });
       els.prayButton.addEventListener("click", () => {
+        if (Date.now() < suppressPrayModalUntil || prayerActionInFlight) {
+          return;
+        }
         closeProfileMenu();
         closeInfoPanel();
         if ((currentPrayerState.ownActiveCount || 0) > 0) {
