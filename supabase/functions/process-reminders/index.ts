@@ -581,7 +581,8 @@ Deno.serve(async (request) => {
       : "manual";
     supabase = await getSupabase();
     const now = new Date();
-    const windowMinutes = Math.max(1, Number(Deno.env.get("PRAYERBOX_REMINDER_WINDOW_MINUTES") || 2));
+    const defaultWindowMinutes = triggerSource === "supabase_cron" ? 2 : 5;
+    const windowMinutes = Math.max(1, Number(Deno.env.get("PRAYERBOX_REMINDER_WINDOW_MINUTES") || defaultWindowMinutes));
     runId = await createRunLog(supabase, {
       startedAt: now.toISOString(),
       triggerSource,
