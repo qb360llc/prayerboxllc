@@ -82,8 +82,8 @@
       .hero-card { min-height:calc(100vh - 140px); display:grid; align-content:space-between; gap:16px; padding:18px 18px 20px; text-align:center; }
       .hero-stack { display:grid; gap:10px; justify-items:center; align-content:end; min-height:100%; }
       .hero-actions { width:min(100%, 360px); display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px; margin-top:8px; }
-      .pray-button { display:inline-flex; align-items:center; justify-content:center; width:100%; min-width:0; margin-top:0; padding:18px 20px; font-size:1.12rem; background:linear-gradient(160deg, #fefcf7 0%, #f4eee2 48%, #e5dcc9 100%); box-shadow:0 18px 36px rgba(12,25,34,.18); color:#5f5a52; border:1px solid rgba(255,255,255,.7); }
-      .pray-button.amen { background:linear-gradient(160deg, #ffffff 0%, #f5efe5 52%, #e8dfcf 100%); }
+      .pray-button { display:inline-flex; align-items:center; justify-content:center; width:100%; min-width:0; margin-top:0; padding:18px 20px; font-size:1.12rem; background:linear-gradient(160deg, #ead1a0 0%, #c8923d 100%); box-shadow:0 18px 36px rgba(12,25,34,.24); color:#173241; }
+      .pray-button.amen { background:linear-gradient(160deg, rgba(248,241,223,.94) 0%, #f0dcb5 100%); }
       .intention-only-button { display:inline-flex; align-items:center; justify-content:center; width:100%; min-width:0; padding:18px 20px; border-radius:999px; border:1px solid rgba(248,241,223,.22); background:rgba(18,35,46,.56); color:var(--cream); box-shadow:0 18px 36px rgba(12,25,34,.18); }
       .status { max-width:28rem; margin:0 auto; padding:12px 14px; border-radius:18px; background:rgba(248,241,223,.12); border:1px solid rgba(248,241,223,.12); white-space:pre-wrap; }
       .status.error { color:var(--danger); background:rgba(127,30,19,.28); border-color:rgba(255,209,201,.2); }
@@ -153,7 +153,7 @@
       .summary-title { font-size:.82rem; letter-spacing:.08em; text-transform:uppercase; color:#6f675d; }
       .summary-value { font-weight:700; color:#1d1b18; }
       .summary-meta { font-size:.9rem; color:#6f675d; }
-      .rail-button { position:relative; width:48px; height:48px; border-radius:15px; background:rgba(201,146,61,.2); border:1px solid rgba(248,241,223,.22); display:inline-flex; align-items:center; justify-content:center; padding:0; backdrop-filter:blur(10px); box-shadow:0 12px 28px rgba(10,18,24,.22); overflow:visible; }
+      .rail-button { position:relative; width:48px; height:48px; border-radius:15px; background:rgba(201,146,61,.2); border:1px solid rgba(248,241,223,.22); display:inline-flex; align-items:center; justify-content:center; padding:0; backdrop-filter:blur(10px); box-shadow:0 12px 28px rgba(10,18,24,.22); overflow:visible; text-decoration:none; }
       .rail-button svg { width:22px; height:22px; stroke:#f8f1df; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
       .mobile-action-strip .rail-button {
         width:100%;
@@ -685,7 +685,7 @@
         .mobile-action-cluster { position:absolute; left:14px; top:calc(env(safe-area-inset-top, 0px) + 12px); display:flex; align-items:flex-start; gap:10px; z-index:3; }
       }
       @media (max-width:719px) {
-        body { background:#ffffff; }
+        body { background:#000000; }
         body::before {
           content:"";
           display:block;
@@ -702,7 +702,7 @@
         body[data-current-page="home"] main { height:100vh; overflow:hidden; }
         .hero-card { min-height:calc(100vh - 110px); padding:calc(env(safe-area-inset-top, 0px) + 12vh) 10px 2px; display:flex; flex-direction:column; justify-content:space-between; gap:12px; }
         .hero-actions { width:100%; margin-top:12px; display:flex; justify-content:center; }
-        .pray-button { width:152px; height:152px; min-width:152px; border-radius:999px; padding:0; font-size:1.2rem; }
+        .pray-button { width:min(100%, 220px); height:auto; min-width:0; border-radius:999px; padding:18px 28px; font-size:1.12rem; }
         .intention-only-button { display:none; }
         .modal-backdrop { padding:12px; }
         .modal-backdrop.top-sheet { padding:0; }
@@ -1265,41 +1265,40 @@
           <div class="mobile-action-cluster">
             <button id="action-menu-toggle" class="mobile-nav-button" type="button" aria-label="Open home actions" aria-expanded="false"><span class="menu-bars"></span><span id="menu-dot" class="menu-dot" hidden></span></button>
             <div id="mobile-action-strip" class="mobile-action-strip" aria-label="Home quick actions">
+              <button id="open-feed-modal" class="rail-button" aria-label="Open prayer feed">
+                <svg viewBox="0 0 24 24"><path d="M5 6.5h14"/><path d="M5 12h14"/><path d="M5 17.5h9"/></svg>
+                <span class="action-label">Prayer Feed</span>
+                <span id="feed-badge" class="rail-badge" hidden>0</span>
+              </button>
               <button id="open-reading-modal" class="rail-button" aria-label="Open daily gospel">
                 <svg viewBox="0 0 24 24"><path d="M6 4.5h9.5A2.5 2.5 0 0 1 18 7v12.5a1 1 0 0 0-1-1H6.5A2.5 2.5 0 0 0 4 21V7a2.5 2.5 0 0 1 2-2.5Z"/><path d="M8 7.5h6"/><path d="M8 11h6"/><path d="M8 14.5h4"/></svg>
                 <span class="action-label">Daily Readings</span>
-              </button>
-              <button id="open-intention-modal" class="rail-button" aria-label="Open intention editor">
-                <svg viewBox="0 0 24 24"><path d="M12 21c4.2-3.2 7-6.5 7-10a4 4 0 0 0-7-2.4A4 4 0 0 0 5 11c0 3.5 2.8 6.8 7 10Z"/><path d="M12 7v6"/><path d="M9 10h6"/></svg>
-                <span class="action-label">Share Intention</span>
               </button>
               <button id="open-chat-modal" class="rail-button" aria-label="Open community chat">
                 <svg viewBox="0 0 24 24"><path d="M5 7.5A2.5 2.5 0 0 1 7.5 5h9A2.5 2.5 0 0 1 19 7.5v6A2.5 2.5 0 0 1 16.5 16H11l-4 3v-3H7.5A2.5 2.5 0 0 1 5 13.5Z"/></svg>
                 <span class="action-label">Community Chat</span>
                 <span id="chat-badge" class="rail-badge" hidden>0</span>
               </button>
-              <button id="open-notifications-modal" class="rail-button" aria-label="Open notifications">
-                <svg viewBox="0 0 24 24"><path d="M12 4.5a4.5 4.5 0 0 0-4.5 4.5v2.4c0 .6-.2 1.2-.56 1.68L5.5 15.5h13l-1.44-2.42A2.98 2.98 0 0 1 16.5 11.4V9A4.5 4.5 0 0 0 12 4.5Z"/><path d="M10 18a2 2 0 0 0 4 0"/></svg>
-                <span class="action-label">Notifications</span>
-                <span id="notifications-badge" class="rail-badge" data-notify-count hidden>0</span>
+              <button id="open-intention-modal" class="rail-button" aria-label="Open intention editor">
+                <svg viewBox="0 0 24 24"><path d="M12 21c4.2-3.2 7-6.5 7-10a4 4 0 0 0-7-2.4A4 4 0 0 0 5 11c0 3.5 2.8 6.8 7 10Z"/><path d="M12 7v6"/><path d="M9 10h6"/></svg>
+                <span class="action-label">Share Intention</span>
               </button>
               <button id="open-group-modal" class="rail-button" aria-label="Select community">
                 <svg viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M7 4v6"/><path d="M17 4v6"/><rect x="4" y="7" width="16" height="13" rx="2"/><path d="M8 12h8"/><path d="M8 16h5"/></svg>
                 <span class="action-label">Select Group</span>
               </button>
-              <button id="open-schedule-modal" class="rail-button" aria-label="Schedule group prayer">
-                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2.5"/><path d="M8 3v3"/><path d="M16 3v3"/></svg>
-                <span class="action-label">Prayer Schedule</span>
-              </button>
-              <button id="open-feed-modal" class="rail-button" aria-label="Open prayer feed">
-                <svg viewBox="0 0 24 24"><path d="M5 6.5h14"/><path d="M5 12h14"/><path d="M5 17.5h9"/></svg>
-                <span class="action-label">Prayer Feed</span>
-                <span id="feed-badge" class="rail-badge" hidden>0</span>
-              </button>
               <button id="open-members-modal" class="rail-button" aria-label="Open community members">
                 <svg viewBox="0 0 24 24"><path d="M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M16.5 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/><path d="M4.5 18.5a4.5 4.5 0 0 1 9 0"/><path d="M13 18.5a3.5 3.5 0 0 1 7 0"/></svg>
                 <span class="action-label">Members</span>
               </button>
+              <button id="open-schedule-modal" class="rail-button" aria-label="Schedule group prayer">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2.5"/><path d="M8 3v3"/><path d="M16 3v3"/></svg>
+                <span class="action-label">Prayer Schedule</span>
+              </button>
+              <a href="./settings.html" class="rail-button" aria-label="Open settings">
+                <svg viewBox="0 0 24 24"><path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"/><path d="M12 3.5v2.2"/><path d="M12 18.3v2.2"/><path d="m18.36 5.64-1.55 1.55"/><path d="m7.19 16.81-1.55 1.55"/><path d="M20.5 12h-2.2"/><path d="M5.7 12H3.5"/><path d="m18.36 18.36-1.55-1.55"/><path d="m7.19 7.19-1.55-1.55"/></svg>
+                <span class="action-label">Settings</span>
+              </a>
             </div>
           </div>
           <div style="display:flex; align-items:center; gap:10px;">
@@ -2084,9 +2083,8 @@
       function updateMenuDot() {
         const hasUnreadChat = els.chatBadge && !els.chatBadge.hidden;
         const hasUnreadFeed = els.feedBadge && !els.feedBadge.hidden;
-        const hasUnreadNotifications = els.notificationsBadge && !els.notificationsBadge.hidden;
         const hasReading = els.openReadingModal?.classList.contains("has-recording");
-        els.menuDot.hidden = !(hasUnreadChat || hasUnreadFeed || hasUnreadNotifications || hasReading);
+        els.menuDot.hidden = !(hasUnreadChat || hasUnreadFeed || hasReading);
       }
 
       function markChatSeen() {
@@ -4418,15 +4416,17 @@
             markChatSeen();
           });
       });
-      els.openNotificationsModal.addEventListener("click", () => {
-        closeProfileMenu();
-        closeInfoPanel();
-        loadNotifications()
-          .catch((error) => setStatus(error.message || "Failed to load notifications.", true))
-          .finally(() => {
-            openNotificationsModal();
-          });
-      });
+      if (els.openNotificationsModal) {
+        els.openNotificationsModal.addEventListener("click", () => {
+          closeProfileMenu();
+          closeInfoPanel();
+          loadNotifications()
+            .catch((error) => setStatus(error.message || "Failed to load notifications.", true))
+            .finally(() => {
+              openNotificationsModal();
+            });
+        });
+      }
       els.openGroupModal.addEventListener("click", () => {
         closeProfileMenu();
         closeInfoPanel();
