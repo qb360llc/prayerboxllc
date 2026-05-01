@@ -32,6 +32,12 @@ type PrayerParticipant = {
   name: string;
 };
 
+function lightingModeForCount(activeCount: number): GroupActivityRow["lighting_mode"] {
+  if (activeCount <= 0) return "off";
+  if (activeCount === 1) return "solid";
+  return "flash";
+}
+
 function buildHomeUrl(open?: "feed" | "chat" | "reading", groupSlug?: unknown) {
   const params = new URLSearchParams();
   if (open) {
@@ -373,7 +379,20 @@ Deno.serve(async (request) => {
     const deviceIds = devices.map((device) => device.id);
     const nextActiveState = action === "start";
 
+    let prayerPresenceAlreadyExisted = false;
     if (action === "start") {
+      const { data: existingPresence, error: presenceLookupError } = await supabase
+        .from("prayer_presence")
+        .select("id")
+        .eq("group_id", group.id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (presenceLookupError) {
+        throw presenceLookupError;
+      }
+
+      prayerPresenceAlreadyExisted = Boolean(existingPresence);
       const { error: presenceError } = await supabase
         .from("prayer_presence")
         .upsert(
@@ -389,16 +408,18 @@ Deno.serve(async (request) => {
         throw presenceError;
       }
 
-      const { error: eventError } = await supabase
-        .from("prayer_presence_events")
-        .insert({
-          event_type: "entered",
-          group_id: group.id,
-          user_id: user.id,
-        });
+      if (!prayerPresenceAlreadyExisted) {
+        const { error: eventError } = await supabase
+          .from("prayer_presence_events")
+          .insert({
+            event_type: "entered",
+            group_id: group.id,
+            user_id: user.id,
+          });
 
-      if (eventError) {
-        throw eventError;
+        if (eventError) {
+          throw eventError;
+        }
       }
     } else {
       const { data: existingPresence, error: presenceLookupError } = await supabase
@@ -488,45 +509,71 @@ Deno.serve(async (request) => {
       intentionId = String(insertedIntention.id);
     }
 
-    const { data: groupActivityData, error: activityError } = await supabase
-      .from("group_activity")
-      .select("slug, active_count, lighting_mode")
-      .eq("slug", group.slug)
-      .single();
-
-    if (activityError) {
-      throw activityError;
-    }
-
-    const groupActivity = groupActivityData as GroupActivityRow;
-    if (deviceIds.length) {
-      await publishLightingMode(groupActivity.lighting_mode, groupActivity.slug);
-    }
-
-    const actorName = await getActorName(supabase, user.id);
-    const preview = intention.replace(/\s+/g, " ").trim().slice(0, 160);
-    const notificationBody = action === "start"
-      ? (intention
-        ? `${actorName} has entered into prayer in ${group.name}: "${preview}${intention.length > preview.length ? "..." : ""}"`
-        : `${actorName} has entered into prayer in ${group.name} without adding an intention.`)
-      : `${actorName} has left prayer in ${group.name}.`;
-
-    const pushResult = await notifyGroupMembers(
-      supabase,
-      group.id,
-      user.id,
-      action === "start" ? "Prayer started" : "Prayer ended",
-      notificationBody,
-      {
-        action,
-        groupSlug: group.slug,
-        intentionId,
-        preview: preview || null,
-        source: "home_prayer",
-      },
-    );
-
     const participants = await getPrayerParticipants(supabase, group.id);
+    let groupActivity: GroupActivityRow = {
+      active_count: participants.length,
+      lighting_mode: lightingModeForCount(participants.length),
+      slug: group.slug,
+    };
+    const warnings: string[] = [];
+
+    try {
+      const { data: groupActivityData, error: activityError } = await supabase
+        .from("group_activity")
+        .select("slug, active_count, lighting_mode")
+        .eq("slug", group.slug)
+        .single();
+
+      if (activityError) {
+        throw activityError;
+      }
+
+      groupActivity = groupActivityData as GroupActivityRow;
+    } catch (error) {
+      warnings.push(`group_activity: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+
+    if (deviceIds.length) {
+      try {
+        await publishLightingMode(groupActivity.lighting_mode, groupActivity.slug);
+      } catch (error) {
+        warnings.push(`lighting_publish: ${error instanceof Error ? error.message : "Unknown error"}`);
+      }
+    }
+
+    let pushResult = {
+      attempted: 0,
+      failed: 0,
+      failures: [] as Array<Record<string, unknown>>,
+      sent: 0,
+    };
+    try {
+      const actorName = await getActorName(supabase, user.id);
+      const preview = intention.replace(/\s+/g, " ").trim().slice(0, 160);
+      const notificationBody = action === "start"
+        ? (intention
+          ? `${actorName} has entered into prayer in ${group.name}: "${preview}${intention.length > preview.length ? "..." : ""}"`
+          : `${actorName} has entered into prayer in ${group.name} without adding an intention.`)
+        : `${actorName} has left prayer in ${group.name}.`;
+
+      pushResult = await notifyGroupMembers(
+        supabase,
+        group.id,
+        user.id,
+        action === "start" ? "Prayer started" : "Prayer ended",
+        notificationBody,
+        {
+          action,
+          groupSlug: group.slug,
+          intentionId,
+          preview: preview || null,
+          source: "home_prayer",
+        },
+      );
+    } catch (error) {
+      warnings.push(`notifications: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+
     return json(request, 200, {
       ok: true,
       group: {
@@ -547,6 +594,7 @@ Deno.serve(async (request) => {
       intention: action === "start" ? (intention || null) : null,
       intentionId,
       pushResult,
+      warnings,
       action,
       devices: devices.map((device) => ({
         deviceId: device.device_uid,
