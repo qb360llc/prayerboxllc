@@ -685,11 +685,20 @@
         .mobile-action-cluster { position:absolute; left:14px; top:calc(env(safe-area-inset-top, 0px) + 12px); display:flex; align-items:flex-start; gap:10px; z-index:3; }
       }
       @media (max-width:719px) {
-        body { background:#294d61 url("./background_4.png") center top / cover no-repeat; background-attachment:scroll; }
+        body { background:#294d61; }
+        body::before {
+          content:"";
+          display:block;
+          position:fixed;
+          inset:0;
+          background:url("./background_4.png") center top / cover no-repeat;
+          pointer-events:none;
+          z-index:0;
+        }
         main { padding:0 14px 124px; }
         .mobile-action-cluster { display:none !important; }
         .topbar-wrap { position:absolute; top:0; left:0; right:0; margin-left:0; margin-right:0; padding-bottom:0; z-index:5; }
-        .hero-card { min-height:calc(100vh - 110px); padding:12px 10px 2px; display:flex; flex-direction:column; justify-content:flex-end; gap:12px; }
+        .hero-card { min-height:calc(100vh - 110px); padding:calc(env(safe-area-inset-top, 0px) + 24vh) 10px 2px; display:flex; flex-direction:column; justify-content:space-between; gap:12px; }
         .hero-actions { width:min(100%, 340px); margin-top:12px; }
         .pray-button,
         .intention-only-button { width:100%; max-width:none; }
@@ -698,7 +707,7 @@
         .modal-backdrop.top-sheet .modal-card { width:100%; min-height:100vh; border-radius:0 0 24px 24px; }
         .recording-panel { top:0; margin:0 -18px 14px; }
         .hero-card { background:transparent; border-color:transparent; box-shadow:none; }
-        .hero-stack { padding-top:0; padding-bottom:0; margin-top:auto; }
+        .hero-stack { padding-top:0; padding-bottom:0; margin-top:0; }
         .hero-presence { margin-top:4px; }
         .status, .hero-avatar { backdrop-filter:blur(8px); background:rgba(24,44,58,.34); }
         .hero-avatars { width:min(100%, 308px); min-height:116px; gap:8px 6px; }
