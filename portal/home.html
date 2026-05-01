@@ -1277,6 +1277,221 @@
         .app-page-modal .reading-card span {
           color:#173241;
         }
+        /* Clean non-home mobile shell overrides */
+        body[data-current-page]:not([data-current-page="home"]) {
+          background:#ffffff;
+          color:#173241;
+          overflow:hidden;
+        }
+        body[data-current-page]:not([data-current-page="home"])::before {
+          display:none;
+        }
+        body[data-current-page]:not([data-current-page="home"]) main {
+          height:100dvh;
+          min-height:100dvh;
+          padding:calc(env(safe-area-inset-top, 0px) + 72px) 12px 16px;
+          overflow:hidden;
+        }
+        body[data-current-page]:not([data-current-page="home"]) .topbar-wrap {
+          position:fixed;
+          top:0;
+          left:0;
+          right:0;
+          padding-bottom:0;
+          background:#ffffff;
+          border-bottom:1px solid rgba(35,68,87,.08);
+          box-shadow:none;
+          z-index:24;
+        }
+        body[data-current-page]:not([data-current-page="home"]) .topbar {
+          min-height:56px;
+          padding:calc(env(safe-area-inset-top, 0px) + 10px) 12px 10px;
+        }
+        body[data-current-page]:not([data-current-page="home"]) .mobile-action-strip {
+          background:rgba(255,255,255,.98);
+          border:1px solid rgba(35,68,87,.1);
+          box-shadow:0 16px 32px rgba(20,38,52,.12);
+        }
+        body[data-current-page]:not([data-current-page="home"]) .action-label {
+          color:#173241;
+        }
+        body[data-current-page]:not([data-current-page="home"]) .menu-dot {
+          box-shadow:0 0 0 2px rgba(255,255,255,.96);
+        }
+        .app-page-modal.page-active {
+          display:block;
+          height:100%;
+        }
+        .app-page-modal .modal-card {
+          height:100%;
+          min-height:0;
+          display:flex;
+          flex-direction:column;
+        }
+        .app-page-modal .modal-header {
+          flex:0 0 auto;
+          padding:0 64px 12px 4px;
+        }
+        .app-page-modal .modal-body-scroll,
+        .app-page-modal .chat-modal-body,
+        .app-page-modal .reading-sheet-scroll {
+          flex:1;
+          min-height:0;
+          overflow:hidden;
+          padding-right:0;
+        }
+        .app-page-modal .feed-surface,
+        .app-page-modal .chat-surface,
+        .app-page-modal .members-surface,
+        .app-page-modal .notifications-surface {
+          width:100%;
+          height:100%;
+          min-height:0;
+          padding:14px;
+          border-radius:22px;
+          background:#ffffff;
+          border:1px solid rgba(35,68,87,.08);
+          box-shadow:0 10px 28px rgba(20,38,52,.06);
+          overflow:hidden;
+        }
+        .app-page-modal .feed-surface,
+        .app-page-modal .members-surface {
+          display:grid;
+          grid-template-rows:auto 1fr;
+        }
+        .app-page-modal .notifications-surface {
+          display:grid;
+          grid-template-rows:auto auto 1fr;
+        }
+        .app-page-modal.page-active .feed-surface {
+          width:100%;
+          margin:0;
+          padding:14px;
+          border:1px solid rgba(35,68,87,.08);
+          border-radius:22px;
+          background:#ffffff;
+          box-shadow:0 10px 28px rgba(20,38,52,.06);
+        }
+        .app-page-modal .feed-shell,
+        .app-page-modal .notifications-shell,
+        .app-page-modal .members-list {
+          min-height:0;
+          max-height:none;
+          overflow:auto;
+          padding-right:4px;
+        }
+        .app-page-modal .chat-shell {
+          min-height:0;
+          max-height:none;
+          overflow:auto;
+        }
+        .app-page-modal .members-list {
+          gap:8px;
+          align-content:start;
+          justify-items:stretch;
+        }
+        .app-page-modal .member-card {
+          min-height:48px;
+          padding:0;
+          align-items:center;
+        }
+        .app-page-modal .member-avatar {
+          width:42px;
+          height:42px;
+          flex:0 0 42px;
+          overflow:hidden;
+        }
+        .app-page-modal .member-name {
+          line-height:1.2;
+        }
+        .app-page-modal .feed-empty,
+        .app-page-modal .sheet-empty,
+        .app-page-modal .chat-empty {
+          background:#f5f8fb;
+          border-color:rgba(35,68,87,.08);
+          color:#607383;
+        }
+        .app-page-modal .summary-card,
+        .app-page-modal .reading-reminder-summary,
+        .app-page-modal .recording-preview,
+        .app-page-modal .chat-preview,
+        .app-page-modal .group-button,
+        .app-page-modal .notifications-surface .secondary,
+        .app-page-modal .notification-card-actions .secondary {
+          background:#f5f8fb;
+          border-color:rgba(35,68,87,.08);
+          color:#173241;
+          box-shadow:none;
+        }
+        body[data-current-page="reading"] #reading-modal .modal-card,
+        body[data-current-page="chat"] #chat-modal .modal-card,
+        body[data-current-page="schedule"] #schedule-modal .modal-card {
+          width:100%;
+          height:100%;
+          min-height:0;
+          margin:0;
+        }
+        body[data-current-page="reading"] #reading-modal .modal-body-scroll.reading-sheet-scroll {
+          background:#ffffff;
+        }
+        body[data-current-page="reading"] #reading-modal .reading-card {
+          background:#ffffff;
+          border:none;
+          border-radius:0;
+          box-shadow:none;
+          color:#173241;
+          padding:16px 16px 20px;
+        }
+        body[data-current-page="reading"] #reading-modal .reading-card *,
+        body[data-current-page="reading"] #reading-modal #reading-modal-content * {
+          color:#173241 !important;
+        }
+        body[data-current-page="reading"] #reading-modal .reading-card a,
+        body[data-current-page="reading"] #reading-modal #reading-modal-content a {
+          color:#8d641f !important;
+        }
+        body[data-current-page="reading"] #reading-modal .recording-panel {
+          background:#ffffff;
+          border-top:1px solid rgba(35,68,87,.08);
+          box-shadow:none;
+        }
+        body[data-current-page="reading"] #reading-modal .reading-player-actions .icon-button,
+        body[data-current-page="reading"] #reading-modal .reading-player-actions .icon-button.secondary {
+          background:#f5f8fb;
+          border:1px solid rgba(35,68,87,.08);
+          color:#173241;
+        }
+        body[data-current-page="chat"] #chat-modal .chat-surface {
+          padding:14px;
+          border:1px solid rgba(35,68,87,.08);
+          border-radius:22px;
+          background:#ffffff;
+          box-shadow:0 10px 28px rgba(20,38,52,.06);
+        }
+        body[data-current-page="chat"] #chat-modal .chat-empty {
+          margin:0 0 12px;
+        }
+        body[data-current-page="chat"] #chat-modal .chat-shell {
+          padding:0 0 12px;
+        }
+        body[data-current-page="chat"] #chat-modal .chat-composer {
+          padding:12px 0 calc(12px + env(safe-area-inset-bottom, 0px));
+          background:#ffffff;
+        }
+        body[data-current-page="schedule"] #schedule-modal .modal-card {
+          overflow:auto;
+          padding:0 14px calc(24px + env(safe-area-inset-bottom, 0px));
+          background:transparent;
+          box-shadow:none;
+          border-radius:0;
+        }
+        body[data-current-page="schedule"] #schedule-modal .modal-header,
+        body[data-current-page="schedule"] #schedule-modal .modal-copy,
+        body[data-current-page="schedule"] #schedule-modal .form-stack,
+        body[data-current-page="schedule"] #schedule-modal .modal-actions {
+          width:100%;
+          min-width:0;
+        }
       }
     </style>
   </head>
