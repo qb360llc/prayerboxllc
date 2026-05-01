@@ -43,8 +43,8 @@
       .topnav a { display:inline-block; padding:10px 14px; border-radius:999px; text-decoration:none; background:rgba(248,241,223,.1); color:var(--cream); }
       .mobile-action-cluster { display:none; }
       .mobile-nav-button { position:relative; width:48px; height:48px; border-radius:14px; background:transparent; cursor:pointer; align-items:center; justify-content:center; box-shadow:none; padding:0; }
-      .mobile-nav-button .menu-bars { display:block; width:20px; height:2px; background:var(--cream); position:relative; }
-      .mobile-nav-button .menu-bars::before, .mobile-nav-button .menu-bars::after { content:""; position:absolute; left:0; width:20px; height:2px; background:var(--cream); }
+      .mobile-nav-button .menu-bars { display:block; width:20px; height:2px; background:#111111; position:relative; }
+      .mobile-nav-button .menu-bars::before, .mobile-nav-button .menu-bars::after { content:""; position:absolute; left:0; width:20px; height:2px; background:#111111; }
       .mobile-nav-button .menu-bars::before { top:-6px; }
       .mobile-nav-button .menu-bars::after { top:6px; }
       .menu-dot {
@@ -1502,6 +1502,10 @@
           <div class="mobile-action-cluster">
             <button id="action-menu-toggle" class="mobile-nav-button" type="button" aria-label="Open home actions" aria-expanded="false"><span class="menu-bars"></span><span id="menu-dot" class="menu-dot" hidden></span></button>
             <div id="mobile-action-strip" class="mobile-action-strip" aria-label="Home quick actions">
+              <button id="open-home-page" class="rail-button" type="button" aria-label="Open home">
+                <svg viewBox="0 0 24 24"><path d="M4.5 10.5 12 4l7.5 6.5"></path><path d="M7 9.75V20h10V9.75"></path></svg>
+                <span class="action-label">Home</span>
+              </button>
               <button id="open-feed-modal" class="rail-button" aria-label="Open prayer feed">
                 <svg viewBox="0 0 24 24"><path d="M5 6.5h14"/><path d="M5 12h14"/><path d="M5 17.5h9"/></svg>
                 <span class="action-label">Prayer Feed</span>
@@ -1955,6 +1959,7 @@
         intentionModal: document.querySelector("#intention-modal"),
         mobileActionStrip: document.querySelector("#mobile-action-strip"),
         menuDot: document.querySelector("#menu-dot"),
+        openHomePage: document.querySelector("#open-home-page"),
         openChatModal: document.querySelector("#open-chat-modal"),
         openFeedModal: document.querySelector("#open-feed-modal"),
         openGroupModal: document.querySelector("#open-group-modal"),
@@ -3723,6 +3728,18 @@
             `;
           }
 
+          if (item.type === "reading_upload") {
+            return `
+              <article class="feed-card">
+                <div class="feed-meta">
+                  <span class="feed-author-row">${authorAvatar}<span class="feed-author">${authorName}</span></span>
+                  <span class="feed-date">${escapeHtml(formatFeedTime(item.createdAt))}</span>
+                </div>
+                <p class="feed-body">${escapeHtml(item.body)}</p>
+              </article>
+            `;
+          }
+
           return `
             <article class="feed-card">
               <div class="feed-meta">
@@ -4586,6 +4603,13 @@
       els.mobileActionStrip?.querySelectorAll(".rail-button").forEach((control) => {
         control.addEventListener("click", () => {
           closeActionStrip();
+        });
+      });
+      els.openHomePage?.addEventListener("click", () => {
+        closeProfileMenu();
+        closeInfoPanel();
+        handleBottomNavSelection("home").catch((error) => {
+          setStatus(error.message || "Failed to open home.", true);
         });
       });
       els.profileMenuToggle?.addEventListener("click", (event) => {

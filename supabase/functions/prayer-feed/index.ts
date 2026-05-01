@@ -15,6 +15,15 @@ type FeedItem =
   }
   | {
     id: string;
+    type: "reading_upload";
+    createdAt: string;
+    createdBy: string;
+    avatarUrl?: string | null;
+    body: string;
+    readingDate: string;
+  }
+  | {
+    id: string;
     type: "prayer_event";
     createdAt: string;
     createdBy: string;
@@ -151,9 +160,21 @@ Deno.serve(async (request) => {
       throw prayerEventsError;
     }
 
+    const { data: readingUploads, error: readingUploadsError } = await supabase
+      .from("daily_reading_recordings")
+      .select("id, reading_date, created_at, created_by_user_id")
+      .eq("group_id", group.id)
+      .order("created_at", { ascending: false })
+      .limit(40);
+
+    if (readingUploadsError) {
+      throw readingUploadsError;
+    }
+
     const authorIds = Array.from(new Set([
       ...(intentions ?? []).map((item: Record<string, unknown>) => String(item.created_by_user_id)),
       ...(prayerEvents ?? []).map((item: Record<string, unknown>) => String(item.user_id)),
+      ...(readingUploads ?? []).map((item: Record<string, unknown>) => String(item.created_by_user_id)),
     ]));
 
     const authorsById = new Map<string, Record<string, unknown>>();
@@ -251,6 +272,19 @@ Deno.serve(async (request) => {
           eventType,
           id: `prayer-event:${String(item.id)}`,
           type: "prayer_event" as const,
+        };
+      }),
+      ...(readingUploads ?? []).map((item: Record<string, unknown>) => {
+        const name = profileName(authorsById.get(String(item.created_by_user_id)));
+        const readingDate = String(item.reading_date || "");
+        return {
+          avatarUrl: profileAvatar(authorsById.get(String(item.created_by_user_id))),
+          body: `${name} uploaded a daily reading for ${readingDate}.`,
+          createdAt: String(item.created_at),
+          createdBy: name,
+          id: `reading-upload:${String(item.id)}`,
+          readingDate,
+          type: "reading_upload" as const,
         };
       }),
     ]
