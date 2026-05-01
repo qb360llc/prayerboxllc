@@ -1835,6 +1835,7 @@
       let pendingLaunchTarget = initialLaunchParams;
       let currentDailyReminder = null;
       let currentPrayerSchedule = null;
+      let prayerActionInFlight = false;
       let currentPageKey = normalizePageKey(initialLaunchParams.page);
       let currentFeedFilter = "all";
       const collapsedFeedDates = new Set();
@@ -4147,11 +4148,16 @@
         if (!groupSlug) {
           throw new Error("Choose your active community in Settings first.");
         }
+        if (prayerActionInFlight) {
+          return;
+        }
 
         if (closeModalFirst) {
           closePrayModal({ clear: false });
         }
 
+        prayerActionInFlight = true;
+        els.prayButton.disabled = true;
         try {
           const response = await authedFetch("/functions/v1/start-prayer", {
             body: JSON.stringify({ groupSlug, intention }),
@@ -4162,8 +4168,11 @@
           if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to start prayer.");
 
           closePrayModal();
-          await refreshPrayerState();
-          await loadPrayerFeed();
+          currentPrayerState = {
+            ...currentPrayerState,
+            ownActiveCount: Math.max(1, Number(currentPrayerState.ownActiveCount || 0)),
+          };
+          updateBannerAndButton();
           const pushResult = payload.pushResult || {};
           if (intention) {
             saveStoredIntention({ body: intention, id: payload.intentionId || null });
@@ -4179,12 +4188,23 @@
             saveStoredIntention(null);
             setInfoMessage(`Prayer started. Push sent ${pushResult.sent || 0} of ${pushResult.attempted || 0} attempted subscriptions.`);
           }
+          try {
+            await refreshPrayerState();
+            await loadPrayerFeed();
+          } catch (refreshError) {
+            console.warn("Prayer started, but post-start refresh failed:", refreshError);
+          }
         } catch (error) {
           if (closeModalFirst) {
             els.intentionBody.value = intention;
             openPrayModal();
           }
           throw error;
+        } finally {
+          prayerActionInFlight = false;
+          if (selectedGroupSlug()) {
+            els.prayButton.disabled = false;
+          }
         }
       }
 
@@ -4193,23 +4213,44 @@
         if (!groupSlug) {
           throw new Error("Choose your active community in Settings first.");
         }
+        if (prayerActionInFlight) {
+          return;
+        }
 
-        const response = await authedFetch("/functions/v1/start-prayer", {
-          body: JSON.stringify({ action: "stop", groupSlug }),
-          headers: { "Content-Type": "application/json" },
-          method: "POST",
-        });
-        const payload = await response.json();
-        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to end prayer.");
+        prayerActionInFlight = true;
+        els.prayButton.disabled = true;
+        try {
+          const response = await authedFetch("/functions/v1/start-prayer", {
+            body: JSON.stringify({ action: "stop", groupSlug }),
+            headers: { "Content-Type": "application/json" },
+            method: "POST",
+          });
+          const payload = await response.json();
+          if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to end prayer.");
 
-        saveStoredIntention(null);
-        await refreshPrayerState();
-        await loadPrayerFeed();
-        const pushResult = payload.pushResult || {};
-        if (pushResult.attempted === 0) {
-          setInfoMessage("Prayer ended. Push attempted 0 subscriptions for recipients.");
-        } else {
-          setInfoMessage(`Prayer ended. Push sent ${pushResult.sent || 0} of ${pushResult.attempted || 0} attempted subscriptions.`);
+          saveStoredIntention(null);
+          currentPrayerState = {
+            ...currentPrayerState,
+            ownActiveCount: 0,
+          };
+          updateBannerAndButton();
+          const pushResult = payload.pushResult || {};
+          if (pushResult.attempted === 0) {
+            setInfoMessage("Prayer ended. Push attempted 0 subscriptions for recipients.");
+          } else {
+            setInfoMessage(`Prayer ended. Push sent ${pushResult.sent || 0} of ${pushResult.attempted || 0} attempted subscriptions.`);
+          }
+          try {
+            await refreshPrayerState();
+            await loadPrayerFeed();
+          } catch (refreshError) {
+            console.warn("Prayer ended, but post-stop refresh failed:", refreshError);
+          }
+        } finally {
+          prayerActionInFlight = false;
+          if (selectedGroupSlug()) {
+            els.prayButton.disabled = false;
+          }
         }
       }
 
