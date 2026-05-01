@@ -24,6 +24,15 @@ type PrayerScheduleRow = {
   timezone: string;
 };
 
+type ReminderProcessSummary = {
+  dueCount: number;
+  sentCount: number;
+};
+
+function logWarning(message: string, error: unknown) {
+  console.warn(message, error instanceof Error ? error.message : error);
+}
+
 function corsHeaders(request: Request) {
   const allowedOrigin = Deno.env.get("PRAYERBOX_PORTAL_ORIGIN");
   const requestOrigin = request.headers.get("Origin");
@@ -187,10 +196,106 @@ async function storeDelivery(
   if (error) throw error;
 }
 
+async function createRunLog(
+  supabase: ReturnType<typeof createClient>,
+  payload: {
+    startedAt: string;
+    triggerSource: string;
+    windowMinutes: number;
+  },
+) {
+  try {
+    const { data, error } = await supabase
+      .from("reminder_job_runs")
+      .insert({
+        started_at: payload.startedAt,
+        trigger_source: payload.triggerSource,
+        window_minutes: payload.windowMinutes,
+      })
+      .select("id")
+      .single();
+
+    if (error) throw error;
+    return String((data as Record<string, unknown>).id);
+  } catch (error) {
+    logWarning("Unable to create reminder job log.", error);
+    return null;
+  }
+}
+
+async function updateRunLog(
+  supabase: ReturnType<typeof createClient>,
+  runId: string | null,
+  payload: Record<string, unknown>,
+) {
+  if (!runId) return;
+  try {
+    const { error } = await supabase
+      .from("reminder_job_runs")
+      .update(payload)
+      .eq("id", runId);
+
+    if (error) throw error;
+  } catch (error) {
+    logWarning("Unable to update reminder job log.", error);
+  }
+}
+
+async function insertDeliveryLog(
+  supabase: ReturnType<typeof createClient>,
+  payload: {
+    body: string;
+    groupId: string;
+    latenessSeconds: number;
+    metadata: Record<string, unknown>;
+    processedAt: string;
+    recipientUserId: string;
+    reminderKey: string;
+    reminderKind: "daily_reading" | "group_prayer";
+    reminderStage: "scheduled" | "pre" | "start";
+    runId: string | null;
+    scheduledFor?: string | null;
+    scheduledLocalDate?: string | null;
+    scheduledLocalTime?: string | null;
+    timezone?: string | null;
+    title: string;
+    triggerSource: string;
+  },
+) {
+  try {
+    const { error } = await supabase
+      .from("reminder_delivery_logs")
+      .insert({
+        body: payload.body,
+        group_id: payload.groupId,
+        lateness_seconds: Math.max(0, Math.round(payload.latenessSeconds || 0)),
+        metadata: payload.metadata,
+        processed_at: payload.processedAt,
+        recipient_user_id: payload.recipientUserId,
+        reminder_key: payload.reminderKey,
+        reminder_kind: payload.reminderKind,
+        reminder_stage: payload.reminderStage,
+        run_id: payload.runId,
+        scheduled_for: payload.scheduledFor || null,
+        scheduled_local_date: payload.scheduledLocalDate || null,
+        scheduled_local_time: payload.scheduledLocalTime || null,
+        timezone: payload.timezone || null,
+        title: payload.title,
+        trigger_source: payload.triggerSource,
+      });
+
+    if (error) throw error;
+  } catch (error) {
+    logWarning("Unable to insert reminder delivery log.", error);
+  }
+}
+
 async function processDailyReadingReminders(
   supabase: ReturnType<typeof createClient>,
   now: Date,
   windowMinutes: number,
+  runId: string | null,
+  triggerSource: string,
 ) {
   const { data, error } = await supabase
     .from("daily_reading_reminders")
@@ -204,7 +309,8 @@ async function processDailyReadingReminders(
     Array.from(new Set(reminders.map((row) => row.group_id))),
   );
 
-  let sent = 0;
+  let dueCount = 0;
+  let sentCount = 0;
   for (const reminder of reminders) {
     const group = groupsById.get(reminder.group_id);
     if (!group) continue;
@@ -215,6 +321,7 @@ async function processDailyReadingReminders(
     const reminderMinutes = minutesSinceMidnight(reminderTime.hour, reminderTime.minute);
     const due = currentMinutes >= reminderMinutes && currentMinutes < (reminderMinutes + windowMinutes);
     if (!due) continue;
+    dueCount += 1;
 
     const reminderKey = `${reminder.id}:${local.date}`;
     if (await deliveryExists(supabase, "daily_reading", reminderKey, reminder.user_id)) {
@@ -254,17 +361,36 @@ async function processDailyReadingReminders(
     });
 
     await storeDelivery(supabase, "daily_reading", reminderKey, reminder.user_id);
+    await insertDeliveryLog(supabase, {
+      body,
+      groupId: group.id,
+      latenessSeconds: (currentMinutes - reminderMinutes) * 60,
+      metadata,
+      processedAt: now.toISOString(),
+      recipientUserId: reminder.user_id,
+      reminderKey,
+      reminderKind: "daily_reading",
+      reminderStage: "scheduled",
+      runId,
+      scheduledLocalDate: local.date,
+      scheduledLocalTime: String(reminder.reminder_time).slice(0, 5),
+      timezone: reminder.timezone || "UTC",
+      title,
+      triggerSource,
+    });
 
-    sent += 1;
+    sentCount += 1;
   }
 
-  return sent;
+  return { dueCount, sentCount } satisfies ReminderProcessSummary;
 }
 
 async function processGroupPrayerReminders(
   supabase: ReturnType<typeof createClient>,
   now: Date,
   windowMinutes: number,
+  runId: string | null,
+  triggerSource: string,
 ) {
   const { data, error } = await supabase
     .from("group_prayer_schedules")
@@ -280,7 +406,8 @@ async function processGroupPrayerReminders(
     Array.from(new Set(schedules.map((row) => row.group_id))),
   );
 
-  let sent = 0;
+  let dueCount = 0;
+  let sentCount = 0;
   for (const schedule of schedules) {
     const group = groupsById.get(schedule.group_id);
     if (!group) continue;
@@ -325,6 +452,7 @@ async function processGroupPrayerReminders(
         stage: "pre" | "start",
         title: string,
         body: string,
+        targetMs: number,
       ) => {
         const recipientsToNotify: string[] = [];
         for (const recipientUserId of recipientUserIds) {
@@ -371,25 +499,46 @@ async function processGroupPrayerReminders(
         });
 
         for (const recipientUserId of recipientsToNotify) {
-          await storeDelivery(supabase, "group_prayer", `${schedule.id}:${stage}`, recipientUserId);
+          const reminderKey = `${schedule.id}:${stage}`;
+          await storeDelivery(supabase, "group_prayer", reminderKey, recipientUserId);
+          await insertDeliveryLog(supabase, {
+            body,
+            groupId: group.id,
+            latenessSeconds: (now.getTime() - targetMs) / 1000,
+            metadata,
+            processedAt: now.toISOString(),
+            recipientUserId,
+            reminderKey,
+            reminderKind: "group_prayer",
+            reminderStage: stage,
+            runId,
+            scheduledFor: new Date(targetMs).toISOString(),
+            timezone: schedule.timezone || "UTC",
+            title,
+            triggerSource,
+          });
         }
 
         return recipientsToNotify.length;
       };
 
       if (shouldSendPreReminder) {
-        sent += await deliverStage(
+        dueCount += 1;
+        sentCount += await deliverStage(
           "pre",
           "Upcoming group prayer",
           `Group prayer for ${group.name} begins in ${reminderMinutes} minute${reminderMinutes === 1 ? "" : "s"} at ${startsLabel}.`,
+          preReminderAtMs,
         );
       }
 
       if (shouldSendStartReminder) {
-        sent += await deliverStage(
+        dueCount += 1;
+        sentCount += await deliverStage(
           "start",
           "Group prayer is starting",
           `Group prayer for ${group.name} is starting now.`,
+          scheduledAtMs,
         );
       }
     }
@@ -407,7 +556,7 @@ async function processGroupPrayerReminders(
     }
   }
 
-  return sent;
+  return { dueCount, sentCount } satisfies ReminderProcessSummary;
 }
 
 Deno.serve(async (request) => {
@@ -415,6 +564,8 @@ Deno.serve(async (request) => {
     return new Response("ok", { headers: corsHeaders(request) });
   }
 
+  let supabase: ReturnType<typeof createClient> | null = null;
+  let runId: string | null = null;
   try {
     if (request.method !== "POST") {
       return json(request, 405, { error: "Method not allowed.", ok: false });
@@ -424,22 +575,48 @@ Deno.serve(async (request) => {
       return json(request, 401, { error: "Invalid reminder secret.", ok: false });
     }
 
-    const supabase = await getSupabase();
+    const requestBody = await request.json().catch(() => ({}));
+    const triggerSource = typeof (requestBody as Record<string, unknown>)?.source === "string"
+      ? String((requestBody as Record<string, unknown>).source).trim() || "manual"
+      : "manual";
+    supabase = await getSupabase();
     const now = new Date();
-    const windowMinutes = Math.max(1, Number(Deno.env.get("PRAYERBOX_REMINDER_WINDOW_MINUTES") || 5));
+    const windowMinutes = Math.max(1, Number(Deno.env.get("PRAYERBOX_REMINDER_WINDOW_MINUTES") || 2));
+    runId = await createRunLog(supabase, {
+      startedAt: now.toISOString(),
+      triggerSource,
+      windowMinutes,
+    });
 
-    const dailyReadingSent = await processDailyReadingReminders(supabase, now, windowMinutes);
-    const groupPrayerSent = await processGroupPrayerReminders(supabase, now, windowMinutes);
+    const dailyReading = await processDailyReadingReminders(supabase, now, windowMinutes, runId, triggerSource);
+    const groupPrayer = await processGroupPrayerReminders(supabase, now, windowMinutes, runId, triggerSource);
+
+    await updateRunLog(supabase, runId, {
+      daily_due_count: dailyReading.dueCount,
+      daily_sent_count: dailyReading.sentCount,
+      finished_at: new Date().toISOString(),
+      group_due_count: groupPrayer.dueCount,
+      group_sent_count: groupPrayer.sentCount,
+    });
 
     return json(request, 200, {
       ok: true,
       processedAt: now.toISOString(),
+      runId,
       summary: {
-        dailyReadingSent,
-        groupPrayerSent,
+        dailyReadingDue: dailyReading.dueCount,
+        dailyReadingSent: dailyReading.sentCount,
+        groupPrayerDue: groupPrayer.dueCount,
+        groupPrayerSent: groupPrayer.sentCount,
       },
     });
   } catch (error) {
+    if (supabase && runId) {
+      await updateRunLog(supabase, runId, {
+        error_text: error instanceof Error ? error.message : "Unknown error",
+        finished_at: new Date().toISOString(),
+      });
+    }
     return json(request, 400, {
       error: error instanceof Error ? error.message : "Unknown error",
       ok: false,
