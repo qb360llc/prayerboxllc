@@ -82,8 +82,8 @@
       .hero-card { min-height:calc(100vh - 140px); display:grid; align-content:space-between; gap:16px; padding:18px 18px 20px; text-align:center; }
       .hero-stack { display:grid; gap:10px; justify-items:center; align-content:end; min-height:100%; }
       .hero-actions { width:min(100%, 360px); display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px; margin-top:8px; }
-      .pray-button { display:inline-flex; align-items:center; justify-content:center; width:100%; min-width:0; margin-top:0; padding:18px 20px; font-size:1.12rem; background:linear-gradient(160deg, #ead1a0 0%, #c8923d 100%); box-shadow:0 18px 36px rgba(12,25,34,.24); }
-      .pray-button.amen { background:linear-gradient(160deg, rgba(248,241,223,.94) 0%, #f0dcb5 100%); }
+      .pray-button { display:inline-flex; align-items:center; justify-content:center; width:100%; min-width:0; margin-top:0; padding:18px 20px; font-size:1.12rem; background:linear-gradient(160deg, #fefcf7 0%, #f4eee2 48%, #e5dcc9 100%); box-shadow:0 18px 36px rgba(12,25,34,.18); color:#5f5a52; border:1px solid rgba(255,255,255,.7); }
+      .pray-button.amen { background:linear-gradient(160deg, #ffffff 0%, #f5efe5 52%, #e8dfcf 100%); }
       .intention-only-button { display:inline-flex; align-items:center; justify-content:center; width:100%; min-width:0; padding:18px 20px; border-radius:999px; border:1px solid rgba(248,241,223,.22); background:rgba(18,35,46,.56); color:var(--cream); box-shadow:0 18px 36px rgba(12,25,34,.18); }
       .status { max-width:28rem; margin:0 auto; padding:12px 14px; border-radius:18px; background:rgba(248,241,223,.12); border:1px solid rgba(248,241,223,.12); white-space:pre-wrap; }
       .status.error { color:var(--danger); background:rgba(127,30,19,.28); border-color:rgba(255,209,201,.2); }
@@ -685,7 +685,7 @@
         .mobile-action-cluster { position:absolute; left:14px; top:calc(env(safe-area-inset-top, 0px) + 12px); display:flex; align-items:flex-start; gap:10px; z-index:3; }
       }
       @media (max-width:719px) {
-        body { background:#294d61; }
+        body { background:#ffffff; }
         body::before {
           content:"";
           display:block;
@@ -696,12 +696,14 @@
           z-index:0;
         }
         main { padding:0 14px 124px; }
-        .mobile-action-cluster { display:none !important; }
+        .mobile-action-cluster { display:flex !important; }
         .topbar-wrap { position:absolute; top:0; left:0; right:0; margin-left:0; margin-right:0; padding-bottom:0; z-index:5; }
+        body[data-current-page="home"] { overflow:hidden; }
+        body[data-current-page="home"] main { height:100vh; overflow:hidden; }
         .hero-card { min-height:calc(100vh - 110px); padding:calc(env(safe-area-inset-top, 0px) + 12vh) 10px 2px; display:flex; flex-direction:column; justify-content:space-between; gap:12px; }
-        .hero-actions { width:min(100%, 340px); margin-top:12px; }
-        .pray-button,
-        .intention-only-button { width:100%; max-width:none; }
+        .hero-actions { width:100%; margin-top:12px; display:flex; justify-content:center; }
+        .pray-button { width:152px; height:152px; min-width:152px; border-radius:999px; padding:0; font-size:1.2rem; }
+        .intention-only-button { display:none; }
         .modal-backdrop { padding:12px; }
         .modal-backdrop.top-sheet { padding:0; }
         .modal-backdrop.top-sheet .modal-card { width:100%; min-height:100vh; border-radius:0 0 24px 24px; }
@@ -725,21 +727,7 @@
         .notifications-shell { max-height:calc(100vh - 236px); }
         .info-fab { right:14px; bottom:14px; }
         .info-panel { right:14px; bottom:70px; width:min(300px, calc(100vw - 24px)); }
-        .mobile-bottom-nav {
-          position:fixed;
-          left:0;
-          right:0;
-          bottom:0;
-          display:flex;
-          gap:10px;
-          overflow-x:auto;
-          padding:10px 14px calc(env(safe-area-inset-bottom, 0px) + 10px);
-          background:rgba(18,35,46,.96);
-          border-top:1px solid rgba(248,241,223,.12);
-          box-shadow:0 -14px 30px rgba(10,18,24,.24);
-          z-index:90;
-          backdrop-filter:blur(16px);
-        }
+        .mobile-bottom-nav { display:none !important; }
         body[data-current-page]:not([data-current-page="home"]) .hero-card { display:none; }
         body[data-current-page]:not([data-current-page="home"]) .info-fab,
         body[data-current-page]:not([data-current-page="home"]) .info-panel { display:none !important; }
