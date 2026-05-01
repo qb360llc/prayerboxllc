@@ -2494,10 +2494,12 @@
         requestAnimationFrame(() => els.intentionBody.focus());
       }
 
-      function closePrayModal() {
+      function closePrayModal({ clear = true } = {}) {
         els.prayModal.classList.remove("open");
         els.prayModal.setAttribute("aria-hidden", "true");
-        els.intentionBody.value = "";
+        if (clear) {
+          els.intentionBody.value = "";
+        }
       }
 
       function openReadingModal() {
@@ -4140,37 +4142,49 @@
         }
       }
 
-      async function startPrayer(intention = "") {
+      async function startPrayer(intention = "", { closeModalFirst = false } = {}) {
         const groupSlug = selectedGroupSlug();
         if (!groupSlug) {
           throw new Error("Choose your active community in Settings first.");
         }
 
-        const response = await authedFetch("/functions/v1/start-prayer", {
-          body: JSON.stringify({ groupSlug, intention }),
-          headers: { "Content-Type": "application/json" },
-          method: "POST",
-        });
-        const payload = await response.json();
-        if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to start prayer.");
+        if (closeModalFirst) {
+          closePrayModal({ clear: false });
+        }
 
-        closePrayModal();
-        await refreshPrayerState();
-        await loadPrayerFeed();
-        const pushResult = payload.pushResult || {};
-        if (intention) {
-          saveStoredIntention({ body: intention, id: payload.intentionId || null });
-          if (pushResult.attempted === 0) {
-            setInfoMessage("Prayer started and your intention was shared. Push attempted 0 subscriptions for recipients.");
+        try {
+          const response = await authedFetch("/functions/v1/start-prayer", {
+            body: JSON.stringify({ groupSlug, intention }),
+            headers: { "Content-Type": "application/json" },
+            method: "POST",
+          });
+          const payload = await response.json();
+          if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to start prayer.");
+
+          closePrayModal();
+          await refreshPrayerState();
+          await loadPrayerFeed();
+          const pushResult = payload.pushResult || {};
+          if (intention) {
+            saveStoredIntention({ body: intention, id: payload.intentionId || null });
+            if (pushResult.attempted === 0) {
+              setInfoMessage("Prayer started and your intention was shared. Push attempted 0 subscriptions for recipients.");
+            } else {
+              setInfoMessage(`Prayer started and your intention was shared. Push sent ${pushResult.sent || 0} of ${pushResult.attempted || 0} attempted subscriptions.`);
+            }
+          } else if (pushResult.attempted === 0) {
+            saveStoredIntention(null);
+            setInfoMessage("Prayer started. Push attempted 0 subscriptions for recipients.");
           } else {
-            setInfoMessage(`Prayer started and your intention was shared. Push sent ${pushResult.sent || 0} of ${pushResult.attempted || 0} attempted subscriptions.`);
+            saveStoredIntention(null);
+            setInfoMessage(`Prayer started. Push sent ${pushResult.sent || 0} of ${pushResult.attempted || 0} attempted subscriptions.`);
           }
-        } else if (pushResult.attempted === 0) {
-          saveStoredIntention(null);
-          setInfoMessage("Prayer started. Push attempted 0 subscriptions for recipients.");
-        } else {
-          saveStoredIntention(null);
-          setInfoMessage(`Prayer started. Push sent ${pushResult.sent || 0} of ${pushResult.attempted || 0} attempted subscriptions.`);
+        } catch (error) {
+          if (closeModalFirst) {
+            els.intentionBody.value = intention;
+            openPrayModal();
+          }
+          throw error;
         }
       }
 
@@ -4472,9 +4486,9 @@
         if (!intention) {
           throw new Error("Add an intention or press Skip.");
         }
-        return startPrayer(intention);
+        return startPrayer(intention, { closeModalFirst: true });
       }, els.sendPrayer));
-      els.skipPrayer.addEventListener("click", () => wrap(() => startPrayer(""), els.skipPrayer));
+      els.skipPrayer.addEventListener("click", () => wrap(() => startPrayer("", { closeModalFirst: true }), els.skipPrayer));
       els.prayModal.addEventListener("click", (event) => {
         if (event.target === els.prayModal) {
           closePrayModal();
