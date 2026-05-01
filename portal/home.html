@@ -685,9 +685,10 @@
         .mobile-action-cluster { position:absolute; left:14px; top:calc(env(safe-area-inset-top, 0px) + 12px); display:flex; align-items:flex-start; gap:10px; z-index:3; }
       }
       @media (max-width:719px) {
-        body { background:#294d61 url("./background_4.png") center 0px / cover no-repeat fixed; }
-        main { padding:12px 14px 124px; }
+        body { background:#294d61 url("./background_4.png") center 0px / contain no-repeat; background-attachment:scroll; }
+        main { padding:0 14px 124px; }
         .mobile-action-cluster { display:none !important; }
+        .topbar-wrap { position:absolute; top:0; left:0; right:0; margin-left:0; margin-right:0; padding-bottom:0; z-index:5; }
         .hero-card { min-height:calc(100vh - 110px); padding:12px 10px 2px; display:flex; flex-direction:column; justify-content:flex-end; gap:12px; }
         .hero-actions { width:min(100%, 340px); margin-top:32px; }
         .pray-button,
@@ -701,8 +702,7 @@
         .hero-presence { margin-top:4px; }
         .status, .hero-avatar { backdrop-filter:blur(8px); background:rgba(24,44,58,.34); }
         .hero-avatars { width:min(100%, 308px); min-height:116px; gap:8px 6px; }
-        .topbar-wrap { padding-bottom:0; }
-        .topbar { padding:calc(env(safe-area-inset-top, 0px) + 12px) 14px 0 14px; min-height:60px; }
+        .topbar { padding:calc(env(safe-area-inset-top, 0px) + 8px) 14px 0 14px; min-height:52px; }
         .profile-menu-shell { margin-left:auto; }
         .profile-menu-panel { right:0; top:56px; }
         .feed-surface { min-height:calc(100vh - 130px); padding:10px; border-radius:22px; }
