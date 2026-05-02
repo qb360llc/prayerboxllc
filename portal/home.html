@@ -59,29 +59,25 @@
       }
       .menu-dot[hidden] { display:none; }
       .mobile-action-strip {
-        position:fixed;
-        top:calc(env(safe-area-inset-top, 0px) + 12px);
-        left:14px;
-        width:min(250px, calc(100vw - 34px));
+        position:static;
+        width:min(240px, calc(100vw - 34px));
         display:flex;
         flex-direction:column;
         gap:8px;
         overflow-x:hidden;
         overflow-y:auto;
-        max-height:min(520px, calc(100dvh - env(safe-area-inset-top, 0px) - 90px));
-        padding:12px;
-        opacity:1;
-        transform:translateX(calc(-100% + 62px));
+        max-height:0;
+        padding:0;
+        opacity:0;
+        transform:translateY(-8px);
         border-radius:22px;
         background:rgba(18,35,46,.94);
         border:1px solid rgba(248,241,223,.14);
         box-shadow:0 18px 38px rgba(10,18,24,.28);
         backdrop-filter:blur(12px);
-        transition:transform .24s ease, box-shadow .18s ease;
-        z-index:40;
+        transition:max-height .24s ease, opacity .18s ease, transform .18s ease, padding .18s ease;
       }
-      .mobile-action-strip.open { transform:translateX(0); }
-      .mobile-action-head { display:flex; align-items:center; justify-content:flex-start; margin-bottom:2px; }
+      .mobile-action-strip.open { max-height:min(520px, calc(100dvh - env(safe-area-inset-top, 0px) - 90px)); padding:12px; opacity:1; transform:translateY(0); }
       .hero-card { min-height:calc(100vh - 140px); display:grid; align-content:space-between; gap:16px; padding:18px 18px 20px; text-align:center; }
       .hero-stack { display:grid; gap:10px; justify-items:center; align-content:end; min-height:100%; }
       .hero-actions { width:min(100%, 360px); display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px; margin-top:8px; }
@@ -685,7 +681,7 @@
       .app-page-modal.page-active { display:block; }
       @media (max-width:720px) {
         .topnav { display:none; }
-        .mobile-action-cluster { display:flex; z-index:40; }
+        .mobile-action-cluster { position:absolute; left:14px; top:calc(env(safe-area-inset-top, 0px) + 12px); display:flex; flex-direction:column; align-items:flex-start; gap:8px; z-index:3; }
       }
       @media (max-width:719px) {
         body { background:#000000; }
@@ -1505,10 +1501,8 @@
       <div class="topbar-wrap">
         <div class="topbar">
           <div class="mobile-action-cluster">
+            <button id="action-menu-toggle" class="mobile-nav-button" type="button" aria-label="Open home actions" aria-expanded="false"><span class="menu-bars"></span><span id="menu-dot" class="menu-dot" hidden></span></button>
             <div id="mobile-action-strip" class="mobile-action-strip" aria-label="Home quick actions">
-              <div class="mobile-action-head">
-                <button id="action-menu-toggle" class="mobile-nav-button" type="button" aria-label="Open home actions" aria-expanded="false"><span class="menu-bars"></span><span id="menu-dot" class="menu-dot" hidden></span></button>
-              </div>
               <button id="open-home-page" class="rail-button" type="button" aria-label="Open home">
                 <svg viewBox="0 0 24 24"><path d="M4.5 10.5 12 4l7.5 6.5"></path><path d="M7 9.75V20h10V9.75"></path></svg>
                 <span class="action-label">Home</span>
