@@ -4,6 +4,7 @@ import { sendPushToUsers } from "../_shared/web-push.ts";
 type DailyReminderRow = {
   group_id: string;
   id: string;
+  next_trigger_at?: string | null;
   reminder_time: string;
   timezone: string;
   user_id: string;
@@ -106,6 +107,97 @@ function zonedParts(date: Date, timezone: string) {
     hour: Number(values.hour || 0),
     minute: Number(values.minute || 0),
   };
+}
+
+function zonedDateParts(date: Date, timezone: string) {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: timezone,
+    year: "numeric",
+  });
+
+  const values = Object.fromEntries(
+    formatter.formatToParts(date)
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value]),
+  );
+
+  return {
+    day: Number(values.day || 1),
+    month: Number(values.month || 1),
+    year: Number(values.year || 1970),
+  };
+}
+
+function getTimeZoneOffsetMs(date: Date, timezone: string) {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    day: "2-digit",
+    hour: "2-digit",
+    hour12: false,
+    minute: "2-digit",
+    month: "2-digit",
+    second: "2-digit",
+    timeZone: timezone,
+    year: "numeric",
+  });
+
+  const values = Object.fromEntries(
+    formatter.formatToParts(date)
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value]),
+  );
+
+  const asUtc = Date.UTC(
+    Number(values.year || 1970),
+    Number(values.month || 1) - 1,
+    Number(values.day || 1),
+    Number(values.hour || 0),
+    Number(values.minute || 0),
+    Number(values.second || 0),
+  );
+
+  return asUtc - date.getTime();
+}
+
+function zonedDateTimeToUtc(
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+  timezone: string,
+) {
+  const guess = Date.UTC(year, month - 1, day, hour, minute, 0);
+  const firstPass = guess - getTimeZoneOffsetMs(new Date(guess), timezone);
+  const secondPass = guess - getTimeZoneOffsetMs(new Date(firstPass), timezone);
+  return new Date(secondPass);
+}
+
+function addDays(year: number, month: number, day: number, amount: number) {
+  const date = new Date(Date.UTC(year, month - 1, day + amount));
+  return {
+    day: date.getUTCDate(),
+    month: date.getUTCMonth() + 1,
+    year: date.getUTCFullYear(),
+  };
+}
+
+function dailyTriggerForLocalDate(reminderTime: string, timezone: string, referenceDate: Date) {
+  const { hour, minute } = parseStoredTime(reminderTime);
+  const localDate = zonedDateParts(referenceDate, timezone);
+  return zonedDateTimeToUtc(localDate.year, localDate.month, localDate.day, hour, minute, timezone);
+}
+
+function nextDailyTriggerAfter(reminderTime: string, timezone: string, afterDate: Date) {
+  const todayTrigger = dailyTriggerForLocalDate(reminderTime, timezone, afterDate);
+  if (todayTrigger.getTime() > afterDate.getTime()) {
+    return todayTrigger;
+  }
+  const localDate = zonedDateParts(afterDate, timezone);
+  const tomorrow = addDays(localDate.year, localDate.month, localDate.day, 1);
+  const { hour, minute } = parseStoredTime(reminderTime);
+  return zonedDateTimeToUtc(tomorrow.year, tomorrow.month, tomorrow.day, hour, minute, timezone);
 }
 
 function minutesSinceMidnight(hour: number, minute: number) {
@@ -299,7 +391,7 @@ async function processDailyReadingReminders(
 ) {
   const { data, error } = await supabase
     .from("daily_reading_reminders")
-    .select("id, user_id, group_id, reminder_time, timezone");
+    .select("id, user_id, group_id, reminder_time, timezone, next_trigger_at");
 
   if (error) throw error;
 
@@ -315,14 +407,45 @@ async function processDailyReadingReminders(
     const group = groupsById.get(reminder.group_id);
     if (!group) continue;
 
-    const local = zonedParts(now, reminder.timezone || "UTC");
-    const reminderTime = parseStoredTime(reminder.reminder_time);
-    const currentMinutes = minutesSinceMidnight(local.hour, local.minute);
-    const reminderMinutes = minutesSinceMidnight(reminderTime.hour, reminderTime.minute);
-    const due = currentMinutes >= reminderMinutes && currentMinutes < (reminderMinutes + windowMinutes);
+    const timezone = reminder.timezone || "UTC";
+    const windowStartMs = now.getTime() - (windowMinutes * 60 * 1000);
+    const fallbackTrigger = dailyTriggerForLocalDate(reminder.reminder_time, timezone, now);
+    const storedTriggerMs = reminder.next_trigger_at ? new Date(reminder.next_trigger_at).getTime() : NaN;
+    let triggerAt = Number.isFinite(storedTriggerMs)
+      ? new Date(storedTriggerMs)
+      : fallbackTrigger;
+
+    if (triggerAt.getTime() <= windowStartMs) {
+      const recoveredTrigger = nextDailyTriggerAfter(reminder.reminder_time, timezone, now);
+      if (recoveredTrigger.getTime() !== triggerAt.getTime()) {
+        const { error: updateTriggerError } = await supabase
+          .from("daily_reading_reminders")
+          .update({
+            next_trigger_at: recoveredTrigger.toISOString(),
+            updated_at: now.toISOString(),
+          })
+          .eq("id", reminder.id);
+
+        if (updateTriggerError) throw updateTriggerError;
+      }
+      triggerAt = recoveredTrigger;
+    } else if (!reminder.next_trigger_at) {
+      const { error: seedTriggerError } = await supabase
+        .from("daily_reading_reminders")
+        .update({
+          next_trigger_at: triggerAt.toISOString(),
+          updated_at: now.toISOString(),
+        })
+        .eq("id", reminder.id);
+
+      if (seedTriggerError) throw seedTriggerError;
+    }
+
+    const due = triggerAt.getTime() <= now.getTime() && triggerAt.getTime() > windowStartMs;
     if (!due) continue;
     dueCount += 1;
 
+    const local = zonedParts(triggerAt, timezone);
     const reminderKey = `${reminder.id}:${local.date}`;
     if (await deliveryExists(supabase, "daily_reading", reminderKey, reminder.user_id)) {
       continue;
@@ -361,10 +484,21 @@ async function processDailyReadingReminders(
     });
 
     await storeDelivery(supabase, "daily_reading", reminderKey, reminder.user_id);
+    const nextTrigger = nextDailyTriggerAfter(reminder.reminder_time, timezone, new Date(triggerAt.getTime() + 1000));
+    const { error: advanceTriggerError } = await supabase
+      .from("daily_reading_reminders")
+      .update({
+        next_trigger_at: nextTrigger.toISOString(),
+        updated_at: now.toISOString(),
+      })
+      .eq("id", reminder.id);
+
+    if (advanceTriggerError) throw advanceTriggerError;
+
     await insertDeliveryLog(supabase, {
       body,
       groupId: group.id,
-      latenessSeconds: (currentMinutes - reminderMinutes) * 60,
+      latenessSeconds: (now.getTime() - triggerAt.getTime()) / 1000,
       metadata,
       processedAt: now.toISOString(),
       recipientUserId: reminder.user_id,
@@ -374,7 +508,7 @@ async function processDailyReadingReminders(
       runId,
       scheduledLocalDate: local.date,
       scheduledLocalTime: String(reminder.reminder_time).slice(0, 5),
-      timezone: reminder.timezone || "UTC",
+      timezone,
       title,
       triggerSource,
     });
