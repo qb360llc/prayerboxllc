@@ -1,8 +1,6 @@
 name: Process Reminders
 
 on:
-  schedule:
-    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 jobs:
@@ -21,6 +19,4 @@ jobs:
           curl --fail-with-body --silent --show-error \
             -X POST \
             -H "x-reminder-secret: $PRAYERBOX_REMINDER_SECRET" \
-            -H "Content-Type: application/json" \
-            -d '{"source":"github_actions"}' \
             "https://qtvskyncpuznnzuptgoc.supabase.co/functions/v1/process-reminders"
