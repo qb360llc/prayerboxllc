@@ -365,6 +365,20 @@
       .feed-amen-button.active .heart { color:#e07a78; }
       .feed-amen-button .amen-label { color:inherit; }
       .feed-amen-button .amen-count { color:rgba(248,241,223,.62); font-size:.88rem; }
+      .feed-amen-cluster { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+      .feed-amen-people {
+        min-width:0;
+        padding:0;
+        border:none;
+        border-radius:0;
+        background:none;
+        box-shadow:none;
+        color:rgba(248,241,223,.66);
+        font-size:.88rem;
+        font-weight:500;
+      }
+      .feed-amen-people:hover,
+      .feed-amen-people:focus-visible { color:rgba(248,241,223,.9); }
       .feed-modal-card { background:linear-gradient(180deg, #294d61 0%, var(--bg) 42%, var(--bg-deep) 100%); color:var(--cream); }
       .feed-modal-card .modal-title,
       .feed-modal-card .modal-close { color:var(--cream); }
@@ -386,10 +400,46 @@
       .feed-surface .feed-amen-button .heart { color:rgba(248,241,223,.68); }
       .feed-surface .feed-amen-button.active .heart { color:#ef9a95; }
       .feed-surface .feed-amen-button .amen-count { color:rgba(248,241,223,.66); }
+      .feed-surface .feed-amen-people { color:rgba(248,241,223,.7); }
+      .feed-surface .feed-amen-people:hover,
+      .feed-surface .feed-amen-people:focus-visible { color:var(--cream); }
       .feed-surface .feed-link-button { color:rgba(248,241,223,.82); }
       .feed-surface .feed-comment-button { color:rgba(248,241,223,.84); }
       .feed-surface .feed-comment-button .comment-count,
       .feed-surface .feed-comments-toggle { color:rgba(248,241,223,.66); }
+      .amen-list { display:grid; gap:12px; }
+      .amen-list-item {
+        display:flex;
+        align-items:center;
+        gap:12px;
+        padding:12px 14px;
+        border-radius:18px;
+        background:rgba(35,68,87,.08);
+        border:1px solid rgba(35,68,87,.1);
+      }
+      .amen-list-avatar {
+        width:42px;
+        height:42px;
+        border-radius:50%;
+        overflow:hidden;
+        flex:0 0 42px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        background:rgba(35,68,87,.12);
+        border:1px solid rgba(35,68,87,.12);
+        color:#234457;
+        font-size:.8rem;
+        font-weight:700;
+        letter-spacing:.04em;
+      }
+      .amen-list-avatar img {
+        width:100%;
+        height:100%;
+        object-fit:cover;
+        display:block;
+      }
+      .amen-list-name { color:#1d1b18; font-weight:700; }
       .comments-shell { margin-top:14px; padding-top:14px; border-top:1px solid rgba(248,241,223,.14); }
       .comments-list { display:grid; gap:12px; }
       .comment-item { padding:12px 14px; border-radius:16px; background:rgba(248,241,223,.06); }
@@ -1697,6 +1747,19 @@
         </div>
       </div>
 
+      <div id="amen-list-modal" class="modal-backdrop center-modal" aria-hidden="true">
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="amen-list-modal-title">
+          <div class="modal-header">
+            <div class="modal-title" id="amen-list-modal-title">People Who Said Amen</div>
+            <button id="close-amen-list-modal" class="modal-close" aria-label="Close Amen list dialog">&times;</button>
+          </div>
+          <p class="modal-copy">See everyone who interacted with this post.</p>
+          <div id="amen-list-body" class="amen-list">
+            <div class="summary-card empty">No Amen reactions yet.</div>
+          </div>
+        </div>
+      </div>
+
       <div id="members-modal" class="modal-backdrop top-sheet app-page-modal" aria-hidden="true">
         <div class="modal-card feed-modal-card" role="dialog" aria-modal="true" aria-labelledby="members-modal-title">
           <div class="modal-header">
@@ -1923,7 +1986,10 @@
       }
       const els = {
         actionMenuToggle: document.querySelector("#action-menu-toggle"),
+        amenListBody: document.querySelector("#amen-list-body"),
+        amenListModal: document.querySelector("#amen-list-modal"),
         cancelComment: document.querySelector("#cancel-comment"),
+        closeAmenListModal: document.querySelector("#close-amen-list-modal"),
         closePrayModal: document.querySelector("#close-pray-modal"),
         closeCommentModal: document.querySelector("#close-comment-modal"),
         closeReadingReminderModal: document.querySelector("#close-reading-reminder-modal"),
@@ -2175,6 +2241,12 @@
           day: "numeric",
           year: "numeric",
         }).format(date);
+      }
+
+      function formatAmenPeopleLabel(count) {
+        const total = Number(count || 0);
+        if (total === 1) return "1 person";
+        return `${total} people`;
       }
 
       function isFeedVisible() {
@@ -2840,6 +2912,35 @@
         activeCommentIntentionId = null;
         els.commentModal.classList.remove("open");
         els.commentModal.setAttribute("aria-hidden", "true");
+      }
+
+      function openAmenListModal(feedItemId) {
+        const feedItem = currentPrayerFeed.find((item) => item.id === feedItemId);
+        const amenUsers = Array.isArray(feedItem?.amenUsers) ? feedItem.amenUsers : [];
+        if (!amenUsers.length) {
+          els.amenListBody.innerHTML = `<div class="summary-card empty">No Amen reactions yet.</div>`;
+        } else {
+          els.amenListBody.innerHTML = amenUsers.map((person) => {
+            const avatarUrl = typeof person.avatarUrl === "string" ? person.avatarUrl.trim() : "";
+            const name = person.name || "Community member";
+            const avatarMarkup = avatarUrl
+              ? `<span class="amen-list-avatar"><img src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(name)}"></span>`
+              : `<span class="amen-list-avatar">${escapeHtml(initialsForName(name))}</span>`;
+            return `
+              <div class="amen-list-item">
+                ${avatarMarkup}
+                <div class="amen-list-name">${escapeHtml(name)}</div>
+              </div>
+            `;
+          }).join("");
+        }
+        els.amenListModal.classList.add("open");
+        els.amenListModal.setAttribute("aria-hidden", "false");
+      }
+
+      function closeAmenListModal() {
+        els.amenListModal.classList.remove("open");
+        els.amenListModal.setAttribute("aria-hidden", "true");
       }
 
       function openGroupModal() {
@@ -3730,11 +3831,14 @@
                 <p class="feed-event-copy">${escapeHtml(item.body)}</p>
                 <span class="feed-event-time">${escapeHtml(formatFeedTime(item.createdAt))}</span>
                 <div class="feed-actions">
-                  <button class="feed-amen-button ${item.userHasAmen ? "active" : ""}" type="button" data-feed-event-key="${escapeHtml(item.eventKey)}" aria-label="${item.userHasAmen ? "Remove Amen" : "Say Amen"}">
-                    <span class="heart" aria-hidden="true">${item.userHasAmen ? "&#9829;" : "&#9825;"}</span>
-                    <span class="amen-label">Amen</span>
-                    <span class="amen-count">${item.amenCount || 0}</span>
-                  </button>
+                  <div class="feed-amen-cluster">
+                    <button class="feed-amen-button ${item.userHasAmen ? "active" : ""}" type="button" data-feed-event-key="${escapeHtml(item.eventKey)}" aria-label="${item.userHasAmen ? "Remove Amen" : "Say Amen"}">
+                      <span class="heart" aria-hidden="true">${item.userHasAmen ? "&#9829;" : "&#9825;"}</span>
+                      <span class="amen-label">Amen</span>
+                      <span class="amen-count">${item.amenCount || 0}</span>
+                    </button>
+                    ${item.amenCount ? `<button class="feed-amen-people open-feed-amen-list" type="button" data-feed-item-id="${escapeHtml(item.id)}">${escapeHtml(formatAmenPeopleLabel(item.amenCount))}</button>` : ""}
+                  </div>
                 </div>
               </article>
             `;
@@ -3746,11 +3850,14 @@
                 <p class="feed-event-copy">${escapeHtml(item.body)}</p>
                 <span class="feed-event-time">${escapeHtml(formatFeedTime(item.createdAt))}</span>
                 <div class="feed-actions">
-                  <button class="feed-amen-button ${item.userHasAmen ? "active" : ""}" type="button" data-feed-event-key="${escapeHtml(item.eventKey)}" aria-label="${item.userHasAmen ? "Remove Amen" : "Say Amen"}">
-                    <span class="heart" aria-hidden="true">${item.userHasAmen ? "&#9829;" : "&#9825;"}</span>
-                    <span class="amen-label">Amen</span>
-                    <span class="amen-count">${item.amenCount || 0}</span>
-                  </button>
+                  <div class="feed-amen-cluster">
+                    <button class="feed-amen-button ${item.userHasAmen ? "active" : ""}" type="button" data-feed-event-key="${escapeHtml(item.eventKey)}" aria-label="${item.userHasAmen ? "Remove Amen" : "Say Amen"}">
+                      <span class="heart" aria-hidden="true">${item.userHasAmen ? "&#9829;" : "&#9825;"}</span>
+                      <span class="amen-label">Amen</span>
+                      <span class="amen-count">${item.amenCount || 0}</span>
+                    </button>
+                    ${item.amenCount ? `<button class="feed-amen-people open-feed-amen-list" type="button" data-feed-item-id="${escapeHtml(item.id)}">${escapeHtml(formatAmenPeopleLabel(item.amenCount))}</button>` : ""}
+                  </div>
                 </div>
               </article>
             `;
@@ -3776,11 +3883,14 @@
               </div>
               <p class="feed-body">${escapeHtml(item.body)}</p>
               <div class="feed-actions">
-                <button class="feed-amen-button ${item.userHasAmen ? "active" : ""}" type="button" data-feed-intention-id="${escapeHtml(item.intentionId)}" aria-label="${item.userHasAmen ? "Remove Amen" : "Say Amen"}">
-                  <span class="heart" aria-hidden="true">${item.userHasAmen ? "&#9829;" : "&#9825;"}</span>
-                  <span class="amen-label">Amen</span>
-                  <span class="amen-count">${item.amenCount || 0}</span>
-                </button>
+                <div class="feed-amen-cluster">
+                  <button class="feed-amen-button ${item.userHasAmen ? "active" : ""}" type="button" data-feed-intention-id="${escapeHtml(item.intentionId)}" aria-label="${item.userHasAmen ? "Remove Amen" : "Say Amen"}">
+                    <span class="heart" aria-hidden="true">${item.userHasAmen ? "&#9829;" : "&#9825;"}</span>
+                    <span class="amen-label">Amen</span>
+                    <span class="amen-count">${item.amenCount || 0}</span>
+                  </button>
+                  ${item.amenCount ? `<button class="feed-amen-people open-feed-amen-list" type="button" data-feed-item-id="${escapeHtml(item.id)}">${escapeHtml(formatAmenPeopleLabel(item.amenCount))}</button>` : ""}
+                </div>
                 <div class="feed-actions-right">
                   <button class="feed-comment-button open-feed-comment" type="button" data-feed-intention-id="${escapeHtml(item.intentionId)}">
                     <span>Comment</span>
@@ -3857,6 +3967,9 @@
         });
         els.prayerFeed.querySelectorAll(".open-feed-comment").forEach((button) => {
           button.addEventListener("click", () => openCommentModal(button.getAttribute("data-feed-intention-id") || ""));
+        });
+        els.prayerFeed.querySelectorAll(".open-feed-amen-list").forEach((button) => {
+          button.addEventListener("click", () => openAmenListModal(button.getAttribute("data-feed-item-id") || ""));
         });
         els.prayerFeed.querySelectorAll(".toggle-feed-comments").forEach((button) => {
           button.addEventListener("click", () => {
@@ -4246,6 +4359,11 @@
       function applyOptimisticFeedAmenToggle(matchItem) {
         const previousFeed = currentPrayerFeed.map((item) => ({ ...item }));
         let changed = false;
+        const actorId = currentSessionUser?.id || "";
+        const actorName = currentProfileSummary?.name
+          || currentSessionUser?.email?.split("@")[0]
+          || "You";
+        const actorAvatarUrl = currentProfileSummary?.avatarUrl || "";
 
         currentPrayerFeed = currentPrayerFeed.map((item) => {
           if (!matchItem(item)) {
@@ -4254,9 +4372,17 @@
           changed = true;
           const nextHasAmen = !item.userHasAmen;
           const nextAmenCount = Math.max(0, Number(item.amenCount || 0) + (nextHasAmen ? 1 : -1));
+          const currentAmenUsers = Array.isArray(item.amenUsers) ? item.amenUsers : [];
+          const nextAmenUsers = nextHasAmen
+            ? [
+              { avatarUrl: actorAvatarUrl, id: actorId, name: actorName },
+              ...currentAmenUsers.filter((person) => person.id !== actorId),
+            ]
+            : currentAmenUsers.filter((person) => person.id !== actorId);
           return {
             ...item,
             amenCount: nextAmenCount,
+            amenUsers: nextAmenUsers,
             userHasAmen: nextHasAmen,
           };
         });
@@ -4838,6 +4964,7 @@
           });
       });
       els.closePrayModal.addEventListener("click", closePrayModal);
+      els.closeAmenListModal.addEventListener("click", closeAmenListModal);
       els.closeReadingReminderModal.addEventListener("click", closeReadingReminderModal);
       els.closeReadingModal.addEventListener("click", closeReadingModal);
       els.closeScheduleModal.addEventListener("click", closeScheduleModal);
@@ -4960,6 +5087,9 @@
       });
       els.commentModal.addEventListener("click", (event) => {
         if (event.target === els.commentModal) closeCommentModal();
+      });
+      els.amenListModal.addEventListener("click", (event) => {
+        if (event.target === els.amenListModal) closeAmenListModal();
       });
       els.membersModal.addEventListener("click", (event) => {
         if (event.target === els.membersModal) closeMembersModal();

@@ -1,6 +1,12 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { sendPushToUsers } from "../_shared/web-push.ts";
 
+type AmenUser = {
+  id: string;
+  name: string;
+  avatarUrl?: string | null;
+};
+
 type FeedItem =
   | {
     id: string;
@@ -11,6 +17,7 @@ type FeedItem =
     avatarUrl?: string | null;
     body: string;
     amenCount: number;
+    amenUsers: AmenUser[];
     userHasAmen: boolean;
     commentCount: number;
   }
@@ -33,6 +40,7 @@ type FeedItem =
     eventKey: string;
     eventType: "scheduled" | "reminder" | "start";
     amenCount: number;
+    amenUsers: AmenUser[];
     userHasAmen: boolean;
   }
   | {
@@ -45,6 +53,7 @@ type FeedItem =
     eventType: "entered" | "left";
     body: string;
     amenCount: number;
+    amenUsers: AmenUser[];
     userHasAmen: boolean;
   };
 
@@ -428,28 +437,16 @@ Deno.serve(async (request) => {
         .filter(Boolean),
     ]));
 
-    const authorsById = new Map<string, Record<string, unknown>>();
-    if (authorIds.length) {
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("id, first_name, last_name, display_name, email, avatar_url")
-        .in("id", authorIds);
-
-      if (profilesError) {
-        throw profilesError;
-      }
-
-      for (const profile of profiles ?? []) {
-        authorsById.set(String((profile as Record<string, unknown>).id), profile as Record<string, unknown>);
-      }
-    }
-
     const intentionIds = (intentions ?? []).map((item: Record<string, unknown>) => String(item.id));
-    const reactionsByIntention = new Map<string, { amenCount: number; userHasAmen: boolean }>();
+    const reactionsByIntention = new Map<
+      string,
+      { amenCount: number; amenUserIds: string[]; userHasAmen: boolean }
+    >();
+    const reactionUserIds = new Set<string>();
     if (intentionIds.length) {
       const { data: reactions, error: reactionsError } = await supabase
         .from("community_intention_reactions")
-        .select("intention_id, user_id, reaction_type")
+        .select("intention_id, user_id, reaction_type, created_at")
         .in("intention_id", intentionIds)
         .eq("reaction_type", "love");
 
@@ -458,14 +455,22 @@ Deno.serve(async (request) => {
       }
 
       for (const intentionId of intentionIds) {
-        reactionsByIntention.set(intentionId, { amenCount: 0, userHasAmen: false });
+        reactionsByIntention.set(intentionId, { amenCount: 0, amenUserIds: [], userHasAmen: false });
       }
 
-      for (const reaction of reactions ?? []) {
+      const sortedReactions = [...(reactions ?? [])].sort((a, b) =>
+        new Date(String((b as Record<string, unknown>).created_at || 0)).getTime()
+        - new Date(String((a as Record<string, unknown>).created_at || 0)).getTime()
+      );
+
+      for (const reaction of sortedReactions) {
         const intentionId = String((reaction as Record<string, unknown>).intention_id);
-        const bucket = reactionsByIntention.get(intentionId) ?? { amenCount: 0, userHasAmen: false };
+        const reactorId = String((reaction as Record<string, unknown>).user_id);
+        const bucket = reactionsByIntention.get(intentionId) ?? { amenCount: 0, amenUserIds: [], userHasAmen: false };
         bucket.amenCount += 1;
-        if (String((reaction as Record<string, unknown>).user_id) === user.id) {
+        bucket.amenUserIds.push(reactorId);
+        reactionUserIds.add(reactorId);
+        if (reactorId === user.id) {
           bucket.userHasAmen = true;
         }
         reactionsByIntention.set(intentionId, bucket);
@@ -505,11 +510,14 @@ Deno.serve(async (request) => {
         return `group-prayer:${source}:${scheduledFor}:${reminderMinutes}:${String(item.body || "")}`;
       }),
     ];
-    const eventReactionsByKey = new Map<string, { amenCount: number; userHasAmen: boolean }>();
+    const eventReactionsByKey = new Map<
+      string,
+      { amenCount: number; amenUserIds: string[]; userHasAmen: boolean }
+    >();
     if (eventKeys.length) {
       const { data: eventReactions, error: eventReactionsError } = await supabase
         .from("prayer_feed_event_reactions")
-        .select("event_key, user_id, reaction_type")
+        .select("event_key, user_id, reaction_type, created_at")
         .in("event_key", eventKeys)
         .eq("reaction_type", "love");
 
@@ -518,31 +526,68 @@ Deno.serve(async (request) => {
       }
 
       for (const eventKey of eventKeys) {
-        eventReactionsByKey.set(eventKey, { amenCount: 0, userHasAmen: false });
+        eventReactionsByKey.set(eventKey, { amenCount: 0, amenUserIds: [], userHasAmen: false });
       }
 
-      for (const reaction of eventReactions ?? []) {
+      const sortedEventReactions = [...(eventReactions ?? [])].sort((a, b) =>
+        new Date(String((b as Record<string, unknown>).created_at || 0)).getTime()
+        - new Date(String((a as Record<string, unknown>).created_at || 0)).getTime()
+      );
+
+      for (const reaction of sortedEventReactions) {
         const eventKey = String((reaction as Record<string, unknown>).event_key);
-        const bucket = eventReactionsByKey.get(eventKey) ?? { amenCount: 0, userHasAmen: false };
+        const reactorId = String((reaction as Record<string, unknown>).user_id);
+        const bucket = eventReactionsByKey.get(eventKey) ?? { amenCount: 0, amenUserIds: [], userHasAmen: false };
         bucket.amenCount += 1;
-        if (String((reaction as Record<string, unknown>).user_id) === user.id) {
+        bucket.amenUserIds.push(reactorId);
+        reactionUserIds.add(reactorId);
+        if (reactorId === user.id) {
           bucket.userHasAmen = true;
         }
         eventReactionsByKey.set(eventKey, bucket);
       }
     }
 
+    const profileIds = Array.from(new Set([...authorIds, ...reactionUserIds]));
+    const profilesById = new Map<string, Record<string, unknown>>();
+    if (profileIds.length) {
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, first_name, last_name, display_name, email, avatar_url")
+        .in("id", profileIds);
+
+      if (profilesError) {
+        throw profilesError;
+      }
+
+      for (const profile of profiles ?? []) {
+        profilesById.set(String((profile as Record<string, unknown>).id), profile as Record<string, unknown>);
+      }
+    }
+
+    const amenUsersFor = (userIds: string[]) =>
+      userIds.map((reactorId) => ({
+        avatarUrl: profileAvatar(profilesById.get(reactorId)),
+        id: reactorId,
+        name: profileName(profilesById.get(reactorId)),
+      }));
+
     const feedItems: FeedItem[] = [
       ...(intentions ?? []).map((item: Record<string, unknown>) => {
         const intentionId = String(item.id);
-        const reactionState = reactionsByIntention.get(intentionId) ?? { amenCount: 0, userHasAmen: false };
+        const reactionState = reactionsByIntention.get(intentionId) ?? {
+          amenCount: 0,
+          amenUserIds: [],
+          userHasAmen: false,
+        };
         return {
           amenCount: reactionState.amenCount,
-          avatarUrl: profileAvatar(authorsById.get(String(item.created_by_user_id))),
+          amenUsers: amenUsersFor(reactionState.amenUserIds),
+          avatarUrl: profileAvatar(profilesById.get(String(item.created_by_user_id))),
           body: String(item.body || ""),
           commentCount: commentCountByIntention.get(intentionId) ?? 0,
           createdAt: String(item.created_at),
-          createdBy: profileName(authorsById.get(String(item.created_by_user_id))),
+          createdBy: profileName(profilesById.get(String(item.created_by_user_id))),
           id: `intention:${intentionId}`,
           intentionId,
           type: "intention" as const,
@@ -550,13 +595,18 @@ Deno.serve(async (request) => {
         };
       }),
       ...(prayerEvents ?? []).map((item: Record<string, unknown>) => {
-        const name = profileName(authorsById.get(String(item.user_id)));
+        const name = profileName(profilesById.get(String(item.user_id)));
         const eventType = String(item.event_type) === "left" ? "left" : "entered";
         const eventKey = `prayer-event:${String(item.id)}`;
-        const reactionState = eventReactionsByKey.get(eventKey) ?? { amenCount: 0, userHasAmen: false };
+        const reactionState = eventReactionsByKey.get(eventKey) ?? {
+          amenCount: 0,
+          amenUserIds: [],
+          userHasAmen: false,
+        };
         return {
           amenCount: reactionState.amenCount,
-          avatarUrl: profileAvatar(authorsById.get(String(item.user_id))),
+          amenUsers: amenUsersFor(reactionState.amenUserIds),
+          avatarUrl: profileAvatar(profilesById.get(String(item.user_id))),
           body: eventType === "left"
             ? `${name} has finished praying`
             : `${name} has entered prayer`,
@@ -570,10 +620,10 @@ Deno.serve(async (request) => {
         };
       }),
       ...(readingUploads ?? []).map((item: Record<string, unknown>) => {
-        const name = profileName(authorsById.get(String(item.created_by_user_id)));
+        const name = profileName(profilesById.get(String(item.created_by_user_id)));
         const readingDate = String(item.reading_date || "");
         return {
-          avatarUrl: profileAvatar(authorsById.get(String(item.created_by_user_id))),
+          avatarUrl: profileAvatar(profilesById.get(String(item.created_by_user_id))),
           body: `${name} uploaded a daily reading for ${readingDate}.`,
           createdAt: String(item.created_at),
           createdBy: name,
@@ -590,17 +640,22 @@ Deno.serve(async (request) => {
         const scheduledFor = String(metadata.scheduledFor || "");
         const reminderMinutes = String(metadata.reminderMinutes ?? "");
         const eventKey = `group-prayer:${source}:${scheduledFor}:${reminderMinutes}:${String(item.body || "")}`;
-        const reactionState = eventReactionsByKey.get(eventKey) ?? { amenCount: 0, userHasAmen: false };
+        const reactionState = eventReactionsByKey.get(eventKey) ?? {
+          amenCount: 0,
+          amenUserIds: [],
+          userHasAmen: false,
+        };
         const actorId = String(item.actor_user_id || "");
         const eventType = source === "group_prayer_start"
           ? "start"
           : source === "group_prayer_reminder"
           ? "reminder"
           : "scheduled";
-        const createdBy = actorId ? profileName(authorsById.get(actorId)) : "Prayerbox";
+        const createdBy = actorId ? profileName(profilesById.get(actorId)) : "Prayerbox";
         return {
           amenCount: reactionState.amenCount,
-          avatarUrl: actorId ? profileAvatar(authorsById.get(actorId)) : null,
+          amenUsers: amenUsersFor(reactionState.amenUserIds),
+          avatarUrl: actorId ? profileAvatar(profilesById.get(actorId)) : null,
           body: String(item.body || item.title || "Group prayer update"),
           createdAt: String(item.created_at),
           createdBy,
