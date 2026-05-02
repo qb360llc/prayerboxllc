@@ -1,4 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { sendPushToUsers } from "../_shared/web-push.ts";
 
 type FeedItem =
   | {
@@ -83,6 +84,79 @@ function profileName(profile: Record<string, unknown> | undefined) {
 
 function profileAvatar(profile: Record<string, unknown> | undefined) {
   return typeof profile?.avatar_url === "string" ? profile.avatar_url.trim() : null;
+}
+
+function buildHomeUrl(open?: "feed" | "chat" | "reading" | "schedule", groupSlug?: unknown) {
+  const params = new URLSearchParams();
+  if (open) {
+    params.set("open", open);
+  }
+  if (typeof groupSlug === "string" && groupSlug.trim()) {
+    params.set("group", groupSlug.trim());
+  }
+  const query = params.toString();
+  return query ? `/home.html?${query}` : "/home.html";
+}
+
+async function getActorName(supabase: ReturnType<typeof createClient>, userId: string) {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("first_name, last_name, display_name, email")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  const fullName = [data?.first_name, data?.last_name]
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .filter(Boolean)
+    .join(" ");
+
+  return fullName || data?.display_name || data?.email || "Someone";
+}
+
+async function notifyRecipient(
+  supabase: ReturnType<typeof createClient>,
+  recipientUserId: string,
+  actorUserId: string,
+  groupId: string,
+  type: "prayer_event_loved",
+  title: string,
+  body: string,
+  metadata: Record<string, unknown>,
+) {
+  if (recipientUserId === actorUserId) {
+    return {
+      attempted: 0,
+      failed: 0,
+      failures: [],
+      sent: 0,
+    };
+  }
+
+  const { error } = await supabase.from("notifications").insert({
+    actor_user_id: actorUserId,
+    body,
+    group_id: groupId,
+    metadata,
+    notification_type: type,
+    recipient_user_id: recipientUserId,
+    title,
+  });
+
+  if (error) throw error;
+
+  return await sendPushToUsers(supabase, [recipientUserId], {
+    body,
+    data: {
+      groupId,
+      type,
+      url: buildHomeUrl("feed", metadata.groupSlug),
+      ...metadata,
+    },
+    tag: `${type}-${groupId}-${crypto.randomUUID()}`,
+    title,
+  });
 }
 
 Deno.serve(async (request) => {
@@ -205,6 +279,82 @@ Deno.serve(async (request) => {
 
         if (insertError) {
           throw insertError;
+        }
+
+        const actorName = await getActorName(supabase, user.id);
+        if (eventKey.startsWith("prayer-event:")) {
+          const prayerEventId = eventKey.replace("prayer-event:", "").trim();
+          const { data: prayerEvent, error: prayerEventError } = await supabase
+            .from("prayer_presence_events")
+            .select("id, user_id, event_type")
+            .eq("id", prayerEventId)
+            .eq("group_id", group.id)
+            .maybeSingle();
+
+          if (prayerEventError) {
+            throw prayerEventError;
+          }
+
+          if (prayerEvent?.user_id) {
+            const eventType = String(prayerEvent.event_type) === "left" ? "prayer completion" : "prayer entry";
+            await notifyRecipient(
+              supabase,
+              String(prayerEvent.user_id),
+              user.id,
+              group.id,
+              "prayer_event_loved",
+              `${actorName} said Amen to your ${eventType}`,
+              `${actorName} said Amen to your ${eventType} in ${group.name}.`,
+              {
+                eventKey,
+                eventType,
+                groupSlug: group.slug,
+              },
+            );
+          }
+        } else if (eventKey.startsWith("group-prayer:")) {
+          const [, source = "", scheduledFor = "", reminderMinutes = "", ...bodyParts] = eventKey.split(":");
+          const bodyText = bodyParts.join(":");
+          const { data: candidateNotifications, error: matchingNotificationError } = await supabase
+            .from("notifications")
+            .select("actor_user_id, body, metadata, notification_type, created_at")
+            .eq("group_id", group.id)
+            .in("notification_type", ["group_prayer_scheduled", "group_prayer_reminder"])
+            .eq("body", bodyText)
+            .not("actor_user_id", "is", null)
+            .order("created_at", { ascending: false })
+            .limit(80);
+
+          if (matchingNotificationError) {
+            throw matchingNotificationError;
+          }
+
+          const matchingNotification = (candidateNotifications ?? []).find((item: Record<string, unknown>) => {
+            const metadata = (item.metadata && typeof item.metadata === "object")
+              ? item.metadata as Record<string, unknown>
+              : {};
+            return String(metadata.source || item.notification_type || "") === source
+              && String(metadata.scheduledFor || "") === scheduledFor
+              && String(metadata.reminderMinutes ?? "") === reminderMinutes
+              && String(item.body || "") === bodyText;
+          });
+
+          if (matchingNotification?.actor_user_id) {
+            await notifyRecipient(
+              supabase,
+              String(matchingNotification.actor_user_id),
+              user.id,
+              group.id,
+              "prayer_event_loved",
+              `${actorName} said Amen to your group prayer update`,
+              `${actorName} said Amen to your shared group prayer update in ${group.name}.`,
+              {
+                eventKey,
+                eventType: "group_prayer_update",
+                groupSlug: group.slug,
+              },
+            );
+          }
         }
       }
 

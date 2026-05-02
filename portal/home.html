@@ -3577,7 +3577,7 @@
         if (type === "chat_message") return "chat";
         if (type === "daily_reading_uploaded" || type === "daily_reading_reminder") return "reading";
         if (type === "group_prayer_scheduled" || type === "group_prayer_reminder") return "schedule";
-        if (type === "intention_posted" || type === "intention_loved" || type === "prayer_started" || type === "prayer_ended" || type === "lights_activated") {
+        if (type === "intention_posted" || type === "intention_loved" || type === "prayer_event_loved" || type === "prayer_started" || type === "prayer_ended" || type === "lights_activated") {
           return "feed";
         }
         return "";
