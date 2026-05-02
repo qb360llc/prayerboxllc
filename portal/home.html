@@ -4235,27 +4235,65 @@
         setInfoMessage("Community updated.");
       }
 
+      function applyOptimisticFeedAmenToggle(matchItem) {
+        const previousFeed = currentPrayerFeed.map((item) => ({ ...item }));
+        let changed = false;
+
+        currentPrayerFeed = currentPrayerFeed.map((item) => {
+          if (!matchItem(item)) {
+            return item;
+          }
+          changed = true;
+          const nextHasAmen = !item.userHasAmen;
+          const nextAmenCount = Math.max(0, Number(item.amenCount || 0) + (nextHasAmen ? 1 : -1));
+          return {
+            ...item,
+            amenCount: nextAmenCount,
+            userHasAmen: nextHasAmen,
+          };
+        });
+
+        if (changed) {
+          renderPrayerFeed();
+        }
+
+        return () => {
+          currentPrayerFeed = previousFeed;
+          renderPrayerFeed();
+        };
+      }
+
       async function toggleFeedAmen(intentionId) {
         const groupSlug = selectedGroupSlug();
         if (!groupSlug) {
           throw new Error("Choose your active community in Settings first.");
         }
 
-        const response = await authedFetch("/functions/v1/community-intentions", {
-          body: JSON.stringify({
-            action: "react",
-            groupSlug,
-            intentionId,
-            reactionType: "love",
-          }),
-          headers: { "Content-Type": "application/json" },
-          method: "POST",
-        });
-        const payload = await response.json();
-        if (!response.ok || !payload.ok) {
-          throw new Error(payload.error || "Failed to update Amen.");
+        const rollback = applyOptimisticFeedAmenToggle((item) =>
+          item.type === "intention" && item.intentionId === intentionId
+        );
+
+        try {
+          const response = await authedFetch("/functions/v1/community-intentions", {
+            body: JSON.stringify({
+              action: "react",
+              groupSlug,
+              intentionId,
+              reactionType: "love",
+            }),
+            headers: { "Content-Type": "application/json" },
+            method: "POST",
+          });
+          const payload = await response.json();
+          if (!response.ok || !payload.ok) {
+            throw new Error(payload.error || "Failed to update Amen.");
+          }
+        } catch (error) {
+          rollback();
+          throw error;
         }
-        await loadPrayerFeed();
+
+        loadPrayerFeed().catch(() => {});
       }
 
       async function toggleFeedEventAmen(eventKey) {
@@ -4267,20 +4305,30 @@
           throw new Error("Unknown feed event.");
         }
 
-        const response = await authedFetch("/functions/v1/prayer-feed", {
-          body: JSON.stringify({
-            eventKey,
-            groupSlug,
-            reactionType: "love",
-          }),
-          headers: { "Content-Type": "application/json" },
-          method: "POST",
-        });
-        const payload = await response.json();
-        if (!response.ok || !payload.ok) {
-          throw new Error(payload.error || "Failed to update Amen.");
+        const rollback = applyOptimisticFeedAmenToggle((item) =>
+          (item.type === "prayer_event" || item.type === "group_prayer_event") && item.eventKey === eventKey
+        );
+
+        try {
+          const response = await authedFetch("/functions/v1/prayer-feed", {
+            body: JSON.stringify({
+              eventKey,
+              groupSlug,
+              reactionType: "love",
+            }),
+            headers: { "Content-Type": "application/json" },
+            method: "POST",
+          });
+          const payload = await response.json();
+          if (!response.ok || !payload.ok) {
+            throw new Error(payload.error || "Failed to update Amen.");
+          }
+        } catch (error) {
+          rollback();
+          throw error;
         }
-        await loadPrayerFeed();
+
+        loadPrayerFeed().catch(() => {});
       }
 
       async function loadFeedComments(intentionId) {
