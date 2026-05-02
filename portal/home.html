@@ -201,7 +201,7 @@
       }
       .rail-badge[hidden] { display:none; }
       .rail-button.has-recording::after {
-        content:"★";
+        content:"\2605";
         position:absolute;
         top:-4px;
         right:-4px;
@@ -2483,7 +2483,7 @@
         const hasRecording = Boolean(els.sharedAudio.getAttribute("src"));
         const isPlaying = !els.sharedAudio.paused && !els.sharedAudio.ended;
         els.toggleAudioPlay.disabled = !hasRecording;
-        els.toggleAudioPlay.textContent = isPlaying ? "❚❚" : "▶";
+        els.toggleAudioPlay.textContent = isPlaying ? "\u275A\u275A" : "\u25B6";
         els.toggleAudioPlay.setAttribute("aria-label", isPlaying ? "Pause recording" : "Play recording");
         els.toggleAudioPlay.setAttribute("title", isPlaying ? "Pause recording" : "Play recording");
       }
@@ -2994,7 +2994,7 @@
         els.scheduleCurrent.innerHTML = `
           <div class="summary-title">Upcoming Prayer Time</div>
           <div class="summary-value">${escapeHtml(formatScheduleDateTime(currentPrayerSchedule.scheduledFor))}</div>
-          <div class="summary-meta">Reminder ${escapeHtml(String(currentPrayerSchedule.reminderMinutes))} minute${Number(currentPrayerSchedule.reminderMinutes) === 1 ? "" : "s"} before${currentPrayerSchedule.createdBy ? ` • Suggested by ${escapeHtml(currentPrayerSchedule.createdBy)}` : ""}</div>
+          <div class="summary-meta">Reminder ${escapeHtml(String(currentPrayerSchedule.reminderMinutes))} minute${Number(currentPrayerSchedule.reminderMinutes) === 1 ? "" : "s"} before${currentPrayerSchedule.createdBy ? ` &bull; Suggested by ${escapeHtml(currentPrayerSchedule.createdBy)}` : ""}</div>
         `;
       }
 
@@ -3727,7 +3727,7 @@
                 <span class="feed-event-time">${escapeHtml(formatFeedTime(item.createdAt))}</span>
                 <div class="feed-actions">
                   <button class="feed-amen-button ${item.userHasAmen ? "active" : ""}" type="button" data-feed-event-key="${escapeHtml(item.eventKey)}" aria-label="${item.userHasAmen ? "Remove Amen" : "Say Amen"}">
-                    <span class="heart" aria-hidden="true">${item.userHasAmen ? "â™¥" : "â™¡"}</span>
+                    <span class="heart" aria-hidden="true">${item.userHasAmen ? "&#9829;" : "&#9825;"}</span>
                     <span class="amen-label">Amen</span>
                     <span class="amen-count">${item.amenCount || 0}</span>
                   </button>
@@ -3743,7 +3743,7 @@
                 <span class="feed-event-time">${escapeHtml(formatFeedTime(item.createdAt))}</span>
                 <div class="feed-actions">
                   <button class="feed-amen-button ${item.userHasAmen ? "active" : ""}" type="button" data-feed-event-key="${escapeHtml(item.eventKey)}" aria-label="${item.userHasAmen ? "Remove Amen" : "Say Amen"}">
-                    <span class="heart" aria-hidden="true">${item.userHasAmen ? "â™¥" : "â™¡"}</span>
+                    <span class="heart" aria-hidden="true">${item.userHasAmen ? "&#9829;" : "&#9825;"}</span>
                     <span class="amen-label">Amen</span>
                     <span class="amen-count">${item.amenCount || 0}</span>
                   </button>
@@ -3773,7 +3773,7 @@
               <p class="feed-body">${escapeHtml(item.body)}</p>
               <div class="feed-actions">
                 <button class="feed-amen-button ${item.userHasAmen ? "active" : ""}" type="button" data-feed-intention-id="${escapeHtml(item.intentionId)}" aria-label="${item.userHasAmen ? "Remove Amen" : "Say Amen"}">
-                  <span class="heart" aria-hidden="true">${item.userHasAmen ? "♥" : "♡"}</span>
+                  <span class="heart" aria-hidden="true">${item.userHasAmen ? "&#9829;" : "&#9825;"}</span>
                   <span class="amen-label">Amen</span>
                   <span class="amen-count">${item.amenCount || 0}</span>
                 </button>
@@ -3812,7 +3812,7 @@
                 </span>
                 <span class="feed-date-marker-side">
                   <span>${escapeHtml(formatFeedTime(group.items[0]?.createdAt))}</span>
-                  <span class="feed-date-chevron">⌃</span>
+                  <span class="feed-date-chevron">&#8963;</span>
                 </span>
               </button>
               <div class="feed-date-items" ${isCollapsed ? "hidden" : ""}>
@@ -4957,3 +4957,4 @@
     </script>
   </body>
 </html>
+
