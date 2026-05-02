@@ -71,9 +71,9 @@
         opacity:0;
         transform:translateY(-8px);
         border-radius:22px;
-        background:rgba(18,35,46,.94);
-        border:1px solid rgba(248,241,223,.14);
-        box-shadow:0 18px 38px rgba(10,18,24,.28);
+        background:rgba(255,255,255,.98);
+        border:1px solid rgba(35,68,87,.1);
+        box-shadow:0 16px 32px rgba(20,38,52,.12);
         backdrop-filter:blur(12px);
         transition:max-height .24s ease, opacity .18s ease, transform .18s ease, padding .18s ease;
       }
@@ -162,13 +162,13 @@
         gap:12px;
         padding:12px 14px;
         border-radius:16px;
-        background:rgba(248,241,223,.08);
-        border:1px solid rgba(248,241,223,.1);
+        background:#ffffff;
+        border:1px solid rgba(35,68,87,.08);
         box-shadow:none;
       }
-      .mobile-action-strip .rail-button svg { flex:0 0 22px; }
+      .mobile-action-strip .rail-button svg { flex:0 0 22px; stroke:#173241; }
       .action-label {
-        color:var(--cream);
+        color:#173241;
         font-size:.98rem;
         font-weight:600;
         letter-spacing:.01em;
@@ -198,6 +198,9 @@
         font-weight:700;
         line-height:1;
         box-shadow:0 6px 12px rgba(10,18,24,.24);
+      }
+      .mobile-action-strip .menu-dot {
+        box-shadow:0 0 0 2px rgba(255,255,255,.96);
       }
       .rail-badge[hidden] { display:none; }
       .rail-button.has-recording::after {
