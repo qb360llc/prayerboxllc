@@ -625,7 +625,7 @@ async function processGroupPrayerReminders(
           data: {
             groupId: group.id,
             type: "group_prayer_reminder",
-            url: buildHomeUrl("schedule", group.slug),
+            url: buildHomeUrl(undefined, group.slug),
             ...metadata,
           },
           tag: `group-prayer-${stage}-${schedule.id}`,

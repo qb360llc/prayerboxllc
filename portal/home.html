@@ -3576,7 +3576,8 @@
         const type = String(item?.type || "");
         if (type === "chat_message") return "chat";
         if (type === "daily_reading_uploaded" || type === "daily_reading_reminder") return "reading";
-        if (type === "group_prayer_scheduled" || type === "group_prayer_reminder") return "schedule";
+        if (type === "group_prayer_scheduled") return "schedule";
+        if (type === "group_prayer_reminder") return "home";
         if (type === "intention_posted" || type === "intention_loved" || type === "prayer_event_loved" || type === "prayer_started" || type === "prayer_ended" || type === "lights_activated") {
           return "feed";
         }
@@ -4063,6 +4064,10 @@
 
       async function openNotificationTarget(target) {
         switch (target) {
+          case "home":
+            closeNotificationsModal();
+            await handleBottomNavSelection("home");
+            return;
           case "feed":
             closeNotificationsModal();
             await loadPrayerFeed();
