@@ -64,7 +64,8 @@
         display:flex;
         flex-direction:column;
         gap:8px;
-        overflow:hidden;
+        overflow-x:hidden;
+        overflow-y:auto;
         max-height:0;
         padding:0;
         opacity:0;
@@ -76,7 +77,7 @@
         backdrop-filter:blur(12px);
         transition:max-height .24s ease, opacity .18s ease, transform .18s ease, padding .18s ease;
       }
-      .mobile-action-strip.open { max-height:520px; padding:12px; opacity:1; transform:translateY(0); }
+      .mobile-action-strip.open { max-height:min(520px, calc(100dvh - env(safe-area-inset-top, 0px) - 90px)); padding:12px; opacity:1; transform:translateY(0); }
       .hero-card { min-height:calc(100vh - 140px); display:grid; align-content:space-between; gap:16px; padding:18px 18px 20px; text-align:center; }
       .hero-stack { display:grid; gap:10px; justify-items:center; align-content:end; min-height:100%; }
       .hero-actions { width:min(100%, 360px); display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px; margin-top:8px; }
@@ -1772,7 +1773,7 @@
                 <select id="feed-filter-select" class="feed-filter-select" aria-label="Filter prayer feed">
                   <option value="all">All</option>
                   <option value="intentions">Intentions</option>
-                  <option value="prayer_events">Prayer Enter/Exit</option>
+                  <option value="prayer_events">Prayer Activity</option>
                 </select>
               </div>
               <div id="feed-empty" class="feed-empty" hidden>No prayer activity yet.</div>
@@ -2654,7 +2655,7 @@
           return currentPrayerFeed.filter((item) => item.type === "intention");
         }
         if (currentFeedFilter === "prayer_events") {
-          return currentPrayerFeed.filter((item) => item.type === "prayer_event");
+          return currentPrayerFeed.filter((item) => item.type === "prayer_event" || item.type === "group_prayer_event" || item.type === "reading_upload");
         }
         return currentPrayerFeed;
       }
@@ -3687,7 +3688,7 @@
           els.feedEmpty.hidden = false;
           els.feedEmpty.textContent = currentFeedFilter === "intentions"
             ? "No intentions found for this filter."
-            : "No prayer enter/exit updates found for this filter.";
+            : "No prayer activity updates found for this filter.";
           if (isFeedVisible()) {
             markIntentionsSeen();
           } else {
@@ -3724,6 +3725,29 @@
               <article class="feed-card prayer-event">
                 <p class="feed-event-copy">${escapeHtml(item.body)}</p>
                 <span class="feed-event-time">${escapeHtml(formatFeedTime(item.createdAt))}</span>
+                <div class="feed-actions">
+                  <button class="feed-amen-button ${item.userHasAmen ? "active" : ""}" type="button" data-feed-event-key="${escapeHtml(item.eventKey)}" aria-label="${item.userHasAmen ? "Remove Amen" : "Say Amen"}">
+                    <span class="heart" aria-hidden="true">${item.userHasAmen ? "â™¥" : "â™¡"}</span>
+                    <span class="amen-label">Amen</span>
+                    <span class="amen-count">${item.amenCount || 0}</span>
+                  </button>
+                </div>
+              </article>
+            `;
+          }
+
+          if (item.type === "group_prayer_event") {
+            return `
+              <article class="feed-card prayer-event">
+                <p class="feed-event-copy">${escapeHtml(item.body)}</p>
+                <span class="feed-event-time">${escapeHtml(formatFeedTime(item.createdAt))}</span>
+                <div class="feed-actions">
+                  <button class="feed-amen-button ${item.userHasAmen ? "active" : ""}" type="button" data-feed-event-key="${escapeHtml(item.eventKey)}" aria-label="${item.userHasAmen ? "Remove Amen" : "Say Amen"}">
+                    <span class="heart" aria-hidden="true">${item.userHasAmen ? "â™¥" : "â™¡"}</span>
+                    <span class="amen-label">Amen</span>
+                    <span class="amen-count">${item.amenCount || 0}</span>
+                  </button>
+                </div>
               </article>
             `;
           }
@@ -3819,6 +3843,11 @@
             const intentionId = button.getAttribute("data-feed-intention-id") || "";
             if (intentionId) {
               wrap(() => toggleFeedAmen(intentionId), button);
+              return;
+            }
+            const eventKey = button.getAttribute("data-feed-event-key") || "";
+            if (eventKey) {
+              wrap(() => toggleFeedEventAmen(eventKey), button);
             }
           });
         });
@@ -4217,6 +4246,31 @@
             action: "react",
             groupSlug,
             intentionId,
+            reactionType: "love",
+          }),
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error || "Failed to update Amen.");
+        }
+        await loadPrayerFeed();
+      }
+
+      async function toggleFeedEventAmen(eventKey) {
+        const groupSlug = selectedGroupSlug();
+        if (!groupSlug) {
+          throw new Error("Choose your active community in Settings first.");
+        }
+        if (!eventKey) {
+          throw new Error("Unknown feed event.");
+        }
+
+        const response = await authedFetch("/functions/v1/prayer-feed", {
+          body: JSON.stringify({
+            eventKey,
+            groupSlug,
             reactionType: "love",
           }),
           headers: { "Content-Type": "application/json" },

@@ -24,12 +24,27 @@ type FeedItem =
   }
   | {
     id: string;
+    type: "group_prayer_event";
+    createdAt: string;
+    createdBy: string;
+    avatarUrl?: string | null;
+    body: string;
+    eventKey: string;
+    eventType: "scheduled" | "reminder" | "start";
+    amenCount: number;
+    userHasAmen: boolean;
+  }
+  | {
+    id: string;
     type: "prayer_event";
     createdAt: string;
     createdBy: string;
     avatarUrl?: string | null;
+    eventKey: string;
     eventType: "entered" | "left";
     body: string;
+    amenCount: number;
+    userHasAmen: boolean;
   };
 
 function corsHeaders(request: Request) {
@@ -75,7 +90,7 @@ Deno.serve(async (request) => {
     return new Response("ok", { headers: corsHeaders(request) });
   }
 
-  if (request.method !== "GET") {
+  if (!["GET", "POST"].includes(request.method)) {
     return json(request, 405, { error: "Method not allowed.", ok: false });
   }
 
@@ -138,6 +153,60 @@ Deno.serve(async (request) => {
       return json(request, 403, { error: "Join this community before viewing the prayer feed.", ok: false });
     }
 
+    if (request.method === "POST") {
+      const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+      const eventKey = String(body.eventKey || "").trim();
+      const reactionType = String(body.reactionType || "love").trim();
+      if (!eventKey) {
+        return json(request, 400, { error: "eventKey is required.", ok: false });
+      }
+      if (!["love"].includes(reactionType)) {
+        return json(request, 400, { error: "Unsupported reaction type.", ok: false });
+      }
+      if (!eventKey.startsWith("prayer-event:") && !eventKey.startsWith("group-prayer:")) {
+        return json(request, 400, { error: "Unsupported feed event for reactions.", ok: false });
+      }
+
+      const { data: existingReaction, error: reactionLookupError } = await supabase
+        .from("prayer_feed_event_reactions")
+        .select("id")
+        .eq("group_id", group.id)
+        .eq("event_key", eventKey)
+        .eq("user_id", user.id)
+        .eq("reaction_type", reactionType)
+        .maybeSingle();
+
+      if (reactionLookupError) {
+        throw reactionLookupError;
+      }
+
+      if (existingReaction?.id) {
+        const { error: deleteError } = await supabase
+          .from("prayer_feed_event_reactions")
+          .delete()
+          .eq("id", existingReaction.id);
+
+        if (deleteError) {
+          throw deleteError;
+        }
+      } else {
+        const { error: insertError } = await supabase
+          .from("prayer_feed_event_reactions")
+          .insert({
+            event_key: eventKey,
+            group_id: group.id,
+            reaction_type: reactionType,
+            user_id: user.id,
+          });
+
+        if (insertError) {
+          throw insertError;
+        }
+      }
+
+      return json(request, 200, { ok: true });
+    }
+
     const { data: intentions, error: intentionsError } = await supabase
       .from("community_intentions")
       .select("id, body, created_at, created_by_user_id")
@@ -171,10 +240,38 @@ Deno.serve(async (request) => {
       throw readingUploadsError;
     }
 
+    const { data: groupPrayerNotifications, error: groupPrayerNotificationsError } = await supabase
+      .from("notifications")
+      .select("id, title, body, notification_type, metadata, created_at, actor_user_id")
+      .eq("group_id", group.id)
+      .in("notification_type", ["group_prayer_scheduled", "group_prayer_reminder"])
+      .order("created_at", { ascending: false })
+      .limit(120);
+
+    if (groupPrayerNotificationsError) {
+      throw groupPrayerNotificationsError;
+    }
+
+    const dedupedGroupPrayerNotifications = Array.from(new Map(
+      (groupPrayerNotifications ?? []).map((item: Record<string, unknown>) => {
+        const metadata = (item.metadata && typeof item.metadata === "object")
+          ? item.metadata as Record<string, unknown>
+          : {};
+        const source = String(metadata.source || item.notification_type || "group_prayer");
+        const scheduledFor = String(metadata.scheduledFor || "");
+        const reminderMinutes = String(metadata.reminderMinutes ?? "");
+        const key = `${source}:${scheduledFor}:${reminderMinutes}:${String(item.body || "")}`;
+        return [key, item];
+      }),
+    ).values());
+
     const authorIds = Array.from(new Set([
       ...(intentions ?? []).map((item: Record<string, unknown>) => String(item.created_by_user_id)),
       ...(prayerEvents ?? []).map((item: Record<string, unknown>) => String(item.user_id)),
       ...(readingUploads ?? []).map((item: Record<string, unknown>) => String(item.created_by_user_id)),
+      ...dedupedGroupPrayerNotifications
+        .map((item: Record<string, unknown>) => String(item.actor_user_id || ""))
+        .filter(Boolean),
     ]));
 
     const authorsById = new Map<string, Record<string, unknown>>();
@@ -242,6 +339,45 @@ Deno.serve(async (request) => {
       }
     }
 
+    const eventKeys = [
+      ...(prayerEvents ?? []).map((item: Record<string, unknown>) => `prayer-event:${String(item.id)}`),
+      ...dedupedGroupPrayerNotifications.map((item: Record<string, unknown>) => {
+        const metadata = (item.metadata && typeof item.metadata === "object")
+          ? item.metadata as Record<string, unknown>
+          : {};
+        const source = String(metadata.source || item.notification_type || "group_prayer");
+        const scheduledFor = String(metadata.scheduledFor || "");
+        const reminderMinutes = String(metadata.reminderMinutes ?? "");
+        return `group-prayer:${source}:${scheduledFor}:${reminderMinutes}:${String(item.body || "")}`;
+      }),
+    ];
+    const eventReactionsByKey = new Map<string, { amenCount: number; userHasAmen: boolean }>();
+    if (eventKeys.length) {
+      const { data: eventReactions, error: eventReactionsError } = await supabase
+        .from("prayer_feed_event_reactions")
+        .select("event_key, user_id, reaction_type")
+        .in("event_key", eventKeys)
+        .eq("reaction_type", "love");
+
+      if (eventReactionsError) {
+        throw eventReactionsError;
+      }
+
+      for (const eventKey of eventKeys) {
+        eventReactionsByKey.set(eventKey, { amenCount: 0, userHasAmen: false });
+      }
+
+      for (const reaction of eventReactions ?? []) {
+        const eventKey = String((reaction as Record<string, unknown>).event_key);
+        const bucket = eventReactionsByKey.get(eventKey) ?? { amenCount: 0, userHasAmen: false };
+        bucket.amenCount += 1;
+        if (String((reaction as Record<string, unknown>).user_id) === user.id) {
+          bucket.userHasAmen = true;
+        }
+        eventReactionsByKey.set(eventKey, bucket);
+      }
+    }
+
     const feedItems: FeedItem[] = [
       ...(intentions ?? []).map((item: Record<string, unknown>) => {
         const intentionId = String(item.id);
@@ -262,16 +398,21 @@ Deno.serve(async (request) => {
       ...(prayerEvents ?? []).map((item: Record<string, unknown>) => {
         const name = profileName(authorsById.get(String(item.user_id)));
         const eventType = String(item.event_type) === "left" ? "left" : "entered";
+        const eventKey = `prayer-event:${String(item.id)}`;
+        const reactionState = eventReactionsByKey.get(eventKey) ?? { amenCount: 0, userHasAmen: false };
         return {
+          amenCount: reactionState.amenCount,
           avatarUrl: profileAvatar(authorsById.get(String(item.user_id))),
           body: eventType === "left"
             ? `${name} has finished praying`
             : `${name} has entered prayer`,
           createdAt: String(item.created_at),
           createdBy: name,
+          eventKey,
           eventType,
           id: `prayer-event:${String(item.id)}`,
           type: "prayer_event" as const,
+          userHasAmen: reactionState.userHasAmen,
         };
       }),
       ...(readingUploads ?? []).map((item: Record<string, unknown>) => {
@@ -285,6 +426,35 @@ Deno.serve(async (request) => {
           id: `reading-upload:${String(item.id)}`,
           readingDate,
           type: "reading_upload" as const,
+        };
+      }),
+      ...dedupedGroupPrayerNotifications.map((item: Record<string, unknown>) => {
+        const metadata = (item.metadata && typeof item.metadata === "object")
+          ? item.metadata as Record<string, unknown>
+          : {};
+        const source = String(metadata.source || item.notification_type || "group_prayer_schedule");
+        const scheduledFor = String(metadata.scheduledFor || "");
+        const reminderMinutes = String(metadata.reminderMinutes ?? "");
+        const eventKey = `group-prayer:${source}:${scheduledFor}:${reminderMinutes}:${String(item.body || "")}`;
+        const reactionState = eventReactionsByKey.get(eventKey) ?? { amenCount: 0, userHasAmen: false };
+        const actorId = String(item.actor_user_id || "");
+        const eventType = source === "group_prayer_start"
+          ? "start"
+          : source === "group_prayer_reminder"
+          ? "reminder"
+          : "scheduled";
+        const createdBy = actorId ? profileName(authorsById.get(actorId)) : "Prayerbox";
+        return {
+          amenCount: reactionState.amenCount,
+          avatarUrl: actorId ? profileAvatar(authorsById.get(actorId)) : null,
+          body: String(item.body || item.title || "Group prayer update"),
+          createdAt: String(item.created_at),
+          createdBy,
+          eventKey,
+          eventType,
+          id: `group-prayer-event:${String(item.id)}`,
+          type: "group_prayer_event" as const,
+          userHasAmen: reactionState.userHasAmen,
         };
       }),
     ]
