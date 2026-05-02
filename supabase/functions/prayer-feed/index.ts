@@ -118,8 +118,13 @@ Deno.serve(async (request) => {
       return json(request, 401, { error: "Invalid user token.", ok: false });
     }
 
+    const requestBody = request.method === "POST"
+      ? await request.json().catch(() => ({})) as Record<string, unknown>
+      : {};
+
     const url = new URL(request.url);
-    const groupSlug = url.searchParams.get("groupSlug")?.trim();
+    const groupSlug = url.searchParams.get("groupSlug")?.trim()
+      || String(requestBody.groupSlug || "").trim();
     if (!groupSlug) {
       return json(request, 400, { error: "groupSlug is required.", ok: false });
     }
@@ -154,9 +159,8 @@ Deno.serve(async (request) => {
     }
 
     if (request.method === "POST") {
-      const body = await request.json().catch(() => ({})) as Record<string, unknown>;
-      const eventKey = String(body.eventKey || "").trim();
-      const reactionType = String(body.reactionType || "love").trim();
+      const eventKey = String(requestBody.eventKey || "").trim();
+      const reactionType = String(requestBody.reactionType || "love").trim();
       if (!eventKey) {
         return json(request, 400, { error: "eventKey is required.", ok: false });
       }
