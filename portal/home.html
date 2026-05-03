@@ -118,6 +118,23 @@
         opacity:1;
         transform:translate(-50%, 0);
       }
+      .home-psalm-card {
+        width:min(50vw, 560px);
+        padding:24px 22px 22px;
+        border-radius:28px;
+        background:rgba(255,255,255,.5);
+        backdrop-filter:blur(12px);
+        box-shadow:0 24px 48px rgba(10,18,24,.28);
+        color:#111111;
+        text-align:center;
+      }
+      .home-psalm-card .modal-close { color:#111111; }
+      .home-psalm-copy {
+        margin:0;
+        color:#111111;
+        font-size:1.12rem;
+        line-height:1.6;
+      }
       .info-fab { position:fixed; right:18px; bottom:18px; width:48px; height:48px; padding:0; border-radius:999px; display:none !important; align-items:center; justify-content:center; font-size:1.15rem; z-index:40; box-shadow:0 14px 26px rgba(10,18,24,.26); }
       .info-fab::before { content:"i"; font-style:italic; font-weight:700; }
       .info-panel { position:fixed; right:18px; bottom:76px; width:min(320px, calc(100vw - 28px)); display:none !important; padding:14px; border-radius:20px; background:rgba(18,35,46,.94); border:1px solid rgba(248,241,223,.14); box-shadow:0 18px 36px rgba(10,18,24,.3); z-index:40; }
@@ -754,6 +771,8 @@
         body[data-current-page="home"] { overflow:hidden; }
         body[data-current-page="home"] main { height:100vh; overflow:hidden; }
         .hero-card { min-height:calc(100vh - 110px); padding:calc(env(safe-area-inset-top, 0px) + 12vh) 10px 2px; display:flex; flex-direction:column; justify-content:space-between; gap:12px; }
+        .home-psalm-card { width:min(calc(100vw - 28px), 420px); padding:20px 18px 18px; }
+        .home-psalm-copy { font-size:1rem; }
         .hero-actions { width:100%; margin-top:12px; display:flex; justify-content:center; }
         .pray-button { width:min(100%, 165px); height:auto; min-width:0; border-radius:999px; padding:18px 24px; font-size:1.12rem; }
         .intention-only-button { display:none; }
@@ -1748,6 +1767,16 @@
         </div>
       </div>
 
+      <div id="home-psalm-modal" class="modal-backdrop center-modal" aria-hidden="true">
+        <div class="modal-card home-psalm-card" role="dialog" aria-modal="true" aria-labelledby="home-psalm-title">
+          <div class="modal-header">
+            <div class="modal-title" id="home-psalm-title">Today's Responsorial Psalm</div>
+            <button id="close-home-psalm-modal" class="modal-close" aria-label="Close psalm response dialog">&times;</button>
+          </div>
+          <p id="home-psalm-copy" class="home-psalm-copy">Loading today's psalm response...</p>
+        </div>
+      </div>
+
       <div id="amen-list-modal" class="modal-backdrop center-modal" aria-hidden="true">
         <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="amen-list-modal-title">
           <div class="modal-header">
@@ -1991,6 +2020,7 @@
         amenListModal: document.querySelector("#amen-list-modal"),
         cancelComment: document.querySelector("#cancel-comment"),
         closeAmenListModal: document.querySelector("#close-amen-list-modal"),
+        closeHomePsalmModal: document.querySelector("#close-home-psalm-modal"),
         closePrayModal: document.querySelector("#close-pray-modal"),
         closeCommentModal: document.querySelector("#close-comment-modal"),
         closeReadingReminderModal: document.querySelector("#close-reading-reminder-modal"),
@@ -2044,6 +2074,8 @@
         membersList: document.querySelector("#members-list"),
         membersModal: document.querySelector("#members-modal"),
         membersSummary: document.querySelector("#members-summary"),
+        homePsalmCopy: document.querySelector("#home-psalm-copy"),
+        homePsalmModal: document.querySelector("#home-psalm-modal"),
         notificationsBadge: document.querySelector("#notifications-badge"),
         notificationsList: document.querySelector("#notifications-list"),
         notificationsModal: document.querySelector("#notifications-modal"),
@@ -2137,6 +2169,7 @@
       let currentPageKey = normalizePageKey(initialLaunchParams.page);
       let currentFeedFilter = "all";
       const collapsedFeedDates = new Set();
+      let lastShownHomePsalmKey = "";
 
       function intentionStorageKey() {
         return `prayerboxPrayerIntention:${selectedGroupSlug()}`;
@@ -2364,6 +2397,11 @@
           window.history.pushState({}, "", nextUrl);
         }
         syncMobilePageLayout();
+        if (currentPageKey === "home") {
+          showHomePsalmResponse(true).catch(() => {});
+        } else {
+          closeHomePsalmModal();
+        }
       }
 
       function clearLaunchTarget() {
@@ -2459,6 +2497,17 @@
         const textarea = document.createElement("textarea");
         textarea.innerHTML = input || "";
         return textarea.value;
+      }
+
+      function extractResponsorialPsalmResponse(descriptionEncoded) {
+        const decoded = decodeHtmlEntities(descriptionEncoded || "");
+        if (!decoded) return "";
+        const sectionMatch = decoded.match(/<h4>\s*Responsorial Psalm[\s\S]*?<div[^>]*>([\s\S]*?)<\/div>/i);
+        if (!sectionMatch?.[1]) return "";
+        const responseMatch = sectionMatch[1].match(/<strong>\s*([^<]+?)\s*<\/strong>/i);
+        return String(responseMatch?.[1] || "")
+          .replace(/\s+/g, " ")
+          .trim();
       }
 
       function extractUrls(text) {
@@ -2944,6 +2993,19 @@
         els.amenListModal.setAttribute("aria-hidden", "true");
       }
 
+      function openHomePsalmModal(responseText) {
+        els.homePsalmCopy.textContent = responseText
+          ? `"${responseText}"`
+          : "Today's responsorial psalm response is not available right now.";
+        els.homePsalmModal.classList.add("open");
+        els.homePsalmModal.setAttribute("aria-hidden", "false");
+      }
+
+      function closeHomePsalmModal() {
+        els.homePsalmModal.classList.remove("open");
+        els.homePsalmModal.setAttribute("aria-hidden", "true");
+      }
+
       function openGroupModal() {
         renderGroupList();
         els.groupModal.classList.add("open");
@@ -3246,6 +3308,25 @@
         `;
         readingModalLoaded = true;
         await updateReadingAvailabilityBadge();
+      }
+
+      async function showHomePsalmResponse(force = false) {
+        if (normalizePageKey(currentPageKey) !== "home") {
+          return;
+        }
+        const response = await fetch(`${projectUrl}/functions/v1/daily-readings`);
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error || "Failed to load today's responsorial psalm.");
+        }
+        const reading = payload.reading || {};
+        const responseText = extractResponsorialPsalmResponse(reading.descriptionEncoded || "");
+        const responseKey = `${reading.pubDate || ""}:${responseText}`;
+        if (!force && responseKey && responseKey === lastShownHomePsalmKey) {
+          return;
+        }
+        lastShownHomePsalmKey = responseKey;
+        openHomePsalmModal(responseText);
       }
 
       async function updateReadingAvailabilityBadge() {
@@ -4787,6 +4868,9 @@
           await refreshNotificationBadge();
           await loadGroups();
           await openPendingLaunchTarget();
+          if (normalizePageKey(currentPageKey) === "home") {
+            showHomePsalmResponse(true).catch(() => {});
+          }
           setChatRecordingStatus("");
           refreshTimer = window.setInterval(() => {
             refreshPrayerState().catch(() => {});
@@ -4966,6 +5050,7 @@
       });
       els.closePrayModal.addEventListener("click", closePrayModal);
       els.closeAmenListModal.addEventListener("click", closeAmenListModal);
+      els.closeHomePsalmModal.addEventListener("click", closeHomePsalmModal);
       els.closeReadingReminderModal.addEventListener("click", closeReadingReminderModal);
       els.closeReadingModal.addEventListener("click", closeReadingModal);
       els.closeScheduleModal.addEventListener("click", closeScheduleModal);
@@ -5092,6 +5177,9 @@
       els.amenListModal.addEventListener("click", (event) => {
         if (event.target === els.amenListModal) closeAmenListModal();
       });
+      els.homePsalmModal.addEventListener("click", (event) => {
+        if (event.target === els.homePsalmModal) closeHomePsalmModal();
+      });
       els.membersModal.addEventListener("click", (event) => {
         if (event.target === els.membersModal) closeMembersModal();
       });
@@ -5132,6 +5220,11 @@
         const url = new URL(window.location.href);
         currentPageKey = normalizePageKey(url.searchParams.get("page") || url.searchParams.get("open") || "home");
         syncMobilePageLayout();
+        if (currentPageKey === "home") {
+          showHomePsalmResponse(true).catch(() => {});
+        } else {
+          closeHomePsalmModal();
+        }
       });
       MOBILE_PAGE_BREAKPOINT.addEventListener("change", () => {
         syncMobilePageLayout();
