@@ -1,4 +1,13 @@
 [build]
   base = "portal"
+  command = "node ../scripts/prepare-portal-config.mjs"
   publish = "."
 
+[context.production.environment]
+  PRAYERBOX_ENV = "production"
+
+[context.deploy-preview.environment]
+  PRAYERBOX_ENV = "deploy-preview"
+
+[context.branch-deploy.environment]
+  PRAYERBOX_ENV = "branch-deploy"
