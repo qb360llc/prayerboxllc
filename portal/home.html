@@ -129,6 +129,13 @@
         text-align:center;
       }
       .home-psalm-card .modal-close { color:#111111; }
+      .home-psalm-reference {
+        margin:0 0 12px;
+        color:#111111;
+        font-size:.98rem;
+        font-weight:700;
+        line-height:1.4;
+      }
       .home-psalm-copy {
         margin:0;
         color:#111111;
@@ -772,6 +779,7 @@
         body[data-current-page="home"] main { height:100vh; overflow:hidden; }
         .hero-card { min-height:calc(100vh - 110px); padding:calc(env(safe-area-inset-top, 0px) + 12vh) 10px 2px; display:flex; flex-direction:column; justify-content:space-between; gap:12px; }
         .home-psalm-card { width:min(calc(100vw - 28px), 420px); padding:20px 18px 18px; }
+        .home-psalm-reference { font-size:.92rem; margin-bottom:10px; }
         .home-psalm-copy { font-size:1rem; }
         .hero-actions { width:100%; margin-top:12px; display:flex; justify-content:center; }
         .pray-button { width:min(100%, 165px); height:auto; min-width:0; border-radius:999px; padding:18px 24px; font-size:1.12rem; }
@@ -1770,9 +1778,10 @@
       <div id="home-psalm-modal" class="modal-backdrop center-modal" aria-hidden="true">
         <div class="modal-card home-psalm-card" role="dialog" aria-modal="true" aria-labelledby="home-psalm-title">
           <div class="modal-header">
-            <div class="modal-title" id="home-psalm-title">Today's Responsorial Psalm</div>
+            <div class="modal-title" id="home-psalm-title">Daily Psalm</div>
             <button id="close-home-psalm-modal" class="modal-close" aria-label="Close psalm response dialog">&times;</button>
           </div>
+          <p id="home-psalm-reference" class="home-psalm-reference">Loading today's psalm reference...</p>
           <p id="home-psalm-copy" class="home-psalm-copy">Loading today's psalm response...</p>
         </div>
       </div>
@@ -2076,6 +2085,7 @@
         membersSummary: document.querySelector("#members-summary"),
         homePsalmCopy: document.querySelector("#home-psalm-copy"),
         homePsalmModal: document.querySelector("#home-psalm-modal"),
+        homePsalmReference: document.querySelector("#home-psalm-reference"),
         notificationsBadge: document.querySelector("#notifications-badge"),
         notificationsList: document.querySelector("#notifications-list"),
         notificationsModal: document.querySelector("#notifications-modal"),
@@ -2506,6 +2516,15 @@
         if (!sectionMatch?.[1]) return "";
         const responseMatch = sectionMatch[1].match(/<strong>\s*([^<]+?)\s*<\/strong>/i);
         return String(responseMatch?.[1] || "")
+          .replace(/\s+/g, " ")
+          .trim();
+      }
+
+      function extractResponsorialPsalmReference(descriptionEncoded) {
+        const decoded = decodeHtmlEntities(descriptionEncoded || "");
+        if (!decoded) return "";
+        const headingMatch = decoded.match(/<h4>\s*Responsorial Psalm\s*<a[^>]*>\s*([^<]+?)\s*<\/a>\s*<\/h4>/i);
+        return String(headingMatch?.[1] || "")
           .replace(/\s+/g, " ")
           .trim();
       }
@@ -2993,7 +3012,8 @@
         els.amenListModal.setAttribute("aria-hidden", "true");
       }
 
-      function openHomePsalmModal(responseText) {
+      function openHomePsalmModal(referenceText, responseText) {
+        els.homePsalmReference.textContent = referenceText || "Responsorial Psalm";
         els.homePsalmCopy.textContent = responseText
           ? `"${responseText}"`
           : "Today's responsorial psalm response is not available right now.";
@@ -3320,13 +3340,14 @@
           throw new Error(payload.error || "Failed to load today's responsorial psalm.");
         }
         const reading = payload.reading || {};
+        const referenceText = extractResponsorialPsalmReference(reading.descriptionEncoded || "");
         const responseText = extractResponsorialPsalmResponse(reading.descriptionEncoded || "");
-        const responseKey = `${reading.pubDate || ""}:${responseText}`;
+        const responseKey = `${reading.pubDate || ""}:${referenceText}:${responseText}`;
         if (!force && responseKey && responseKey === lastShownHomePsalmKey) {
           return;
         }
         lastShownHomePsalmKey = responseKey;
-        openHomePsalmModal(responseText);
+        openHomePsalmModal(referenceText, responseText);
       }
 
       async function updateReadingAvailabilityBadge() {
