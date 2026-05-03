@@ -128,6 +128,12 @@
         color:#111111;
         text-align:center;
       }
+      #home-psalm-modal {
+        align-items:flex-start;
+        justify-content:center;
+        padding-top:340px;
+        background:transparent;
+      }
       .home-psalm-card .modal-close { color:#111111; }
       .home-psalm-reference {
         margin:0 0 12px;
@@ -779,6 +785,7 @@
         body[data-current-page="home"] { overflow:hidden; }
         body[data-current-page="home"] main { height:100vh; overflow:hidden; }
         .hero-card { min-height:calc(100vh - 110px); padding:calc(env(safe-area-inset-top, 0px) + 12vh) 10px 2px; display:flex; flex-direction:column; justify-content:space-between; gap:12px; }
+        #home-psalm-modal { padding-top:calc(env(safe-area-inset-top, 0px) + 46vh); }
         .home-psalm-card { width:min(calc(100vw - 28px), 420px); padding:20px 18px 18px; }
         .home-psalm-reference { font-size:.92rem; margin-bottom:10px; }
         .home-psalm-copy { font-size:1rem; }
